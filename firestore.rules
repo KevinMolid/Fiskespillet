@@ -44,7 +44,7 @@ service cloud.firestore {
       function validSave() {
         return request.resource.data.keys().hasAll(['mapId', 'x', 'y', 'facing', 'updatedAt'])
           && request.resource.data.keys().hasOnly(['mapId', 'x', 'y', 'facing', 'updatedAt'])
-          && request.resource.data.mapId in ['havn', 'skogstjern', 'hjem', 'hjem2']
+          && request.resource.data.mapId in ['havn', 'skogstjern', 'hjem', 'hjem2', 'butikk']
           && request.resource.data.x is int
           && request.resource.data.x >= 0
           && request.resource.data.x <= 47
@@ -67,7 +67,7 @@ service cloud.firestore {
 
       function validCounts(counts) {
         return counts is map
-          && counts.keys().hasOnly(['rod', 'shovel', 'worm', 'bread', 'spinner'])
+          && counts.keys().hasOnly(['rod', 'shovel', 'worm', 'bread', 'corn', 'spinner'])
           && counts.get('rod', 0) is int
           && counts.get('rod', 0) >= 0
           && counts.get('rod', 0) <= 999
@@ -80,18 +80,24 @@ service cloud.firestore {
           && counts.get('bread', 0) is int
           && counts.get('bread', 0) >= 0
           && counts.get('bread', 0) <= 999
+          && counts.get('corn', 0) is int
+          && counts.get('corn', 0) >= 0
+          && counts.get('corn', 0) <= 999
           && counts.get('spinner', 0) is int
           && counts.get('spinner', 0) >= 0
           && counts.get('spinner', 0) <= 999;
       }
 
       function validInventory() {
-        return request.resource.data.keys().hasAll(['bag', 'storage', 'equippedBait', 'updatedAt'])
-          && request.resource.data.keys().hasOnly(['bag', 'storage', 'equippedBait', 'updatedAt'])
+        return request.resource.data.keys().hasAll(['bag', 'storage', 'equippedBait', 'coins', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['bag', 'storage', 'equippedBait', 'coins', 'updatedAt'])
           && validCounts(request.resource.data.bag)
           && validCounts(request.resource.data.storage)
+          && request.resource.data.coins is int
+          && request.resource.data.coins >= 0
+          && request.resource.data.coins <= 1000000
           && (request.resource.data.equippedBait == null
-            || (request.resource.data.equippedBait in ['worm', 'bread', 'spinner']
+            || (request.resource.data.equippedBait in ['worm', 'bread', 'corn', 'spinner']
               && request.resource.data.bag.get(request.resource.data.equippedBait, 0) > 0))
           && request.resource.data.updatedAt == request.time;
       }

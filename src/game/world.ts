@@ -1,9 +1,9 @@
 import { BAIT_WEIGHTS, type BaitId } from './items'
 
-export type MapId = 'havn' | 'skogstjern' | 'hjem' | 'hjem2'
+export type MapId = 'havn' | 'skogstjern' | 'hjem' | 'hjem2' | 'butikk'
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type Position = { mapId: MapId; x: number; y: number; facing: Direction }
-export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture' | 'bed' | 'table' | 'rug' | 'window' | 'hearth' | 'houseWall' | 'roof' | 'stairs' | 'counter' | 'stove' | 'sofa' | 'soil' | 'chest'
+export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture' | 'bed' | 'table' | 'rug' | 'window' | 'hearth' | 'houseWall' | 'roof' | 'stairs' | 'counter' | 'stove' | 'sofa' | 'soil' | 'chest' | 'shopCounter'
 
 export const WIDTH = 48
 export const HEIGHT = 32
@@ -42,7 +42,12 @@ rect(havn, 5, 5, 13, 6, 'roof')
 havn[9][6] = 'window'
 havn[9][12] = 'window'
 rect(havn, 7, 12, 10, 12, 'path')
-rect(havn, 18, 5, 29, 9, 'wall')
+rect(havn, 18, 7, 29, 9, 'houseWall')
+rect(havn, 18, 5, 29, 6, 'roof')
+havn[8][20] = 'window'
+havn[8][27] = 'window'
+havn[9][23] = 'door'
+rect(havn, 22, 10, 24, 15, 'path')
 rect(havn, 10, 15, 47, 17, 'path')
 rect(havn, 23, 17, 25, 20, 'path')
 havn[21][16] = 'sign'
@@ -90,6 +95,16 @@ hjem[0][17] = 'window'
 hjem[4][19] = 'stairs'
 hjem[15][12] = 'door'
 
+const butikk = indoorGrid()
+rect(butikk, 7, 5, 16, 5, 'counter')
+butikk[5][12] = 'shopCounter'
+butikk[4][12] = 'npc'
+rect(butikk, 4, 4, 5, 7, 'furniture')
+rect(butikk, 18, 4, 19, 7, 'furniture')
+butikk[0][5] = 'window'
+butikk[0][18] = 'window'
+butikk[15][12] = 'door'
+
 const hjem2 = indoorGrid()
 rect(hjem2, 4, 4, 7, 6, 'bed')
 rect(hjem2, 11, 7, 15, 9, 'rug')
@@ -109,7 +124,7 @@ export const MAPS: Record<MapId, WorldMap> = {
     tiles: havn,
     neighbors: { right: 'skogstjern' },
     fishingZone: 'havn',
-    transitions: { '8,11': { mapId: 'hjem', x: 12, y: 14, facing: 'up' } },
+    transitions: { '8,11': { mapId: 'hjem', x: 12, y: 14, facing: 'up' }, '23,9': { mapId: 'butikk', x: 12, y: 14, facing: 'up' } },
     npcs: { '14,12': { name: 'Mira', text: 'Velkommen hjem! Garderoben står i soverommet oppe. Gå gjennom døren og ta trappen i stuen.' } },
     signs: { '16,21': { title: 'Bryggehavn', text: 'Her finnes mort og abbor. En sjelden gang biter gjedda på.' } },
   },
@@ -121,6 +136,12 @@ export const MAPS: Record<MapId, WorldMap> = {
       '12,15': { mapId: 'havn', x: 8, y: 12, facing: 'down' },
       '19,4': { mapId: 'hjem2', x: 19, y: 10, facing: 'up' },
     },
+  },
+  butikk: {
+    id: 'butikk', name: 'Agnbutikken',
+    description: 'Snakk med ekspeditøren over disken.',
+    tiles: butikk, neighbors: {}, signs: {},
+    transitions: { '12,15': { mapId: 'havn', x: 23, y: 10, facing: 'down' } },
   },
   hjem2: {
     id: 'hjem2', name: 'Hjemme · 2. etasje',
@@ -202,13 +223,13 @@ export function edgeTransition(position: Position): Position | null {
 export function isPosition(value: unknown): value is Position {
   if (!value || typeof value !== 'object') return false
   const p = value as Partial<Position>
-  return (p.mapId === 'havn' || p.mapId === 'skogstjern' || p.mapId === 'hjem' || p.mapId === 'hjem2')
+  return (p.mapId === 'havn' || p.mapId === 'skogstjern' || p.mapId === 'hjem' || p.mapId === 'hjem2' || p.mapId === 'butikk')
     && Number.isInteger(p.x) && Number.isInteger(p.y)
     && (p.x as number) >= 0 && (p.x as number) < MAPS[p.mapId].tiles[0].length
     && (p.y as number) >= 0 && (p.y as number) < MAPS[p.mapId].tiles.length
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'wall'
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'water'
-    && !['sign', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window', 'counter', 'stove', 'sofa', 'soil', 'chest'].includes(MAPS[p.mapId].tiles[p.y as number][p.x as number])
+    && !['sign', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window', 'counter', 'stove', 'sofa', 'soil', 'chest', 'shopCounter'].includes(MAPS[p.mapId].tiles[p.y as number][p.x as number])
     && ['up', 'down', 'left', 'right'].includes(String(p.facing))
 }
 

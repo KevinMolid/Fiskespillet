@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, getDocs, runTransaction, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { ITEM_BY_ID, type BaitId, type ItemId } from './items'
+import { FISH_REWARDS, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemId } from './items'
 import { DIG_SPOTS, DEFAULT_APPEARANCE, FISH_BY_ID, isAppearance, isPosition, START, type Appearance, type Position } from './world'
 
 export type FishBookEntry = {
@@ -39,8 +39,8 @@ export async function loadFishBook(uid: string): Promise<FishBookEntry[]> {
 }
 
 export type ItemCounts = Partial<Record<ItemId, number>>
-export type Inventory = { bag: ItemCounts; storage: ItemCounts; equippedBait: BaitId | null }
-const STARTER_INVENTORY: Inventory = { bag: { rod: 1, shovel: 1, bread: 3 }, storage: {}, equippedBait: null }
+export type Inventory = { bag: ItemCounts; storage: ItemCounts; equippedBait: BaitId | null; coins: number }
+const STARTER_INVENTORY: Inventory = { bag: { rod: 1, shovel: 1, bread: 3 }, storage: {}, equippedBait: null, coins: 60 }
 const DIG_COOLDOWN_MS = 2 * 60 * 1000
 
 function inventoryRef(uid: string) {
@@ -48,9 +48,9 @@ function inventoryRef(uid: string) {
 }
 
 function inventoryData(snapshot: { data: () => unknown; exists: () => boolean }): Inventory {
-  if (!snapshot.exists()) return { bag: { ...STARTER_INVENTORY.bag }, storage: {}, equippedBait: null }
+  if (!snapshot.exists()) return { bag: { ...STARTER_INVENTORY.bag }, storage: {}, equippedBait: null, coins: 60 }
   const data = snapshot.data() as Inventory
-  return { bag: { ...data.bag }, storage: { ...data.storage }, equippedBait: data.equippedBait ?? null }
+  return { bag: { ...data.bag }, storage: { ...data.storage }, equippedBait: data.equippedBait ?? null, coins: Number.isInteger(data.coins) ? data.coins : 60 }
 }
 
 export async function loadInventory(uid: string): Promise<Inventory> {
@@ -122,7 +122,7 @@ export async function digForWorms(uid: string, spotId: string): Promise<{ invent
   })
 }
 
-export async function recordEncounter(uid: string, speciesId: string, grams: number, caught: boolean, bait: BaitId | null) {
+export async function recordEncounter(uid: string, speciesId: string, grams: number, caught: boolean, bait: BaitId) {
   if (!FISH_BY_ID[speciesId]) throw new Error('Ukjent fisk.')
   const ref = doc(database(), 'fishBooks', uid, 'entries', speciesId)
   const bagRef = inventoryRef(uid)
@@ -132,16 +132,15 @@ export async function recordEncounter(uid: string, speciesId: string, grams: num
     if (!bagSnapshot.exists()) throw new Error('Inventaret mangler.')
     const inventory = inventoryData(bagSnapshot)
     if (!(inventory.bag.rod ?? 0)) throw new Error('Du trenger en fiskestang i sekken.')
-    if (inventory.equippedBait !== bait) throw new Error('Valgt agn ble endret under kastet. Prøv igjen.')
-    if (bait) {
-      if (!(inventory.bag[bait] ?? 0)) throw new Error('Du er tom for valgt agn.')
-      inventory.bag[bait] = (inventory.bag[bait] ?? 0) - 1
-      if (!inventory.bag[bait]) {
-        delete inventory.bag[bait]
-        inventory.equippedBait = null
-      }
-      transaction.set(bagRef, { ...inventory, updatedAt: serverTimestamp() })
+    if (inventory.equippedBait !== bait) throw new Error('Du må velge agn i sekken før du fisker.')
+    if (!(inventory.bag[bait] ?? 0)) throw new Error('Du er tom for valgt agn.')
+    inventory.bag[bait] = (inventory.bag[bait] ?? 0) - 1
+    if (!inventory.bag[bait]) {
+      delete inventory.bag[bait]
+      inventory.equippedBait = null
     }
+    if (caught) inventory.coins += FISH_REWARDS[speciesId] ?? 0
+    transaction.set(bagRef, { ...inventory, updatedAt: serverTimestamp() })
     const previous = snapshot.exists() ? snapshot.data() as FishBookEntry : null
     const caughtCount = (previous?.caughtCount ?? 0) + (caught ? 1 : 0)
     transaction.set(ref, {
@@ -155,6 +154,23 @@ export async function recordEncounter(uid: string, speciesId: string, grams: num
       firstCaughtAt: previous?.firstCaughtAt ?? (caught ? serverTimestamp() : null),
       updatedAt: serverTimestamp(),
     })
+    return inventory
+  })
+}
+
+export async function buyBait(uid: string, bait: BaitId, quantity: number): Promise<Inventory> {
+  if (!SHOP_PRICES[bait] || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) throw new Error('Ugyldig vare eller antall.')
+  const ref = inventoryRef(uid)
+  return runTransaction(database(), async transaction => {
+    const snapshot = await transaction.get(ref)
+    if (!snapshot.exists()) throw new Error('Inventaret mangler.')
+    const inventory = inventoryData(snapshot)
+    const price = SHOP_PRICES[bait] * quantity
+    if (inventory.coins < price) throw new Error('Du har ikke nok mynter.')
+    if ((inventory.bag[bait] ?? 0) + quantity > 999) throw new Error('Sekken er full.')
+    inventory.coins -= price
+    inventory.bag[bait] = (inventory.bag[bait] ?? 0) + quantity
+    transaction.set(ref, { ...inventory, updatedAt: serverTimestamp() })
     return inventory
   })
 }

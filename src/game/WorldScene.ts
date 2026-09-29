@@ -8,6 +8,7 @@ type Callbacks = {
   onWardrobe: () => void
   onDig: (spotId: string) => void
   onStorage: () => void
+  onShop: () => void
 }
 
 export class WorldScene extends Phaser.Scene {
@@ -79,7 +80,7 @@ export class WorldScene extends Phaser.Scene {
       } else this.callbacks.onPosition({ ...this.position }, false)
       return
     }
-    if (['wall', 'water', 'sign', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window', 'counter', 'stove', 'sofa', 'soil', 'chest'].includes(tile)) {
+    if (['wall', 'water', 'sign', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window', 'counter', 'stove', 'sofa', 'soil', 'chest', 'shopCounter'].includes(tile)) {
       this.callbacks.onPosition({ ...this.position }, false)
       return
     }
@@ -106,6 +107,7 @@ export class WorldScene extends Phaser.Scene {
     if (target.npc) this.callbacks.onSign({ title: target.npc.name, text: target.npc.text })
     else if (target.tile === 'wardrobe') this.callbacks.onWardrobe()
     else if (target.tile === 'chest') this.callbacks.onStorage()
+    else if (target.tile === 'shopCounter') this.callbacks.onShop()
     else if (target.tile === 'soil') {
       const spotId = digSpotAhead(this.position)
       if (spotId) this.callbacks.onDig(spotId)
@@ -155,7 +157,7 @@ export class WorldScene extends Phaser.Scene {
         const tile = map.tiles[y][x]
         const left = x * TILE_SIZE
         const top = y * TILE_SIZE
-        this.drawTile(graphics, tile, left, top, x, y, map.id === 'hjem' || map.id === 'hjem2')
+        this.drawTile(graphics, tile, left, top, x, y, map.id === 'hjem' || map.id === 'hjem2' || map.id === 'butikk')
       }
     }
   }
@@ -214,6 +216,10 @@ export class WorldScene extends Phaser.Scene {
       g.fillStyle(0x957150).fillRect(x + 2, y + 2, 28, 28)
       g.fillStyle(0x584533).fillRect(x + 5, y + 8, 4, 3).fillRect(x + 19, y + 16, 6, 3)
       g.fillRect(x + 12, y + 24, 5, 2)
+    } else if (tile === 'shopCounter') {
+      g.fillStyle(0x64472f).fillRect(x + 1, y + 5, 30, 24)
+      g.fillStyle(0xc59862).fillRect(x + 2, y + 3, 28, 11)
+      g.fillStyle(0xe4bf66).fillCircle(x + 16, y + 9, 5)
     } else if (tile === 'chest') {
       g.fillStyle(0x63452d).fillRect(x + 2, y + 7, 28, 22)
       g.fillStyle(0xa97845).fillRect(x + 4, y + 4, 24, 9)

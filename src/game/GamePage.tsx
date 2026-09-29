@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { type User } from 'firebase/auth'
 import { createWorld, type WorldScene } from './WorldScene'
-import { digForWorms, loadAppearance, loadFishBook, loadInventory, loadPosition, recordEncounter, saveAppearance, savePosition, setEquippedBait, transferItem, type FishBookEntry, type Inventory } from './persistence'
-import { CATEGORIES, ITEMS, ITEM_BY_ID, type BaitId, type ItemCategory, type ItemId } from './items'
+import { buyBait, digForWorms, loadAppearance, loadFishBook, loadInventory, loadPosition, recordEncounter, saveAppearance, savePosition, setEquippedBait, transferItem, type FishBookEntry, type Inventory } from './persistence'
+import { CATEGORIES, FISH_REWARDS, ITEMS, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemCategory, type ItemId } from './items'
 import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, HAIR_COLORS, interactionAhead, MAPS, rollFish, SHIRT_COLORS, SKIN_COLORS, type Appearance, type Direction, type Position } from './world'
 
-type Result = { name: string; icon: string; grams: number; caught: boolean }
+type Result = { name: string; icon: string; grams: number; caught: boolean; coins: number }
 
 export default function GamePage({ user }: { user: User }) {
   const canvasParent = useRef<HTMLDivElement>(null)
@@ -18,6 +18,7 @@ export default function GamePage({ user }: { user: User }) {
   const [book, setBook] = useState<FishBookEntry[]>([])
   const [inventory, setInventory] = useState<Inventory | null>(null)
   const [inventoryView, setInventoryView] = useState<'bag' | 'chest' | null>(null)
+  const [showShop, setShowShop] = useState(false)
   const [itemCategory, setItemCategory] = useState<ItemCategory>('equipment')
   const [inventoryPending, setInventoryPending] = useState(false)
   const [inventoryError, setInventoryError] = useState('')
@@ -34,13 +35,14 @@ export default function GamePage({ user }: { user: User }) {
   const [signMessage, setSignMessage] = useState<{ title: string; text: string } | null>(null)
 
   useEffect(() => {
-    scene.current?.setUiBlocked(showBook || showWardrobe || Boolean(inventoryView) || inventoryPending || savingLook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy)
-  }, [showBook, showWardrobe, inventoryView, inventoryPending, savingLook, result, error, signMessage, busy, position])
+    scene.current?.setUiBlocked(showBook || showWardrobe || Boolean(inventoryView) || showShop || inventoryPending || savingLook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy)
+  }, [showBook, showWardrobe, inventoryView, showShop, inventoryPending, savingLook, result, error, signMessage, busy, position])
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (showBook && event.key === 'Escape') setShowBook(false)
       else if (inventoryView && event.key === 'Escape' && !inventoryPending) setInventoryView(null)
+      else if (showShop && event.key === 'Escape' && !inventoryPending) setShowShop(false)
       else if (showWardrobe) {
         if (!['Escape', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'e', 'E', ' ', 'Enter'].includes(event.key)) return
         event.preventDefault()
@@ -76,7 +78,7 @@ export default function GamePage({ user }: { user: User }) {
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [showBook, showWardrobe, inventoryView, inventoryPending, savingLook, wardrobeCursor, draftLook, result, error, signMessage, appearance])
+  }, [showBook, showWardrobe, inventoryView, showShop, inventoryPending, savingLook, wardrobeCursor, draftLook, result, error, signMessage, appearance])
 
   useEffect(() => {
     let active = true
@@ -103,6 +105,10 @@ export default function GamePage({ user }: { user: User }) {
           void savePosition(user.uid, next).catch(() => setError('Kunne ikke lagre posisjonen. Sjekk tilkoblingen.'))
           saveTimer.current = null
         }, transitioned ? 0 : 1200)
+      },
+      onShop() {
+        setInventoryError('')
+        setShowShop(true)
       },
       onStorage() {
         setInventoryError('')
@@ -137,6 +143,12 @@ export default function GamePage({ user }: { user: User }) {
           world.finishFishing()
           return
         }
+        const activeBait = currentInventory.current?.equippedBait
+        if (!activeBait || !(currentInventory.current?.bag[activeBait] ?? 0)) {
+          setError('Du må velge et agn i sekken før du kan fiske.')
+          world.finishFishing()
+          return
+        }
         casting.current = true
         setBusyText('Du kastet ut snøret … Vent på napp!')
         setBusy(true)
@@ -151,12 +163,11 @@ export default function GamePage({ user }: { user: User }) {
             world.finishFishing()
             return
           }
-          const bait = currentInventory.current?.equippedBait ?? null
-          const fish = rollFish(zoneId, bait)
-          void recordEncounter(user.uid, fish.species.id, fish.grams, fish.caught, bait)
+          const fish = rollFish(zoneId, activeBait)
+          void recordEncounter(user.uid, fish.species.id, fish.grams, fish.caught, activeBait)
             .then(nextInventory => {
               setInventory(nextInventory)
-              setResult({ name: fish.species.name, icon: fish.species.icon, grams: fish.grams, caught: fish.caught })
+              setResult({ name: fish.species.name, icon: fish.species.icon, grams: fish.grams, caught: fish.caught, coins: fish.caught ? FISH_REWARDS[fish.species.id] ?? 0 : 0 })
               return loadFishBook(user.uid).then(setBook).catch(() => {
                 setError('Fangsten er lagret, men fiskeboken kunne ikke lastes på nytt.')
               })
@@ -231,14 +242,15 @@ export default function GamePage({ user }: { user: User }) {
   const worldPosition = useRef(position)
   worldPosition.current = position
   const map = position ? MAPS[position.mapId] : null
-  const canAct = Boolean(position && (canFish(position) || ['sign', 'wardrobe', 'npc', 'soil', 'chest'].includes(interactionAhead(position).tile ?? '')))
+  const canFishNow = Boolean(inventory?.bag.rod && inventory.equippedBait && inventory.bag[inventory.equippedBait])
+  const canAct = Boolean(position && ((canFish(position) && canFishNow) || ['sign', 'wardrobe', 'npc', 'soil', 'chest', 'shopCounter'].includes(interactionAhead(position).tile ?? '')))
   const caughtSpecies = book.filter(entry => entry.caughtCount > 0).length
 
   return <div className="py-6">
     <div className="relative aspect-[3/2] w-full overflow-hidden rounded-xl border-4 border-[#27474a] bg-[#183a36] shadow-2xl">
       <div ref={canvasParent} className="absolute inset-0 [&_canvas]:block" aria-label="Spillkart" />
 
-      {!showBook && !showWardrobe && !inventoryView && <>
+      {!showBook && !showWardrobe && !inventoryView && !showShop && <>
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-[#092520d9] to-transparent p-2 sm:p-4">
           <div className="rounded-md bg-[#092520d9] px-2 py-1 text-xs font-bold text-white sm:text-base">{map?.name ?? 'Laster kart …'}</div>
           <div className="flex gap-2">
@@ -254,11 +266,18 @@ export default function GamePage({ user }: { user: User }) {
           </div>
         </div>
 
+        <aside aria-label="Aktivt utstyr" className="pointer-events-none absolute left-2 top-12 rounded border-2 border-[#dae7ce] bg-[#092520e6] px-2 py-1 text-[10px] font-semibold leading-tight text-white shadow-md sm:left-4 sm:top-16 sm:px-3 sm:py-2 sm:text-xs">
+          <p className="mb-1 font-black uppercase tracking-wide">Aktivt utstyr</p>
+          <p>🎣 Stang: {inventory?.bag.rod ? 'Fiskestang' : 'Ingen'}</p>
+          <p>🪏 Redskap: {inventory?.bag.shovel ? 'Spade' : 'Ingen'}</p>
+          <p>🪱 Agn: {inventory?.equippedBait ? `${ITEM_BY_ID[inventory.equippedBait].name} ×${inventory.bag[inventory.equippedBait] ?? 0}` : 'Ingen'}</p>
+        </aside>
+
         {(error || busy || result || signMessage) && <div role={error ? 'alert' : 'status'} className="absolute inset-x-2 bottom-2 min-h-16 border-4 border-[#405e59] bg-[#f7f4df] p-2 text-sm font-semibold text-[#233b3a] shadow-[0_4px_0_#122b29] sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:text-lg">
           {error ? <p>{error}</p>
             : busy ? <p>{busyText}</p>
               : result ? <p>{result.icon} {result.caught
-                ? `Du fanget en ${result.name}! Den veier ${formatWeight(result.grams)}.`
+                ? `Du fanget en ${result.name}! Den veier ${formatWeight(result.grams)}. +${result.coins} mynter.`
                 : `En ${result.name} bet på, men slapp unna!`}</p>
                 : signMessage && <p><strong>{signMessage.title}</strong><br />{signMessage.text}</p>}
           {(error || result || signMessage) && <button onClick={() => { setError(''); setResult(null); setSignMessage(null) }} className="absolute bottom-1 right-2 text-xs font-bold sm:bottom-2 sm:right-4 sm:text-sm">Videre ▼</button>}
@@ -291,7 +310,24 @@ export default function GamePage({ user }: { user: User }) {
               </div>
             })}
           </div>
-          <p className="mt-3 text-xs">Valgt agn: {inventory.equippedBait ? ITEM_BY_ID[inventory.equippedBait].name : 'Ingen'} · Ett agn brukes per kast. Uten agn kan du fortsatt fiske.</p>
+          <p className="mt-3 text-xs">Valgt agn: {inventory.equippedBait ? ITEM_BY_ID[inventory.equippedBait].name : 'Ingen'} · Ett agn brukes per kast. Du må velge agn for å fiske. · {inventory.coins} mynter</p>
+        </div>
+      </section>}
+
+      {showShop && inventory && <section role="dialog" aria-label="Agnbutikken" aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-3 text-[#233b3a] sm:p-6">
+        <div className="mx-auto max-w-2xl">
+          <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-widest">Bryggehavn</p><h2 className="text-2xl font-black">Agnbutikken</h2><p className="text-sm font-bold">🪙 {inventory.coins} mynter</p></div>
+            <button onClick={() => setShowShop(false)} disabled={inventoryPending} className="rounded-md border-2 border-[#38564d] bg-[#f7f4df] px-3 py-2 text-sm font-bold disabled:opacity-50">Lukk ✕</button></div>
+          <p className="mt-3 text-sm">Velkommen! Fang fisk for å tjene mynter, og velg agn i sekken etter kjøpet.</p>
+          {inventoryError && <p role="alert" className="mt-2 rounded bg-red-100 p-2 text-sm text-red-900">{inventoryError}</p>}
+          <div className="mt-3 grid gap-2">
+            {(Object.keys(SHOP_PRICES) as BaitId[]).map(bait => <div key={bait} className="flex items-center justify-between gap-2 border-2 border-[#73897a] bg-[#f7f4df] p-2 text-sm">
+              <div><p className="font-black">{ITEM_BY_ID[bait].icon} {ITEM_BY_ID[bait].name}</p><p className="text-xs">{ITEM_BY_ID[bait].description} · {SHOP_PRICES[bait]} mynter/stk.</p></div>
+              <div className="flex shrink-0 gap-1">
+                {([1, 5] as const).map(quantity => <button key={quantity} disabled={inventoryPending || inventory.coins < SHOP_PRICES[bait] * quantity} onClick={() => void updateInventory(() => buyBait(user.uid, bait, quantity))} className="rounded bg-[#225c66] px-2 py-1 text-xs font-bold text-white disabled:opacity-40">Kjøp {quantity}</button>)}
+              </div>
+            </div>)}
+          </div>
         </div>
       </section>}
 
@@ -343,6 +379,6 @@ export default function GamePage({ user }: { user: User }) {
       {(['left', 'down', 'right'] as Direction[]).map((direction, index) =>
         <button key={direction} className="control-button" aria-label={['Gå venstre', 'Gå ned', 'Gå høyre'][index]} onClick={() => scene.current?.move(direction)}>{['◀', '▼', '▶'][index]}</button>)}
     </div>
-    <p className="mt-3 text-xs text-slate-400">Bevegelse: piltaster eller WASD · Handling: E eller mellomrom (fisk, grav, skilt, NPC, kiste og garderobe · Gå på dører og trapper for å bytte rom) · Gå gjennom åpningen i kanten for å bytte kart.</p>
+    <p className="mt-3 text-xs text-slate-400">Bevegelse: piltaster eller WASD · Handling: E eller mellomrom (fisk, grav, butikk, skilt, NPC, kiste og garderobe) · Gå på dører og trapper for å bytte rom · Åpninger i kartkanten bytter kart.</p>
   </div>
 }
