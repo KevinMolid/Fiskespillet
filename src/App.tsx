@@ -36,10 +36,24 @@ function App() {
 
   useEffect(() => {
     if (!auth) return
-    return onAuthStateChanged(auth, setUser, () => {
+    const timer = window.setTimeout(() => {
+      setError('Innloggingssjekken tar for lang tid. Sjekk nettverket og prøv å logge inn.')
+      setChecking(false)
+    }, 10000)
+    const unsubscribe = onAuthStateChanged(auth, nextUser => {
+      window.clearTimeout(timer)
+      setUser(nextUser)
+      setChecking(false)
+      setError('')
+    }, () => {
+      window.clearTimeout(timer)
       setError('Kunne ikke sjekke innloggingen. Last siden på nytt.')
       setChecking(false)
-    }, () => setChecking(false))
+    })
+    return () => {
+      window.clearTimeout(timer)
+      unsubscribe()
+    }
   }, [])
 
   function changeMode(next: Mode) {
