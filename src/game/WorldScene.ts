@@ -77,7 +77,7 @@ export class WorldScene extends Phaser.Scene {
       } else this.callbacks.onPosition({ ...this.position }, false)
       return
     }
-    if (['wall', 'water', 'sign', 'door', 'wardrobe', 'npc', 'furniture'].includes(tile)) {
+    if (['wall', 'water', 'sign', 'door', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window'].includes(tile)) {
       this.callbacks.onPosition({ ...this.position }, false)
       return
     }
@@ -149,16 +149,59 @@ export class WorldScene extends Phaser.Scene {
         const tile = map.tiles[y][x]
         const left = x * TILE_SIZE
         const top = y * TILE_SIZE
-        this.drawTile(graphics, tile, left, top, x, y)
+        this.drawTile(graphics, tile, left, top, x, y, map.id === 'hjem')
       }
     }
   }
 
-  private drawTile(g: Phaser.GameObjects.Graphics, tile: Tile, x: number, y: number, col: number, row: number) {
-    const base = tile === 'water' ? 0x236f88 : tile === 'path' || tile === 'exit' ? 0xc5a56d
-      : tile === 'dock' ? 0x95704a : tile === 'floor' || tile === 'door' ? 0xb79b79 : tile === 'furniture' || tile === 'wardrobe' ? 0x8e6343 : tile === 'npc' ? 0x4a8a53 : tile === 'sign' ? 0x4a8a53 : tile === 'wall' ? 0x174b38 : 0x4a8a53
+  private drawTile(g: Phaser.GameObjects.Graphics, tile: Tile, x: number, y: number, col: number, row: number, indoor: boolean) {
+    const base = indoor ? (tile === 'wall' || tile === 'window' ? 0x675442
+      : tile === 'rug' ? 0x815553 : tile === 'door' ? 0xb49a76 : 0xc5a883)
+      : tile === 'water' ? 0x236f88 : tile === 'path' || tile === 'exit' ? 0xc5a56d
+        : tile === 'dock' ? 0x95704a : tile === 'roof' ? 0x814c3d : tile === 'houseWall' || tile === 'window' ? 0xc8a47b : tile === 'door' ? 0x7b4b31 : tile === 'npc' || tile === 'sign' ? 0x4a8a53
+          : tile === 'wall' ? 0x174b38 : 0x4a8a53
     g.fillStyle(base).fillRect(x, y, TILE_SIZE, TILE_SIZE)
-    if (tile === 'water') {
+    if (indoor && (tile === 'wall' || tile === 'window')) {
+      g.fillStyle(0x80684d).fillRect(x + 1, y + 2, 30, 7)
+      g.fillStyle(0x493a31).fillRect(x + 1, y + 11, 30, 3)
+      g.fillStyle(0x94795b).fillRect(x + 2, y + 18, 28, 11)
+      if (tile === 'window') {
+        g.fillStyle(0x354f67).fillRect(x + 5, y + 4, 22, 20)
+        g.lineStyle(2, 0xe5c28c).strokeRect(x + 5, y + 4, 22, 20)
+        g.lineBetween(x + 16, y + 5, x + 16, y + 23)
+      }
+    } else if (indoor && tile === 'floor') {
+      g.lineStyle(1, 0xa4896d).lineBetween(x, y + 8, x + 32, y + 8)
+      g.lineBetween(x, y + 24, x + 32, y + 24)
+      if (row % 2 === 0) g.lineBetween(x + 16, y + 8, x + 16, y + 24)
+    } else if (tile === 'roof') {
+      g.fillStyle(0x995a47).fillRect(x + 2, y + 3, 28, 25)
+      g.lineStyle(2, 0x61372f).lineBetween(x + 1, y + 14, x + 31, y + 14)
+      g.lineBetween(x + 1, y + 27, x + 31, y + 27)
+    } else if (tile === 'houseWall' || tile === 'window') {
+      g.fillStyle(0xe1bb8d).fillRect(x + 2, y + 2, 28, 27)
+      g.fillStyle(0x76573f).fillRect(x + 1, y + 1, 3, 30)
+      if (tile === 'window') {
+        g.fillStyle(0x456a7b).fillRect(x + 7, y + 5, 18, 19)
+        g.lineStyle(2, 0x5e412d).strokeRect(x + 7, y + 5, 18, 19)
+        g.lineBetween(x + 16, y + 6, x + 16, y + 23)
+      }
+    } else if (tile === 'bed') {
+      g.fillStyle(0x64452f).fillRect(x + 2, y + 1, 28, 30)
+      g.fillStyle(0xe9dfc6).fillRect(x + 5, y + 4, 22, 9)
+      g.fillStyle(0x47706a).fillRect(x + 5, y + 15, 22, 14)
+    } else if (tile === 'table') {
+      g.fillStyle(0x60412e).fillRect(x + 1, y + 4, 30, 25)
+      g.fillStyle(0xa8754b).fillRect(x + 3, y + 4, 26, 19)
+      g.lineStyle(2, 0xd0a375).strokeRect(x + 3, y + 4, 26, 19)
+    } else if (tile === 'rug') {
+      g.fillStyle(0xb77c65).fillRect(x + 2, y + 2, 28, 28)
+      g.lineStyle(2, 0xe6bd88).strokeRect(x + 5, y + 5, 22, 22)
+    } else if (tile === 'hearth') {
+      g.fillStyle(0x47413d).fillRect(x + 2, y + 2, 28, 29)
+      g.fillStyle(0xe7a044).fillTriangle(x + 8, y + 26, x + 16, y + 7, x + 24, y + 26)
+      g.fillStyle(0xf2cf6a).fillTriangle(x + 12, y + 27, x + 17, y + 15, x + 21, y + 27)
+    } else if (tile === 'water') {
       g.fillStyle(0x53a6b6).fillRect(x + 5 + (row % 3) * 2, y + 10, 13, 2)
       g.fillRect(x + 17, y + 23, 10, 2)
     } else if (tile === 'wall') {
@@ -184,8 +227,6 @@ export class WorldScene extends Phaser.Scene {
       g.fillStyle(0x342d3f).fillRect(x + 9, y + 15, 14, 13)
       g.fillStyle(0xc88f66).fillRect(x + 10, y + 7, 12, 11)
       g.fillStyle(0x5a3628).fillRect(x + 9, y + 3, 14, 7)
-    } else if (tile === 'floor') {
-      g.fillStyle(0xc8aa86).fillRect(x + 3, y + 3, 26, 26)
     } else if (tile === 'grass') {
       g.fillStyle(0x68a968).fillRect(x + (col * 7 + row * 3) % 21 + 3, y + 8, 3, 5)
       g.fillRect(x + 22, y + 21, 3, 4)

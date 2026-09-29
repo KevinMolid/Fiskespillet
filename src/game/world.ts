@@ -1,7 +1,7 @@
 export type MapId = 'havn' | 'skogstjern' | 'hjem'
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type Position = { mapId: MapId; x: number; y: number; facing: Direction }
-export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture'
+export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture' | 'bed' | 'table' | 'rug' | 'window' | 'hearth' | 'houseWall' | 'roof'
 
 export const WIDTH = 48
 export const HEIGHT = 32
@@ -35,8 +35,11 @@ function rect(tiles: Tile[][], x1: number, y1: number, x2: number, y2: number, t
 const havn = grid()
 rect(havn, 1, 22, 46, 30, 'water')
 rect(havn, 22, 20, 26, 25, 'dock')
-rect(havn, 5, 5, 13, 11, 'wall')
-rect(havn, 7, 11, 10, 11, 'path')
+rect(havn, 5, 7, 13, 11, 'houseWall')
+rect(havn, 5, 5, 13, 6, 'roof')
+havn[9][6] = 'window'
+havn[9][12] = 'window'
+rect(havn, 7, 12, 10, 12, 'path')
 rect(havn, 18, 5, 29, 9, 'wall')
 rect(havn, 10, 15, 47, 17, 'path')
 rect(havn, 23, 17, 25, 20, 'path')
@@ -60,8 +63,13 @@ havn[12][14] = 'npc'
 const hjem = Array.from({ length: 16 }, (_, y) =>
   Array.from({ length: 24 }, (_, x): Tile =>
     x === 0 || y === 0 || x === 23 || y === 15 ? 'wall' : 'floor'))
-rect(hjem, 4, 3, 7, 4, 'furniture')
-rect(hjem, 16, 3, 19, 4, 'furniture')
+rect(hjem, 3, 4, 6, 6, 'bed')
+rect(hjem, 15, 7, 17, 8, 'table')
+rect(hjem, 9, 8, 13, 10, 'rug')
+hjem[0][5] = 'window'
+hjem[0][18] = 'window'
+hjem[4][19] = 'hearth'
+hjem[6][15] = 'furniture'
 hjem[5][8] = 'wardrobe'
 hjem[14][12] = 'door'
 
@@ -142,7 +150,7 @@ export function isPosition(value: unknown): value is Position {
     && (p.y as number) >= 0 && (p.y as number) < MAPS[p.mapId].tiles.length
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'wall'
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'water'
-    && !['sign', 'door', 'wardrobe', 'npc', 'furniture'].includes(MAPS[p.mapId].tiles[p.y as number][p.x as number])
+    && !['sign', 'door', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window'].includes(MAPS[p.mapId].tiles[p.y as number][p.x as number])
     && ['up', 'down', 'left', 'right'].includes(String(p.facing))
 }
 

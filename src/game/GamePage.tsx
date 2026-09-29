@@ -17,6 +17,7 @@ export default function GamePage({ user }: { user: User }) {
   const [appearance, setAppearance] = useState<Appearance | null>(null)
   const [draftLook, setDraftLook] = useState<Appearance>(DEFAULT_APPEARANCE)
   const [showWardrobe, setShowWardrobe] = useState(false)
+  const [wardrobeCursor, setWardrobeCursor] = useState({ row: 0, column: 0 })
   const [savingLook, setSavingLook] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -31,7 +32,32 @@ export default function GamePage({ user }: { user: User }) {
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (showBook && event.key === 'Escape') setShowBook(false)
-      else if (showWardrobe && event.key === 'Escape') closeWardrobe()
+      else if (showWardrobe) {
+        if (!['Escape', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'e', 'E', ' ', 'Enter'].includes(event.key)) return
+        event.preventDefault()
+        event.stopPropagation()
+        if (savingLook) return
+        if (event.key === 'Escape') closeWardrobe()
+        else if (event.key.startsWith('Arrow')) {
+          setWardrobeCursor(current => {
+            const row = event.key === 'ArrowUp' ? Math.max(0, current.row - 1)
+              : event.key === 'ArrowDown' ? Math.min(3, current.row + 1) : current.row
+            const maxColumn = row === 2 ? SKIN_COLORS.length - 1 : row === 3 ? 1 : 4
+            const column = event.key === 'ArrowLeft' ? Math.max(0, current.column - 1)
+              : event.key === 'ArrowRight' ? Math.min(maxColumn, current.column + 1)
+                : Math.min(current.column, maxColumn)
+            return { row, column }
+          })
+        } else if (!event.repeat) {
+          if (wardrobeCursor.row === 3) {
+            if (wardrobeCursor.column === 0) void confirmLook()
+            else closeWardrobe()
+          } else {
+            const key = (['shirt', 'hair', 'skin'] as const)[wardrobeCursor.row]
+            previewLook({ ...draftLook, [key]: wardrobeCursor.column })
+          }
+        }
+      }
       else if ((result || error || signMessage) && ['Enter', ' ', 'e', 'E'].includes(event.key)) {
         event.preventDefault()
         setResult(null)
@@ -41,7 +67,7 @@ export default function GamePage({ user }: { user: User }) {
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [showBook, showWardrobe, result, error, signMessage, appearance])
+  }, [showBook, showWardrobe, savingLook, wardrobeCursor, draftLook, result, error, signMessage, appearance])
 
   useEffect(() => {
     let active = true
@@ -70,6 +96,7 @@ export default function GamePage({ user }: { user: User }) {
       },
       onWardrobe() {
         setDraftLook(currentLook.current)
+        setWardrobeCursor({ row: 0, column: currentLook.current.shirt })
         setShowWardrobe(true)
       },
       onSign(sign) {
@@ -186,17 +213,17 @@ export default function GamePage({ user }: { user: User }) {
       {showWardrobe && <section role="dialog" aria-label="Garderobe" aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-4 text-[#233b3a] sm:p-7">
         <div className="mx-auto max-w-md">
           <h2 className="text-2xl font-black">Garderoben</h2>
-          <p className="mt-1 text-sm">Velg utseendet til figuren din. Forhåndsvisningen vises på kartet når du lukker garderoben.</p>
-          {([['Genser', 'shirt', SHIRT_COLORS], ['Hår', 'hair', HAIR_COLORS], ['Hudtone', 'skin', SKIN_COLORS]] as const).map(([label, key, colors]) =>
+          <p className="mt-1 text-sm">Piltaster flytter markeringen. E eller mellomrom velger. Gå ned til Lagre eller Avbryt, eller trykk Escape for å gå ut.</p>
+          {([['Genser', 'shirt', SHIRT_COLORS], ['Hår', 'hair', HAIR_COLORS], ['Hudtone', 'skin', SKIN_COLORS]] as const).map(([label, key, colors], row) =>
             <div key={key} className="mt-5"><h3 className="mb-2 font-bold">{label}</h3><div className="flex flex-wrap gap-3">
               {colors.map((color, index) => <button key={index} type="button" aria-label={`${label} ${index + 1}`} aria-pressed={draftLook[key] === index}
-                onClick={() => previewLook({ ...draftLook, [key]: index })}
-                className={`h-11 w-11 rounded border-4 ${draftLook[key] === index ? 'border-[#233b3a] ring-2 ring-amber-500' : 'border-white'}`}
+                onClick={() => { setWardrobeCursor({ row, column: index }); previewLook({ ...draftLook, [key]: index }) }}
+                className={`h-11 w-11 rounded border-4 ${draftLook[key] === index ? 'border-[#233b3a]' : 'border-white'} ${wardrobeCursor.row === row && wardrobeCursor.column === index ? 'ring-4 ring-amber-500 ring-offset-2' : ''}`} 
                 style={{ backgroundColor: `#${color.toString(16).padStart(6, '0')}` }} />)}
             </div></div>)}
           <div className="mt-8 flex gap-3">
-            <button onClick={() => void confirmLook()} disabled={savingLook} className="rounded-md bg-[#225c66] px-4 py-2 font-bold text-white disabled:opacity-50">{savingLook ? 'Lagrer …' : 'Lagre utseende'}</button>
-            <button onClick={closeWardrobe} disabled={savingLook} className="rounded-md border-2 border-[#38564d] px-4 py-2 font-bold disabled:opacity-50">Avbryt</button>
+            <button onClick={() => void confirmLook()} onMouseEnter={() => setWardrobeCursor({ row: 3, column: 0 })} disabled={savingLook} className={`rounded-md bg-[#225c66] px-4 py-2 font-bold text-white disabled:opacity-50 ${wardrobeCursor.row === 3 && wardrobeCursor.column === 0 ? 'ring-4 ring-amber-500 ring-offset-2' : ''}`}>{savingLook ? 'Lagrer …' : 'Lagre utseende'}</button>
+            <button onClick={closeWardrobe} onMouseEnter={() => setWardrobeCursor({ row: 3, column: 1 })} disabled={savingLook} className={`rounded-md border-2 border-[#38564d] px-4 py-2 font-bold disabled:opacity-50 ${wardrobeCursor.row === 3 && wardrobeCursor.column === 1 ? 'ring-4 ring-amber-500 ring-offset-2' : ''}`}>Avbryt</button>
           </div>
         </div>
       </section>}
