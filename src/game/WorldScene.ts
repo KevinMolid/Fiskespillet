@@ -1,14 +1,16 @@
 import Phaser from 'phaser'
-import { canFish, edgeTransition, HEIGHT, MAPS, signAhead, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, WIDTH, type Direction, type Position, type Tile } from './world'
+import { canFish, edgeTransition, HAIR_COLORS, interactionAhead, MAPS, SHIRT_COLORS, SKIN_COLORS, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, type Appearance, type Direction, type Position, type Tile } from './world'
 
 type Callbacks = {
   onPosition: (position: Position, transitioned: boolean) => void
   onFishing: () => void
   onSign: (sign: { title: string; text: string }) => void
+  onWardrobe: () => void
 }
 
 export class WorldScene extends Phaser.Scene {
   private position: Position
+  private appearance: Appearance
   private callbacks: Callbacks
   private player?: Phaser.GameObjects.Container
   private terrain?: Phaser.GameObjects.Graphics
@@ -18,9 +20,10 @@ export class WorldScene extends Phaser.Scene {
   private uiBlocked = false
   private nextMove = 0
 
-  constructor(position: Position, callbacks: Callbacks) {
+  constructor(position: Position, appearance: Appearance, callbacks: Callbacks) {
     super('world')
     this.position = { ...position }
+    this.appearance = appearance
     this.callbacks = callbacks
   }
 
@@ -30,7 +33,7 @@ export class WorldScene extends Phaser.Scene {
     this.player = this.add.container(this.position.x * TILE_SIZE + 16, this.position.y * TILE_SIZE + 16)
     this.player.setDepth(20)
     this.drawPlayer()
-    this.cameras.main.setBounds(0, 0, WIDTH * TILE_SIZE, HEIGHT * TILE_SIZE)
+    this.setCameraBounds()
     this.cameras.main.roundPixels = true
     this.cameras.main.startFollow(this.player, true, 0.18, 0.18)
     this.cameras.main.centerOn(this.player.x, this.player.y)
@@ -65,15 +68,16 @@ export class WorldScene extends Phaser.Scene {
     this.drawPlayer()
     const tile = MAPS[this.position.mapId].tiles[y]?.[x]
     if (!tile) {
-      const exitDirection = this.position.x === 0 ? 'left' : this.position.x === WIDTH - 1 ? 'right'
-        : this.position.y === 0 ? 'up' : this.position.y === HEIGHT - 1 ? 'down' : null
+      const map = MAPS[this.position.mapId]
+      const exitDirection = this.position.x === 0 ? 'left' : this.position.x === map.tiles[0].length - 1 ? 'right'
+        : this.position.y === 0 ? 'up' : this.position.y === map.tiles.length - 1 ? 'down' : null
       if (exitDirection === direction) {
         const destination = edgeTransition(this.position)
         if (destination) this.enterMap(destination)
       } else this.callbacks.onPosition({ ...this.position }, false)
       return
     }
-    if (tile === 'wall' || tile === 'water' || tile === 'sign') {
+    if (['wall', 'water', 'sign', 'door', 'wardrobe', 'npc', 'furniture'].includes(tile)) {
       this.callbacks.onPosition({ ...this.position }, false)
       return
     }
@@ -96,12 +100,20 @@ export class WorldScene extends Phaser.Scene {
 
   action() {
     if (this.moving || this.fishing || this.uiBlocked) return
-    const sign = signAhead(this.position)
-    if (sign) this.callbacks.onSign(sign)
+    const target = interactionAhead(this.position)
+    if (target.door) this.enterMap(target.door)
+    else if (target.npc) this.callbacks.onSign({ title: target.npc.name, text: target.npc.text })
+    else if (target.tile === 'wardrobe') this.callbacks.onWardrobe()
+    else if (target.sign) this.callbacks.onSign(target.sign)
     else if (canFish(this.position)) {
       this.fishing = true
       this.callbacks.onFishing()
     }
+  }
+
+  setAppearance(appearance: Appearance) {
+    this.appearance = appearance
+    this.drawPlayer()
   }
 
   finishFishing() {
@@ -115,10 +127,16 @@ export class WorldScene extends Phaser.Scene {
   private enterMap(destination: Position) {
     this.position = destination
     this.drawMap()
+    this.setCameraBounds()
     this.player?.setPosition(destination.x * TILE_SIZE + 16, destination.y * TILE_SIZE + 16)
     this.drawPlayer()
     this.cameras.main.centerOn(this.player!.x, this.player!.y)
     this.callbacks.onPosition({ ...destination }, true)
+  }
+
+  private setCameraBounds() {
+    const map = MAPS[this.position.mapId]
+    this.cameras.main.setBounds(0, 0, map.tiles[0].length * TILE_SIZE, map.tiles.length * TILE_SIZE)
   }
 
   private drawMap() {
@@ -126,8 +144,8 @@ export class WorldScene extends Phaser.Scene {
     const graphics = this.add.graphics()
     this.terrain = graphics
     const map = MAPS[this.position.mapId]
-    for (let y = 0; y < HEIGHT; y++) {
-      for (let x = 0; x < WIDTH; x++) {
+    for (let y = 0; y < map.tiles.length; y++) {
+      for (let x = 0; x < map.tiles[y].length; x++) {
         const tile = map.tiles[y][x]
         const left = x * TILE_SIZE
         const top = y * TILE_SIZE
@@ -138,7 +156,7 @@ export class WorldScene extends Phaser.Scene {
 
   private drawTile(g: Phaser.GameObjects.Graphics, tile: Tile, x: number, y: number, col: number, row: number) {
     const base = tile === 'water' ? 0x236f88 : tile === 'path' || tile === 'exit' ? 0xc5a56d
-      : tile === 'dock' ? 0x95704a : tile === 'sign' ? 0x4a8a53 : tile === 'wall' ? 0x174b38 : 0x4a8a53
+      : tile === 'dock' ? 0x95704a : tile === 'floor' || tile === 'door' ? 0xb79b79 : tile === 'furniture' || tile === 'wardrobe' ? 0x8e6343 : tile === 'npc' ? 0x4a8a53 : tile === 'sign' ? 0x4a8a53 : tile === 'wall' ? 0x174b38 : 0x4a8a53
     g.fillStyle(base).fillRect(x, y, TILE_SIZE, TILE_SIZE)
     if (tile === 'water') {
       g.fillStyle(0x53a6b6).fillRect(x + 5 + (row % 3) * 2, y + 10, 13, 2)
@@ -152,6 +170,22 @@ export class WorldScene extends Phaser.Scene {
       g.fillStyle(0xe8cf94).fillRect(x + 4, y + 5, 24, 14)
       g.lineStyle(2, 0x543d29).strokeRect(x + 4, y + 5, 24, 14)
       g.fillStyle(0x543d29).fillRect(x + 9, y + 10, 14, 2)
+    } else if (tile === 'door') {
+      g.fillStyle(0x60422e).fillRect(x + 5, y + 2, 22, 29)
+      g.fillStyle(0xd8b87d).fillRect(x + 21, y + 16, 3, 3)
+    } else if (tile === 'wardrobe') {
+      g.fillStyle(0x664029).fillRect(x + 3, y + 2, 26, 29)
+      g.lineStyle(2, 0xd7af74).strokeRect(x + 4, y + 3, 24, 26)
+      g.fillStyle(0xe8cb91).fillRect(x + 14, y + 15, 3, 3)
+    } else if (tile === 'furniture') {
+      g.fillStyle(0xd7ae7d).fillRect(x + 3, y + 5, 26, 22)
+      g.lineStyle(2, 0x5d402a).strokeRect(x + 3, y + 5, 26, 22)
+    } else if (tile === 'npc') {
+      g.fillStyle(0x342d3f).fillRect(x + 9, y + 15, 14, 13)
+      g.fillStyle(0xc88f66).fillRect(x + 10, y + 7, 12, 11)
+      g.fillStyle(0x5a3628).fillRect(x + 9, y + 3, 14, 7)
+    } else if (tile === 'floor') {
+      g.fillStyle(0xc8aa86).fillRect(x + 3, y + 3, 26, 26)
     } else if (tile === 'grass') {
       g.fillStyle(0x68a968).fillRect(x + (col * 7 + row * 3) % 21 + 3, y + 8, 3, 5)
       g.fillRect(x + 22, y + 21, 3, 4)
@@ -170,10 +204,10 @@ export class WorldScene extends Phaser.Scene {
     this.player.removeAll(true)
     const g = this.add.graphics()
     g.fillStyle(0x152d33).fillEllipse(0, 11, 22, 7)
-    g.fillStyle(0x315d89).fillRect(-9, -2, 18, 14)
+    g.fillStyle(SHIRT_COLORS[this.appearance.shirt]).fillRect(-9, -2, 18, 14)
     g.fillStyle(0x183345).fillRect(-9, 10, 7, 4).fillRect(2, 10, 7, 4)
-    g.fillStyle(0xf1bd8c).fillRect(-7, -13, 14, 12)
-    g.fillStyle(0xc94943).fillRect(-10, -17, 20, 5).fillRect(-7, -22, 14, 6)
+    g.fillStyle(SKIN_COLORS[this.appearance.skin]).fillRect(-7, -13, 14, 12)
+    g.fillStyle(HAIR_COLORS[this.appearance.hair]).fillRect(-10, -17, 20, 5).fillRect(-7, -22, 14, 6)
     if (this.position.facing !== 'up') {
       g.fillStyle(0x162833)
       if (this.position.facing === 'left') g.fillRect(-6, -8, 2, 2)
@@ -184,8 +218,8 @@ export class WorldScene extends Phaser.Scene {
   }
 }
 
-export function createWorld(parent: HTMLElement, position: Position, callbacks: Callbacks) {
-  const scene = new WorldScene(position, callbacks)
+export function createWorld(parent: HTMLElement, position: Position, appearance: Appearance, callbacks: Callbacks) {
+  const scene = new WorldScene(position, appearance, callbacks)
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,

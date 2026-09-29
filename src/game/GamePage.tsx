@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { type User } from 'firebase/auth'
 import { createWorld, type WorldScene } from './WorldScene'
-import { loadFishBook, loadPosition, recordEncounter, savePosition, type FishBookEntry } from './persistence'
-import { canFish, FISH, formatWeight, MAPS, rollFish, signAhead, type Direction, type Position } from './world'
+import { loadAppearance, loadFishBook, loadPosition, recordEncounter, saveAppearance, savePosition, type FishBookEntry } from './persistence'
+import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, HAIR_COLORS, interactionAhead, MAPS, rollFish, SHIRT_COLORS, SKIN_COLORS, type Appearance, type Direction, type Position } from './world'
 
 type Result = { name: string; icon: string; grams: number; caught: boolean }
 
@@ -14,6 +14,10 @@ export default function GamePage({ user }: { user: User }) {
   const casting = useRef(false)
   const [position, setPosition] = useState<Position | null>(null)
   const [book, setBook] = useState<FishBookEntry[]>([])
+  const [appearance, setAppearance] = useState<Appearance | null>(null)
+  const [draftLook, setDraftLook] = useState<Appearance>(DEFAULT_APPEARANCE)
+  const [showWardrobe, setShowWardrobe] = useState(false)
+  const [savingLook, setSavingLook] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
@@ -21,12 +25,13 @@ export default function GamePage({ user }: { user: User }) {
   const [signMessage, setSignMessage] = useState<{ title: string; text: string } | null>(null)
 
   useEffect(() => {
-    scene.current?.setUiBlocked(showBook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy)
-  }, [showBook, result, error, signMessage, busy, position])
+    scene.current?.setUiBlocked(showBook || showWardrobe || savingLook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy)
+  }, [showBook, showWardrobe, savingLook, result, error, signMessage, busy, position])
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (showBook && event.key === 'Escape') setShowBook(false)
+      else if (showWardrobe && event.key === 'Escape') closeWardrobe()
       else if ((result || error || signMessage) && ['Enter', ' ', 'e', 'E'].includes(event.key)) {
         event.preventDefault()
         setResult(null)
@@ -36,14 +41,16 @@ export default function GamePage({ user }: { user: User }) {
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [showBook, result, error, signMessage])
+  }, [showBook, showWardrobe, result, error, signMessage, appearance])
 
   useEffect(() => {
     let active = true
-    Promise.all([loadPosition(user.uid), loadFishBook(user.uid)]).then(([saved, entries]) => {
+    Promise.all([loadPosition(user.uid), loadFishBook(user.uid), loadAppearance(user.uid)]).then(([saved, entries, look]) => {
       if (!active) return
       setPosition(saved)
       setBook(entries)
+      setAppearance(look)
+      setDraftLook(look)
     }).catch(() => {
       if (active) setError('Kunne ikke laste spillet. Kontroller Firestore-tilgangen og prøv å laste siden på nytt.')
     })
@@ -51,8 +58,8 @@ export default function GamePage({ user }: { user: User }) {
   }, [user.uid])
 
   useEffect(() => {
-    if (!canvasParent.current || !position || scene.current) return
-    const { game, scene: world } = createWorld(canvasParent.current, position, {
+    if (!canvasParent.current || !position || !appearance || scene.current) return
+    const { game, scene: world } = createWorld(canvasParent.current, position, appearance, {
       onPosition(next, transitioned) {
         setPosition(next)
         if (saveTimer.current !== null) window.clearTimeout(saveTimer.current)
@@ -60,6 +67,10 @@ export default function GamePage({ user }: { user: User }) {
           void savePosition(user.uid, next).catch(() => setError('Kunne ikke lagre posisjonen. Sjekk tilkoblingen.'))
           saveTimer.current = null
         }, transitioned ? 0 : 1200)
+      },
+      onWardrobe() {
+        setDraftLook(currentLook.current)
+        setShowWardrobe(true)
       },
       onSign(sign) {
         setSignMessage(sign)
@@ -108,19 +119,47 @@ export default function GamePage({ user }: { user: User }) {
     }
   // The Phaser scene must be created once after the saved position loads.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(position), user.uid])
+  }, [Boolean(position), Boolean(appearance), user.uid])
+
+  const currentLook = useRef(appearance ?? DEFAULT_APPEARANCE)
+  currentLook.current = appearance ?? DEFAULT_APPEARANCE
+
+  function closeWardrobe() {
+    scene.current?.setAppearance(currentLook.current)
+    setShowWardrobe(false)
+  }
+
+  function previewLook(next: Appearance) {
+    setDraftLook(next)
+    scene.current?.setAppearance(next)
+  }
+
+  async function confirmLook() {
+    setSavingLook(true)
+    try {
+      await saveAppearance(user.uid, draftLook)
+      setAppearance(draftLook)
+      setShowWardrobe(false)
+    } catch {
+      setError('Kunne ikke lagre figurens utseende. Prøv igjen.')
+      scene.current?.setAppearance(currentLook.current)
+      setShowWardrobe(false)
+    } finally {
+      setSavingLook(false)
+    }
+  }
 
   const worldPosition = useRef(position)
   worldPosition.current = position
   const map = position ? MAPS[position.mapId] : null
-  const canAct = Boolean(position && (canFish(position) || signAhead(position)))
+  const canAct = Boolean(position && (canFish(position) || ['sign', 'door', 'wardrobe', 'npc'].includes(interactionAhead(position).tile ?? '')))
   const caughtSpecies = book.filter(entry => entry.caughtCount > 0).length
 
   return <div className="py-6">
     <div className="relative aspect-[3/2] w-full overflow-hidden rounded-xl border-4 border-[#27474a] bg-[#183a36] shadow-2xl">
       <div ref={canvasParent} className="absolute inset-0 [&_canvas]:block" aria-label="Spillkart" />
 
-      {!showBook && <>
+      {!showBook && !showWardrobe && <>
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-[#092520d9] to-transparent p-2 sm:p-4">
           <div className="rounded-md bg-[#092520d9] px-2 py-1 text-xs font-bold text-white sm:text-base">{map?.name ?? 'Laster kart …'}</div>
           <div className="flex gap-2">
@@ -143,6 +182,24 @@ export default function GamePage({ user }: { user: User }) {
           {(error || result || signMessage) && <button onClick={() => { setError(''); setResult(null); setSignMessage(null) }} className="absolute bottom-1 right-2 text-xs font-bold sm:bottom-2 sm:right-4 sm:text-sm">Videre ▼</button>}
         </div>}
       </>}
+
+      {showWardrobe && <section role="dialog" aria-label="Garderobe" aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-4 text-[#233b3a] sm:p-7">
+        <div className="mx-auto max-w-md">
+          <h2 className="text-2xl font-black">Garderoben</h2>
+          <p className="mt-1 text-sm">Velg utseendet til figuren din. Forhåndsvisningen vises på kartet når du lukker garderoben.</p>
+          {([['Genser', 'shirt', SHIRT_COLORS], ['Hår', 'hair', HAIR_COLORS], ['Hudtone', 'skin', SKIN_COLORS]] as const).map(([label, key, colors]) =>
+            <div key={key} className="mt-5"><h3 className="mb-2 font-bold">{label}</h3><div className="flex flex-wrap gap-3">
+              {colors.map((color, index) => <button key={index} type="button" aria-label={`${label} ${index + 1}`} aria-pressed={draftLook[key] === index}
+                onClick={() => previewLook({ ...draftLook, [key]: index })}
+                className={`h-11 w-11 rounded border-4 ${draftLook[key] === index ? 'border-[#233b3a] ring-2 ring-amber-500' : 'border-white'}`}
+                style={{ backgroundColor: `#${color.toString(16).padStart(6, '0')}` }} />)}
+            </div></div>)}
+          <div className="mt-8 flex gap-3">
+            <button onClick={() => void confirmLook()} disabled={savingLook} className="rounded-md bg-[#225c66] px-4 py-2 font-bold text-white disabled:opacity-50">{savingLook ? 'Lagrer …' : 'Lagre utseende'}</button>
+            <button onClick={closeWardrobe} disabled={savingLook} className="rounded-md border-2 border-[#38564d] px-4 py-2 font-bold disabled:opacity-50">Avbryt</button>
+          </div>
+        </div>
+      </section>}
 
       {showBook && <section role="dialog" aria-label="Fiskeboken" aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-4 text-[#233b3a] sm:p-7">
         <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b-4 border-[#506f62] bg-[#e5e5c9] pb-3">
@@ -174,6 +231,6 @@ export default function GamePage({ user }: { user: User }) {
       {(['left', 'down', 'right'] as Direction[]).map((direction, index) =>
         <button key={direction} className="control-button" aria-label={['Gå venstre', 'Gå ned', 'Gå høyre'][index]} onClick={() => scene.current?.move(direction)}>{['◀', '▼', '▶'][index]}</button>)}
     </div>
-    <p className="mt-3 text-xs text-slate-400">Bevegelse: piltaster eller WASD · Handling: E eller mellomrom (fisk eller les skilt) · Gå gjennom åpningen i kanten for å bytte kart.</p>
+    <p className="mt-3 text-xs text-slate-400">Bevegelse: piltaster eller WASD · Handling: E eller mellomrom (fisk, skilt, dører, NPC og garderobe) · Gå gjennom åpningen i kanten for å bytte kart.</p>
   </div>
 }

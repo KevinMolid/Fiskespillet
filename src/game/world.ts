@@ -1,7 +1,7 @@
-export type MapId = 'havn' | 'skogstjern'
+export type MapId = 'havn' | 'skogstjern' | 'hjem'
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type Position = { mapId: MapId; x: number; y: number; facing: Direction }
-export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign'
+export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture'
 
 export const WIDTH = 48
 export const HEIGHT = 32
@@ -18,6 +18,8 @@ export type WorldMap = {
   neighbors: Partial<Record<Direction, MapId>>
   fishingZone?: string
   signs: Record<string, { title: string; text: string }>
+  doors?: Record<string, Position>
+  npcs?: Record<string, { name: string; text: string }>
 }
 
 function grid(fill: Tile = 'grass'): Tile[][] {
@@ -52,6 +54,17 @@ for (const [x, y] of [[4, 5], [5, 5], [6, 6], [3, 9], [5, 10], [12, 7], [13, 7],
 skogstjern[13][17] = 'sign'
 skogstjern[16][0] = 'exit'
 
+havn[11][8] = 'door'
+havn[12][14] = 'npc'
+
+const hjem = Array.from({ length: 16 }, (_, y) =>
+  Array.from({ length: 24 }, (_, x): Tile =>
+    x === 0 || y === 0 || x === 23 || y === 15 ? 'wall' : 'floor'))
+rect(hjem, 4, 3, 7, 4, 'furniture')
+rect(hjem, 16, 3, 19, 4, 'furniture')
+hjem[5][8] = 'wardrobe'
+hjem[14][12] = 'door'
+
 export const MAPS: Record<MapId, WorldMap> = {
   havn: {
     id: 'havn',
@@ -60,7 +73,15 @@ export const MAPS: Record<MapId, WorldMap> = {
     tiles: havn,
     neighbors: { right: 'skogstjern' },
     fishingZone: 'havn',
+    doors: { '8,11': { mapId: 'hjem', x: 12, y: 13, facing: 'up' } },
+    npcs: { '14,12': { name: 'Mira', text: 'Velkommen hjem! Garderoben står inne i huset. Vend deg mot døren og trykk E eller mellomrom.' } },
     signs: { '16,21': { title: 'Bryggehavn', text: 'Her finnes mort og abbor. En sjelden gang biter gjedda på.' } },
+  },
+  hjem: {
+    id: 'hjem', name: 'Hjemme hos deg',
+    description: 'Garderoben står langs nordveggen.',
+    tiles: hjem, neighbors: {}, signs: {},
+    doors: { '12,14': { mapId: 'havn', x: 8, y: 12, facing: 'down' } },
   },
   skogstjern: {
     id: 'skogstjern',
@@ -85,6 +106,14 @@ export function signAhead(position: Position) {
   return MAPS[position.mapId].signs[`${position.x + dx},${position.y + dy}`]
 }
 
+export function interactionAhead(position: Position) {
+  const [dx, dy] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[position.facing]
+  const map = MAPS[position.mapId]
+  const x = position.x + dx, y = position.y + dy
+  const key = `${x},${y}`
+  return { tile: map.tiles[y]?.[x], door: map.doors?.[key], npc: map.npcs?.[key], sign: map.signs[key] }
+}
+
 export function canFish(position: Position): boolean {
   return Boolean(MAPS[position.mapId].fishingZone && facingTile(position) === 'water')
 }
@@ -107,14 +136,28 @@ export function edgeTransition(position: Position): Position | null {
 export function isPosition(value: unknown): value is Position {
   if (!value || typeof value !== 'object') return false
   const p = value as Partial<Position>
-  return (p.mapId === 'havn' || p.mapId === 'skogstjern')
+  return (p.mapId === 'havn' || p.mapId === 'skogstjern' || p.mapId === 'hjem')
     && Number.isInteger(p.x) && Number.isInteger(p.y)
-    && (p.x as number) >= 0 && (p.x as number) < WIDTH
-    && (p.y as number) >= 0 && (p.y as number) < HEIGHT
+    && (p.x as number) >= 0 && (p.x as number) < MAPS[p.mapId].tiles[0].length
+    && (p.y as number) >= 0 && (p.y as number) < MAPS[p.mapId].tiles.length
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'wall'
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'water'
-    && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'sign'
+    && !['sign', 'door', 'wardrobe', 'npc', 'furniture'].includes(MAPS[p.mapId].tiles[p.y as number][p.x as number])
     && ['up', 'down', 'left', 'right'].includes(String(p.facing))
+}
+
+export const SHIRT_COLORS = [0x315d89, 0x4f8b58, 0x9b563f, 0x815a99, 0xb9943e] as const
+export const HAIR_COLORS = [0x543925, 0x242d35, 0xb57d37, 0xd4b879, 0xa94735] as const
+export const SKIN_COLORS = [0xf1bd8c, 0xc88f66, 0x885c45, 0x5a3a30] as const
+export type Appearance = { shirt: number; hair: number; skin: number }
+export const DEFAULT_APPEARANCE: Appearance = { shirt: 0, hair: 0, skin: 0 }
+export function isAppearance(value: unknown): value is Appearance {
+  if (!value || typeof value !== 'object') return false
+  const look = value as Partial<Appearance>
+  return Number.isInteger(look.shirt) && Number.isInteger(look.hair) && Number.isInteger(look.skin)
+    && (look.shirt as number) >= 0 && (look.shirt as number) < SHIRT_COLORS.length
+    && (look.hair as number) >= 0 && (look.hair as number) < HAIR_COLORS.length
+    && (look.skin as number) >= 0 && (look.skin as number) < SKIN_COLORS.length
 }
 
 export type FishSpecies = {

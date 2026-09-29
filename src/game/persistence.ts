@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, getDocs, runTransaction, serverTimestamp, setDoc, type Timestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { FISH_BY_ID, isPosition, START, type Position } from './world'
+import { DEFAULT_APPEARANCE, FISH_BY_ID, isAppearance, isPosition, START, type Appearance, type Position } from './world'
 
 export type FishBookEntry = {
   speciesId: string
@@ -56,4 +56,14 @@ export async function recordEncounter(uid: string, speciesId: string, grams: num
       updatedAt: serverTimestamp(),
     })
   })
+}
+
+export async function loadAppearance(uid: string): Promise<Appearance> {
+  const snapshot = await getDoc(doc(database(), 'characterLooks', uid))
+  return snapshot.exists() && isAppearance(snapshot.data()) ? snapshot.data() as Appearance : DEFAULT_APPEARANCE
+}
+
+export async function saveAppearance(uid: string, appearance: Appearance) {
+  if (!isAppearance(appearance)) throw new Error('Ugyldig figurutseende.')
+  await setDoc(doc(database(), 'characterLooks', uid), { ...appearance, updatedAt: serverTimestamp() })
 }
