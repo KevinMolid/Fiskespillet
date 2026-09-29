@@ -46,11 +46,11 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['mapId', 'x', 'y', 'facing', 'updatedAt'])
           && request.resource.data.mapId in ['havn', 'skogstjern']
           && request.resource.data.x is int
-          && request.resource.data.x >= 1
-          && request.resource.data.x <= 22
+          && request.resource.data.x >= 0
+          && request.resource.data.x <= 23
           && request.resource.data.y is int
-          && request.resource.data.y >= 1
-          && request.resource.data.y <= 14
+          && request.resource.data.y >= 0
+          && request.resource.data.y <= 15
           && request.resource.data.facing in ['up', 'down', 'left', 'right']
           && request.resource.data.updatedAt == request.time;
       }

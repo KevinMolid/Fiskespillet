@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { type User } from 'firebase/auth'
 import { createWorld, type WorldScene } from './WorldScene'
 import { loadFishBook, loadPosition, recordEncounter, savePosition, type FishBookEntry } from './persistence'
-import { FISH, FISHING_ZONES, formatWeight, MAPS, rollFish, type Direction, type Position } from './world'
+import { canFish, FISH, formatWeight, MAPS, rollFish, type Direction, type Position } from './world'
 
 type Result = { name: string; icon: string; grams: number; caught: boolean }
 
@@ -18,6 +18,23 @@ export default function GamePage({ user }: { user: User }) {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
   const [showBook, setShowBook] = useState(false)
+
+  useEffect(() => {
+    scene.current?.setUiBlocked(showBook || Boolean(result) || Boolean(error) || busy)
+  }, [showBook, result, error, busy, position])
+
+  useEffect(() => {
+    function handleKey(event: KeyboardEvent) {
+      if (showBook && event.key === 'Escape') setShowBook(false)
+      else if ((result || error) && ['Enter', ' ', 'e', 'E'].includes(event.key)) {
+        event.preventDefault()
+        setResult(null)
+        setError('')
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [showBook, result, error])
 
   useEffect(() => {
     let active = true
@@ -91,30 +108,60 @@ export default function GamePage({ user }: { user: User }) {
   const worldPosition = useRef(position)
   worldPosition.current = position
   const map = position ? MAPS[position.mapId] : null
-  const atWater = Boolean(position && map?.tiles[position.y][position.x] === 'fish')
+  const atWater = Boolean(position && canFish(position))
   const caughtSpecies = book.filter(entry => entry.caughtCount > 0).length
 
-  return <div className="py-7">
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300">Utforsk verden</p>
-        <h1 className="mt-1 text-2xl font-bold">{map?.name ?? 'Laster kart …'}</h1>
-        <p className="mt-1 text-sm text-slate-400">{map?.description ?? 'Henter lagret fremgang.'}</p>
-      </div>
-      <button onClick={() => setShowBook(value => !value)} className="rounded-lg border border-white/20 px-4 py-2 text-sm hover:bg-white/10">
-        📖 Fiskebok · {caughtSpecies}/{FISH.length}
-      </button>
-    </div>
+  return <div className="py-6">
+    <div className="relative aspect-[3/2] w-full overflow-hidden rounded-xl border-4 border-[#27474a] bg-[#183a36] shadow-2xl">
+      <div ref={canvasParent} className="absolute inset-0 [&_canvas]:block" aria-label="Spillkart" />
 
-    {error && <p role="alert" className="mb-4 rounded-lg bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p>}
-    <div className="overflow-hidden rounded-xl border-4 border-[#27474a] bg-[#183a36] shadow-2xl">
-      <div ref={canvasParent} className="aspect-[3/2] w-full [&_canvas]:block" aria-label="Spillkart" />
-    </div>
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-4 text-sm text-slate-300">
-      <p>Gå: piltaster eller WASD · Fisk: E eller mellomrom på den lyse fiskeruten.</p>
-      <button onClick={() => scene.current?.fish()} disabled={!atWater || busy} className="rounded-lg bg-cyan-300 px-5 py-2 font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">
-        {busy ? 'Venter på napp …' : '🎣 Fisk'}
-      </button>
+      {!showBook && <>
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-[#092520d9] to-transparent p-2 sm:p-4">
+          <div className="rounded-md bg-[#092520d9] px-2 py-1 text-xs font-bold text-white sm:text-base">{map?.name ?? 'Laster kart …'}</div>
+          <div className="flex gap-2">
+            <button onClick={() => setShowBook(true)} disabled={!position || busy} className="rounded-md border-2 border-[#dae7ce] bg-[#183f3b] px-2 py-1 text-xs font-bold text-white disabled:opacity-50 sm:px-3 sm:text-sm">
+              📖 Fiskebok {caughtSpecies}/{FISH.length}
+            </button>
+            <button onClick={() => scene.current?.fish()} disabled={!atWater || busy || Boolean(result) || Boolean(error)} className="rounded-md border-2 border-[#dae7ce] bg-[#225c66] px-2 py-1 text-xs font-bold text-white disabled:opacity-40 sm:px-3 sm:text-sm">
+              🎣 Fisk
+            </button>
+          </div>
+        </div>
+
+        <div role={error ? 'alert' : 'status'} className="absolute inset-x-2 bottom-2 min-h-16 border-4 border-[#405e59] bg-[#f7f4df] p-2 text-sm font-semibold text-[#233b3a] shadow-[0_4px_0_#122b29] sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:text-lg">
+          {error ? <p>{error}</p>
+            : busy ? <p>Du kastet ut snøret … Vent på napp!</p>
+              : result ? <p>{result.icon} {result.caught
+                ? `Du fanget en ${result.name}! Den veier ${formatWeight(result.grams)}.`
+                : `En ${result.name} bet på, men slapp unna!`}</p>
+                : <p>{atWater ? 'Vannet ligger rett foran deg. Trykk E eller Fisk for å kaste ut.' : map?.description ?? 'Laster lagret fremgang …'}</p>}
+          {(error || result) && <button onClick={() => { setError(''); setResult(null) }} className="absolute bottom-1 right-2 text-xs font-bold sm:bottom-2 sm:right-4 sm:text-sm">Videre ▼</button>}
+        </div>
+      </>}
+
+      {showBook && <section role="dialog" aria-label="Fiskeboken" aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-4 text-[#233b3a] sm:p-7">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b-4 border-[#506f62] bg-[#e5e5c9] pb-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em]">Fiskespill</p>
+            <h2 className="text-2xl font-black sm:text-3xl">Fiskeboken</h2>
+            <p className="text-xs sm:text-sm">Oppdaget {book.length} av {FISH.length} arter · Fanget {caughtSpecies}</p>
+          </div>
+          <button onClick={() => setShowBook(false)} className="rounded-md border-2 border-[#38564d] bg-[#f7f4df] px-3 py-2 text-sm font-bold hover:bg-white">Lukk ✕</button>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {FISH.map((species, index) => {
+            const entry = book.find(item => item.speciesId === species.id)
+            return <article key={species.id} className="border-2 border-[#73897a] bg-[#f7f4df] p-3 shadow-[3px_3px_0_#8ba091]">
+              <h3 className="text-lg font-black">#{String(index + 1).padStart(2, '0')} {entry ? `${species.icon} ${species.name}` : '❔ Ukjent art'}</h3>
+              {entry ? <>
+                <p className="mt-1 text-sm">{species.description}</p>
+                <p className="mt-2 text-sm font-semibold">Sett {entry.seenCount} · Fanget {entry.caughtCount}</p>
+                {entry.caughtCount > 0 && <p className="text-sm">Minst {formatWeight(entry.smallestGrams!)} · Størst {formatWeight(entry.largestGrams!)}</p>}
+              </> : <p className="mt-2 text-sm">Ikke oppdaget ennå.</p>}
+            </article>
+          })}
+        </div>
+      </section>}
     </div>
 
     <div className="mt-4 grid w-fit grid-cols-3 gap-1 sm:hidden">
@@ -122,29 +169,6 @@ export default function GamePage({ user }: { user: User }) {
       {(['left', 'down', 'right'] as Direction[]).map((direction, index) =>
         <button key={direction} className="control-button" aria-label={['Gå venstre', 'Gå ned', 'Gå høyre'][index]} onClick={() => scene.current?.move(direction)}>{['◀', '▼', '▶'][index]}</button>)}
     </div>
-
-    {result && <div role="status" className="mt-5 rounded-xl border border-cyan-300/30 bg-cyan-300/10 p-5">
-      <p className="text-2xl">{result.icon} {result.caught ? `Du fanget en ${result.name}!` : `Du så en ${result.name}, men den slapp unna!`}</p>
-      {result.caught && <p className="mt-2 text-cyan-100">Vekt: {formatWeight(result.grams)}</p>}
-      <button onClick={() => setResult(null)} className="mt-3 text-sm text-cyan-300 hover:underline">Lukk</button>
-    </div>}
-
-    {showBook && <section className="mt-7">
-      <h2 className="text-2xl font-semibold">Fiskeboken</h2>
-      <p className="mt-1 text-sm text-slate-400">Arter du har sett og fanget ved {FISHING_ZONES.skogstjern.name}.</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {FISH.map(species => {
-          const entry = book.find(item => item.speciesId === species.id)
-          return <article key={species.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <h3 className="text-lg font-semibold">{entry ? `${species.icon} ${species.name}` : '❔ Ukjent art'}</h3>
-            {entry ? <>
-              <p className="mt-1 text-sm text-slate-300">{species.description}</p>
-              <p className="mt-2 text-sm">Sett {entry.seenCount} · Fanget {entry.caughtCount}</p>
-              {entry.caughtCount > 0 && <p className="mt-1 text-sm text-cyan-200">Minst {formatWeight(entry.smallestGrams!)} · Størst {formatWeight(entry.largestGrams!)}</p>}
-            </> : <p className="mt-2 text-sm text-slate-400">Ikke oppdaget ennå.</p>}
-          </article>
-        })}
-      </div>
-    </section>}
+    <p className="mt-3 text-xs text-slate-400">Bevegelse: piltaster eller WASD · Kast ut: E eller mellomrom · Gå gjennom åpningen i kanten for å bytte kart.</p>
   </div>
 }

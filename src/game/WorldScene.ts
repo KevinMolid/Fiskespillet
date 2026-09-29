@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { HEIGHT, MAPS, TILE_SIZE, WIDTH, type Direction, type Position, type Tile } from './world'
+import { canFish, edgeTransition, HEIGHT, MAPS, TILE_SIZE, WIDTH, type Direction, type Position, type Tile } from './world'
 
 type Callbacks = {
   onPosition: (position: Position, transitioned: boolean) => void
@@ -14,6 +14,7 @@ export class WorldScene extends Phaser.Scene {
   private keys?: Record<string, Phaser.Input.Keyboard.Key>
   private moving = false
   private fishing = false
+  private uiBlocked = false
   private nextMove = 0
 
   constructor(position: Position, callbacks: Callbacks) {
@@ -35,7 +36,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   update(time: number) {
-    if (!this.keys || this.moving || this.fishing || time < this.nextMove) return
+    if (!this.keys || this.moving || this.fishing || this.uiBlocked || time < this.nextMove) return
     const key = this.keys
     const direction: Direction | null =
       key.UP.isDown || key.W.isDown ? 'up'
@@ -49,7 +50,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   move(direction: Direction) {
-    if (this.moving || this.fishing || !this.player) return
+    if (this.moving || this.fishing || this.uiBlocked || !this.player) return
     const delta = {
       up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0],
     }[direction]
@@ -58,7 +59,19 @@ export class WorldScene extends Phaser.Scene {
     this.position = { ...this.position, facing: direction }
     this.drawPlayer()
     const tile = MAPS[this.position.mapId].tiles[y]?.[x]
-    if (!tile || tile === 'wall' || tile === 'water') return
+    if (!tile) {
+      const exitDirection = this.position.x === 0 ? 'left' : this.position.x === WIDTH - 1 ? 'right'
+        : this.position.y === 0 ? 'up' : this.position.y === HEIGHT - 1 ? 'down' : null
+      if (exitDirection === direction) {
+        const destination = edgeTransition(this.position)
+        if (destination) this.enterMap(destination)
+      } else this.callbacks.onPosition({ ...this.position }, false)
+      return
+    }
+    if (tile === 'wall' || tile === 'water') {
+      this.callbacks.onPosition({ ...this.position }, false)
+      return
+    }
     this.moving = true
     this.tweens.add({
       targets: this.player,
@@ -68,20 +81,16 @@ export class WorldScene extends Phaser.Scene {
       ease: 'Linear',
       onComplete: () => {
         this.moving = false
-        const target = MAPS[this.position.mapId].portals[`${x},${y}`]
-        this.position = target ? { ...target } : { ...this.position, x, y }
-        if (target) {
-          this.drawMap()
-          this.player?.setPosition(this.position.x * TILE_SIZE + 16, this.position.y * TILE_SIZE + 16)
-          this.drawPlayer()
-        }
-        this.callbacks.onPosition({ ...this.position }, Boolean(target))
+        this.position = { ...this.position, x, y }
+        const target = edgeTransition(this.position)
+        if (target) this.enterMap(target)
+        else this.callbacks.onPosition({ ...this.position }, false)
       },
     })
   }
 
   fish() {
-    if (!this.moving && !this.fishing && MAPS[this.position.mapId].tiles[this.position.y][this.position.x] === 'fish') {
+    if (!this.moving && !this.fishing && !this.uiBlocked && canFish(this.position)) {
       this.fishing = true
       this.callbacks.onFishing()
     }
@@ -89,6 +98,18 @@ export class WorldScene extends Phaser.Scene {
 
   finishFishing() {
     this.fishing = false
+  }
+
+  setUiBlocked(blocked: boolean) {
+    this.uiBlocked = blocked
+  }
+
+  private enterMap(destination: Position) {
+    this.position = destination
+    this.drawMap()
+    this.player?.setPosition(destination.x * TILE_SIZE + 16, destination.y * TILE_SIZE + 16)
+    this.drawPlayer()
+    this.callbacks.onPosition({ ...destination }, true)
   }
 
   private drawMap() {
@@ -107,9 +128,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private drawTile(g: Phaser.GameObjects.Graphics, tile: Tile, x: number, y: number, col: number, row: number) {
-    const base = tile === 'water' ? 0x236f88 : tile === 'path' ? 0xc5a56d
-      : tile === 'dock' ? 0x95704a : tile === 'fish' ? 0xd5b87b
-        : tile === 'portal' ? 0xe4bb54 : tile === 'wall' ? 0x174b38 : 0x4a8a53
+    const base = tile === 'water' ? 0x236f88 : tile === 'path' || tile === 'exit' ? 0xc5a56d
+      : tile === 'dock' ? 0x95704a : tile === 'wall' ? 0x174b38 : 0x4a8a53
     g.fillStyle(base).fillRect(x, y, TILE_SIZE, TILE_SIZE)
     if (tile === 'water') {
       g.fillStyle(0x53a6b6).fillRect(x + 5 + (row % 3) * 2, y + 10, 13, 2)
@@ -121,14 +141,9 @@ export class WorldScene extends Phaser.Scene {
     } else if (tile === 'grass') {
       g.fillStyle(0x68a968).fillRect(x + (col * 7 + row * 3) % 21 + 3, y + 8, 3, 5)
       g.fillRect(x + 22, y + 21, 3, 4)
-    } else if (tile === 'dock' || tile === 'fish') {
+    } else if (tile === 'dock') {
       g.lineStyle(2, 0x594b3c).strokeRect(x + 1, y + 1, 30, 30)
       g.lineBetween(x + 2, y + 15, x + 30, y + 15)
-      if (tile === 'fish') g.fillStyle(0xffe28b).fillCircle(x + 16, y + 16, 5)
-    } else if (tile === 'portal') {
-      g.fillStyle(0x755335).fillRect(x + 14, y + 9, 4, 23)
-      g.fillStyle(0xffe28b).fillRect(x + 5, y + 5, 22, 13)
-      g.fillStyle(0x755335).fillTriangle(x + 22, y + 9, x + 27, y + 12, x + 22, y + 15)
     } else {
       g.fillStyle(0xe0bd83).fillRect(x + 5, y + 8, 5, 4)
       g.fillRect(x + 22, y + 23, 4, 3)

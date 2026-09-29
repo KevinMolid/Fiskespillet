@@ -1,7 +1,7 @@
 export type MapId = 'havn' | 'skogstjern'
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type Position = { mapId: MapId; x: number; y: number; facing: Direction }
-export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'portal' | 'fish'
+export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit'
 
 export const WIDTH = 24
 export const HEIGHT = 16
@@ -13,7 +13,7 @@ export type WorldMap = {
   name: string
   description: string
   tiles: Tile[][]
-  portals: Record<string, Position>
+  neighbors: Partial<Record<Direction, MapId>>
   fishingZone?: string
 }
 
@@ -35,14 +35,14 @@ rect(havn, 5, 5, 6, 5, 'path')
 rect(havn, 9, 5, 21, 7, 'path')
 rect(havn, 11, 7, 12, 9, 'path')
 rect(havn, 16, 2, 20, 3, 'wall')
-havn[3][21] = 'portal'
+havn[6][23] = 'exit'
 
 const skogstjern = grid()
 rect(skogstjern, 8, 2, 21, 8, 'water')
 rect(skogstjern, 2, 11, 15, 13, 'path')
 rect(skogstjern, 13, 9, 15, 11, 'path')
-skogstjern[9][14] = 'fish'
-skogstjern[12][2] = 'portal'
+rect(skogstjern, 1, 6, 7, 6, 'path')
+skogstjern[6][0] = 'exit'
 for (const [x, y] of [[3, 3], [4, 3], [5, 4], [2, 7], [4, 8], [19, 11], [20, 11], [21, 12], [17, 13], [5, 13], [6, 2], [7, 4]] as const) {
   skogstjern[y][x] = 'wall'
 }
@@ -53,16 +53,43 @@ export const MAPS: Record<MapId, WorldMap> = {
     name: 'Bryggehavn',
     description: 'Følg stien mot øst for å finne skogstjernet.',
     tiles: havn,
-    portals: { '21,3': { mapId: 'skogstjern', x: 3, y: 12, facing: 'right' } },
+    neighbors: { right: 'skogstjern' },
+    fishingZone: 'havn',
   },
   skogstjern: {
     id: 'skogstjern',
     name: 'Skogstjernet',
-    description: 'Stå på den lyse bryggekanten og trykk E eller Fisk.',
+    description: 'Vend deg mot vannet og trykk E eller Fisk for å kaste ut.',
     tiles: skogstjern,
     fishingZone: 'skogstjern',
-    portals: { '2,12': { mapId: 'havn', x: 20, y: 3, facing: 'left' } },
+    neighbors: { left: 'havn' },
   },
+}
+
+export function facingTile(position: Position): Tile | undefined {
+  const [dx, dy] = {
+    up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0],
+  }[position.facing]
+  return MAPS[position.mapId].tiles[position.y + dy]?.[position.x + dx]
+}
+
+export function canFish(position: Position): boolean {
+  return Boolean(MAPS[position.mapId].fishingZone && facingTile(position) === 'water')
+}
+
+export function edgeTransition(position: Position): Position | null {
+  if (MAPS[position.mapId].tiles[position.y]?.[position.x] !== 'exit') return null
+  const direction: Direction | null = position.x === 0 ? 'left'
+    : position.x === WIDTH - 1 ? 'right'
+      : position.y === 0 ? 'up'
+        : position.y === HEIGHT - 1 ? 'down' : null
+  if (!direction) return null
+  const toMap = MAPS[position.mapId].neighbors[direction]
+  if (!toMap) return null
+  const x = direction === 'right' ? 0 : direction === 'left' ? WIDTH - 1 : position.x
+  const y = direction === 'down' ? 0 : direction === 'up' ? HEIGHT - 1 : position.y
+  if (MAPS[toMap].tiles[y][x] !== 'exit') return null
+  return { mapId: toMap, x, y, facing: direction }
 }
 
 export function isPosition(value: unknown): value is Position {
@@ -70,8 +97,8 @@ export function isPosition(value: unknown): value is Position {
   const p = value as Partial<Position>
   return (p.mapId === 'havn' || p.mapId === 'skogstjern')
     && Number.isInteger(p.x) && Number.isInteger(p.y)
-    && (p.x as number) >= 1 && (p.x as number) < WIDTH - 1
-    && (p.y as number) >= 1 && (p.y as number) < HEIGHT - 1
+    && (p.x as number) >= 0 && (p.x as number) < WIDTH
+    && (p.y as number) >= 0 && (p.y as number) < HEIGHT
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'wall'
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'water'
     && ['up', 'down', 'left', 'right'].includes(String(p.facing))
@@ -96,6 +123,14 @@ export const FISH: FishSpecies[] = [
 export const FISH_BY_ID = Object.fromEntries(FISH.map(fish => [fish.id, fish])) as Record<string, FishSpecies>
 
 export const FISHING_ZONES: Record<string, { name: string; catches: { speciesId: string; weight: number }[] }> = {
+  havn: {
+    name: 'Bryggehavn',
+    catches: [
+      { speciesId: 'mort', weight: 60 },
+      { speciesId: 'abbor', weight: 35 },
+      { speciesId: 'gjedde', weight: 5 },
+    ],
+  },
   skogstjern: {
     name: 'Skogstjernet',
     catches: [
