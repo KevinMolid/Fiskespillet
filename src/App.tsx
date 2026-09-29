@@ -4,6 +4,9 @@ import {
   signInWithEmailAndPassword, signOut, type User,
 } from 'firebase/auth'
 import { auth } from './lib/firebase'
+import { ensureProfile, profileError, watchProfile, type Profile } from './lib/profile'
+import ProfilePage from './ProfilePage'
+import PlayersPage from './PlayersPage'
 
 type Mode = 'login' | 'register' | 'reset'
 
@@ -33,6 +36,9 @@ function App() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profileIssue, setProfileIssue] = useState('')
+  const [page, setPage] = useState<'home' | 'profile' | 'players'>('home')
 
   useEffect(() => {
     if (!auth) return
@@ -55,6 +61,28 @@ function App() {
       unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    if (!user) {
+      setProfile(null)
+      setProfileIssue('')
+      setPage('home')
+      return
+    }
+    let cancelled = false
+    let unsubscribe = () => {}
+    ensureProfile(user).then(() => {
+      if (cancelled) return
+      unsubscribe = watchProfile(user.uid, setProfile, cause => setProfileIssue(profileError(cause)))
+      setProfileIssue('')
+    }).catch(cause => {
+      if (!cancelled) setProfileIssue(profileError(cause))
+    })
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [user])
 
   function changeMode(next: Mode) {
     setMode(next)
@@ -110,10 +138,23 @@ function App() {
     <main className="min-h-screen bg-[#061c2b] text-slate-100">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-8 sm:px-10">
         <header className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
-          <span className="text-lg font-semibold tracking-wide">🎣 Fiskespill</span>
-          {user && <button onClick={logout} disabled={busy} className="rounded-lg border border-white/20 px-4 py-2 text-sm hover:bg-white/10 disabled:opacity-50">Logg ut</button>}
+          <button onClick={() => setPage('home')} className="text-lg font-semibold tracking-wide">🎣 Fiskespill</button>
+          {user && <div className="flex items-center gap-3">
+            <button onClick={() => setPage('profile')} className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-white/10" aria-label="Åpne min profil">
+              <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-cyan-300/15">
+                {profile?.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : '🎣'}
+              </span>
+              <span className="hidden max-w-36 truncate sm:block">{profile?.username || user.email}</span>
+            </button>
+            <button onClick={() => setPage('players')} className="rounded-lg px-2 py-2 text-sm hover:bg-white/10">Spillere</button>
+            <button onClick={logout} disabled={busy} className="rounded-lg border border-white/20 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-50">Logg ut</button>
+          </div>}
         </header>
-        <section className="grid flex-1 items-center gap-12 py-16 md:grid-cols-2">
+        {user && page === 'players' ? <div className="flex-1"><PlayersPage onBack={() => setPage('home')} /></div>
+        : user && page === 'profile' ? <div className="flex-1">
+          {profileIssue && <p role="alert" className="mt-6 rounded-lg bg-rose-400/10 p-3 text-sm text-rose-200">{profileIssue}</p>}
+          <ProfilePage user={user} profile={profile} onBack={() => setPage('home')} />
+        </div> : <section className="grid flex-1 items-center gap-12 py-16 md:grid-cols-2">
           <div>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">Et nytt online fiskespill</p>
             <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">Eventyret starter ved vannkanten.</h1>
@@ -126,6 +167,8 @@ function App() {
                   <p className="text-sm font-medium text-cyan-300">Du er logget inn</p>
                   <h2 className="mt-2 break-words text-2xl font-bold">Velkommen, {user.email}</h2>
                   <p className="mt-4 text-slate-300">Spillet er under utvikling. Kontoen din er klar.</p>
+                  {profileIssue && <p role="alert" className="mt-5 text-sm text-amber-200">{profileIssue}</p>}
+                  <button onClick={() => setPage('profile')} className="mt-6 rounded-lg bg-cyan-300 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-200">Min profil</button>
                   {error && <p role="alert" className="mt-5 text-sm text-rose-300">{error}</p>}
                 </div>
               : <>
@@ -156,7 +199,7 @@ function App() {
                   </div>
                 </>}
           </div>
-        </section>
+        </section>}
         <footer className="border-t border-white/10 py-5 text-xs text-slate-500">React · Vite · Tailwind CSS · Firebase</footer>
       </div>
     </main>

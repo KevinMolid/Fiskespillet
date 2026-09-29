@@ -17,7 +17,12 @@ npm run dev
 
 1. Firebase-webappen er allerede konfigurert i `src/lib/firebase.ts`. Valgfrie `VITE_FIREBASE_*`-variabler kan overstyre verdiene, for eksempel for et annet prosjekt; se `.env.example`.
 2. I Firebase Console: Authentication → Sign-in method → Email/Password → Enable → Save. Registrering, innlogging, utlogging og tilbakestilling av passord bruker denne metoden.
-3. Opprett Cloud Firestore først når vi skal lagre spilldata. Analytics-ID er inkludert i konfigurasjonen, men Analytics startes først når vi tar funksjonen i bruk.
+3. Opprett Cloud Firestore i Firebase Console: Build → Firestore Database → Create database. Velg standarddatabasen og en region som passer spillerne (regionen kan ikke enkelt endres senere). Velg produksjonsmodus.
+4. Åpne Firestore Database → Rules, lim inn hele innholdet i `firestore.rules` og trykk Publish. Disse reglene gir innloggede spillere lesetilgang til offentlige profiler og lar bare profilens eier endre sin profil.
+
+Uten Firestore-databasen og de publiserte reglene fungerer innlogging fortsatt, men appen kan ikke lagre eller vise profiler. Profilene ligger i `profiles/{uid}` med offentlig brukernavn, profiltekst og en liten komprimert avatar. E-post og passord lagres ikke i Firestore. Avatarer lagres i Firestore for å unngå behov for Firebase Storage og Blaze-abonnement. For større bilder eller mange spillere bør bildene senere flyttes til et eget bildelager.
+
+Analytics-ID er inkludert i konfigurasjonen, men Analytics startes først når vi tar funksjonen i bruk.
 
 `src/lib/firebase.ts` eksporterer `firebaseApp`, `auth` og `db`.
 
