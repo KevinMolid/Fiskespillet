@@ -1,9 +1,10 @@
 import Phaser from 'phaser'
-import { canFish, edgeTransition, HEIGHT, MAPS, TILE_SIZE, WIDTH, type Direction, type Position, type Tile } from './world'
+import { canFish, edgeTransition, HEIGHT, MAPS, signAhead, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, WIDTH, type Direction, type Position, type Tile } from './world'
 
 type Callbacks = {
   onPosition: (position: Position, transitioned: boolean) => void
   onFishing: () => void
+  onSign: (sign: { title: string; text: string }) => void
 }
 
 export class WorldScene extends Phaser.Scene {
@@ -29,10 +30,14 @@ export class WorldScene extends Phaser.Scene {
     this.player = this.add.container(this.position.x * TILE_SIZE + 16, this.position.y * TILE_SIZE + 16)
     this.player.setDepth(20)
     this.drawPlayer()
+    this.cameras.main.setBounds(0, 0, WIDTH * TILE_SIZE, HEIGHT * TILE_SIZE)
+    this.cameras.main.roundPixels = true
+    this.cameras.main.startFollow(this.player, true, 0.18, 0.18)
+    this.cameras.main.centerOn(this.player.x, this.player.y)
     this.keys = this.input.keyboard?.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE') as Record<string, Phaser.Input.Keyboard.Key> | undefined
     this.input.keyboard?.addCapture('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE')
-    this.input.keyboard?.on('keydown-E', () => this.fish())
-    this.input.keyboard?.on('keydown-SPACE', () => this.fish())
+    this.input.keyboard?.on('keydown-E', () => this.action())
+    this.input.keyboard?.on('keydown-SPACE', () => this.action())
   }
 
   update(time: number) {
@@ -68,7 +73,7 @@ export class WorldScene extends Phaser.Scene {
       } else this.callbacks.onPosition({ ...this.position }, false)
       return
     }
-    if (tile === 'wall' || tile === 'water') {
+    if (tile === 'wall' || tile === 'water' || tile === 'sign') {
       this.callbacks.onPosition({ ...this.position }, false)
       return
     }
@@ -89,8 +94,11 @@ export class WorldScene extends Phaser.Scene {
     })
   }
 
-  fish() {
-    if (!this.moving && !this.fishing && !this.uiBlocked && canFish(this.position)) {
+  action() {
+    if (this.moving || this.fishing || this.uiBlocked) return
+    const sign = signAhead(this.position)
+    if (sign) this.callbacks.onSign(sign)
+    else if (canFish(this.position)) {
       this.fishing = true
       this.callbacks.onFishing()
     }
@@ -109,6 +117,7 @@ export class WorldScene extends Phaser.Scene {
     this.drawMap()
     this.player?.setPosition(destination.x * TILE_SIZE + 16, destination.y * TILE_SIZE + 16)
     this.drawPlayer()
+    this.cameras.main.centerOn(this.player!.x, this.player!.y)
     this.callbacks.onPosition({ ...destination }, true)
   }
 
@@ -129,7 +138,7 @@ export class WorldScene extends Phaser.Scene {
 
   private drawTile(g: Phaser.GameObjects.Graphics, tile: Tile, x: number, y: number, col: number, row: number) {
     const base = tile === 'water' ? 0x236f88 : tile === 'path' || tile === 'exit' ? 0xc5a56d
-      : tile === 'dock' ? 0x95704a : tile === 'wall' ? 0x174b38 : 0x4a8a53
+      : tile === 'dock' ? 0x95704a : tile === 'sign' ? 0x4a8a53 : tile === 'wall' ? 0x174b38 : 0x4a8a53
     g.fillStyle(base).fillRect(x, y, TILE_SIZE, TILE_SIZE)
     if (tile === 'water') {
       g.fillStyle(0x53a6b6).fillRect(x + 5 + (row % 3) * 2, y + 10, 13, 2)
@@ -138,6 +147,11 @@ export class WorldScene extends Phaser.Scene {
       g.fillStyle(0x286945).fillRect(x + 4, y + 3, 24, 25)
       g.fillStyle(0x3b8152).fillRect(x + 8, y + 3, 15, 8)
       g.fillStyle(0x143c31).fillRect(x + 12, y + 27, 8, 5)
+    } else if (tile === 'sign') {
+      g.fillStyle(0x543d29).fillRect(x + 14, y + 13, 4, 18)
+      g.fillStyle(0xe8cf94).fillRect(x + 4, y + 5, 24, 14)
+      g.lineStyle(2, 0x543d29).strokeRect(x + 4, y + 5, 24, 14)
+      g.fillStyle(0x543d29).fillRect(x + 9, y + 10, 14, 2)
     } else if (tile === 'grass') {
       g.fillStyle(0x68a968).fillRect(x + (col * 7 + row * 3) % 21 + 3, y + 8, 3, 5)
       g.fillRect(x + 22, y + 21, 3, 4)
@@ -175,8 +189,8 @@ export function createWorld(parent: HTMLElement, position: Position, callbacks: 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
-    width: WIDTH * TILE_SIZE,
-    height: HEIGHT * TILE_SIZE,
+    width: VIEW_WIDTH * TILE_SIZE,
+    height: VIEW_HEIGHT * TILE_SIZE,
     backgroundColor: '#183a36',
     pixelArt: true,
     render: { antialias: false },

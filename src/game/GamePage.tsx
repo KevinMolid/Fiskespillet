@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { type User } from 'firebase/auth'
 import { createWorld, type WorldScene } from './WorldScene'
 import { loadFishBook, loadPosition, recordEncounter, savePosition, type FishBookEntry } from './persistence'
-import { canFish, FISH, formatWeight, MAPS, rollFish, type Direction, type Position } from './world'
+import { canFish, FISH, formatWeight, MAPS, rollFish, signAhead, type Direction, type Position } from './world'
 
 type Result = { name: string; icon: string; grams: number; caught: boolean }
 
@@ -18,23 +18,25 @@ export default function GamePage({ user }: { user: User }) {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
   const [showBook, setShowBook] = useState(false)
+  const [signMessage, setSignMessage] = useState<{ title: string; text: string } | null>(null)
 
   useEffect(() => {
-    scene.current?.setUiBlocked(showBook || Boolean(result) || Boolean(error) || busy)
-  }, [showBook, result, error, busy, position])
+    scene.current?.setUiBlocked(showBook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy)
+  }, [showBook, result, error, signMessage, busy, position])
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (showBook && event.key === 'Escape') setShowBook(false)
-      else if ((result || error) && ['Enter', ' ', 'e', 'E'].includes(event.key)) {
+      else if ((result || error || signMessage) && ['Enter', ' ', 'e', 'E'].includes(event.key)) {
         event.preventDefault()
         setResult(null)
         setError('')
+        setSignMessage(null)
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [showBook, result, error])
+  }, [showBook, result, error, signMessage])
 
   useEffect(() => {
     let active = true
@@ -58,6 +60,9 @@ export default function GamePage({ user }: { user: User }) {
           void savePosition(user.uid, next).catch(() => setError('Kunne ikke lagre posisjonen. Sjekk tilkoblingen.'))
           saveTimer.current = null
         }, transitioned ? 0 : 1200)
+      },
+      onSign(sign) {
+        setSignMessage(sign)
       },
       onFishing() {
         if (casting.current) return
@@ -108,7 +113,7 @@ export default function GamePage({ user }: { user: User }) {
   const worldPosition = useRef(position)
   worldPosition.current = position
   const map = position ? MAPS[position.mapId] : null
-  const atWater = Boolean(position && canFish(position))
+  const canAct = Boolean(position && (canFish(position) || signAhead(position)))
   const caughtSpecies = book.filter(entry => entry.caughtCount > 0).length
 
   return <div className="py-6">
@@ -122,21 +127,21 @@ export default function GamePage({ user }: { user: User }) {
             <button onClick={() => setShowBook(true)} disabled={!position || busy} className="rounded-md border-2 border-[#dae7ce] bg-[#183f3b] px-2 py-1 text-xs font-bold text-white disabled:opacity-50 sm:px-3 sm:text-sm">
               📖 Fiskebok {caughtSpecies}/{FISH.length}
             </button>
-            <button onClick={() => scene.current?.fish()} disabled={!atWater || busy || Boolean(result) || Boolean(error)} className="rounded-md border-2 border-[#dae7ce] bg-[#225c66] px-2 py-1 text-xs font-bold text-white disabled:opacity-40 sm:px-3 sm:text-sm">
-              🎣 Fisk
+            <button onClick={() => scene.current?.action()} disabled={!canAct || busy || Boolean(result) || Boolean(error) || Boolean(signMessage)} className="rounded-md border-2 border-[#dae7ce] bg-[#225c66] px-2 py-1 text-xs font-bold text-white disabled:opacity-40 sm:px-3 sm:text-sm">
+              ✦ Handling
             </button>
           </div>
         </div>
 
-        <div role={error ? 'alert' : 'status'} className="absolute inset-x-2 bottom-2 min-h-16 border-4 border-[#405e59] bg-[#f7f4df] p-2 text-sm font-semibold text-[#233b3a] shadow-[0_4px_0_#122b29] sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:text-lg">
+        {(error || busy || result || signMessage) && <div role={error ? 'alert' : 'status'} className="absolute inset-x-2 bottom-2 min-h-16 border-4 border-[#405e59] bg-[#f7f4df] p-2 text-sm font-semibold text-[#233b3a] shadow-[0_4px_0_#122b29] sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:text-lg">
           {error ? <p>{error}</p>
             : busy ? <p>Du kastet ut snøret … Vent på napp!</p>
               : result ? <p>{result.icon} {result.caught
                 ? `Du fanget en ${result.name}! Den veier ${formatWeight(result.grams)}.`
                 : `En ${result.name} bet på, men slapp unna!`}</p>
-                : <p>{atWater ? 'Vannet ligger rett foran deg. Trykk E eller Fisk for å kaste ut.' : map?.description ?? 'Laster lagret fremgang …'}</p>}
-          {(error || result) && <button onClick={() => { setError(''); setResult(null) }} className="absolute bottom-1 right-2 text-xs font-bold sm:bottom-2 sm:right-4 sm:text-sm">Videre ▼</button>}
-        </div>
+                : signMessage && <p><strong>{signMessage.title}</strong><br />{signMessage.text}</p>}
+          {(error || result || signMessage) && <button onClick={() => { setError(''); setResult(null); setSignMessage(null) }} className="absolute bottom-1 right-2 text-xs font-bold sm:bottom-2 sm:right-4 sm:text-sm">Videre ▼</button>}
+        </div>}
       </>}
 
       {showBook && <section role="dialog" aria-label="Fiskeboken" aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-4 text-[#233b3a] sm:p-7">
@@ -169,6 +174,6 @@ export default function GamePage({ user }: { user: User }) {
       {(['left', 'down', 'right'] as Direction[]).map((direction, index) =>
         <button key={direction} className="control-button" aria-label={['Gå venstre', 'Gå ned', 'Gå høyre'][index]} onClick={() => scene.current?.move(direction)}>{['◀', '▼', '▶'][index]}</button>)}
     </div>
-    <p className="mt-3 text-xs text-slate-400">Bevegelse: piltaster eller WASD · Kast ut: E eller mellomrom · Gå gjennom åpningen i kanten for å bytte kart.</p>
+    <p className="mt-3 text-xs text-slate-400">Bevegelse: piltaster eller WASD · Handling: E eller mellomrom (fisk eller les skilt) · Gå gjennom åpningen i kanten for å bytte kart.</p>
   </div>
 }

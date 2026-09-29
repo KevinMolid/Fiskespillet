@@ -1,12 +1,14 @@
 export type MapId = 'havn' | 'skogstjern'
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type Position = { mapId: MapId; x: number; y: number; facing: Direction }
-export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit'
+export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign'
 
-export const WIDTH = 24
-export const HEIGHT = 16
+export const WIDTH = 48
+export const HEIGHT = 32
+export const VIEW_WIDTH = 24
+export const VIEW_HEIGHT = 16
 export const TILE_SIZE = 32
-export const START: Position = { mapId: 'havn', x: 11, y: 6, facing: 'down' }
+export const START: Position = { mapId: 'havn', x: 12, y: 16, facing: 'down' }
 
 export type WorldMap = {
   id: MapId
@@ -15,6 +17,7 @@ export type WorldMap = {
   tiles: Tile[][]
   neighbors: Partial<Record<Direction, MapId>>
   fishingZone?: string
+  signs: Record<string, { title: string; text: string }>
 }
 
 function grid(fill: Tile = 'grass'): Tile[][] {
@@ -28,24 +31,26 @@ function rect(tiles: Tile[][], x1: number, y1: number, x2: number, y2: number, t
 }
 
 const havn = grid()
-rect(havn, 1, 11, 22, 14, 'water')
-rect(havn, 10, 9, 13, 12, 'dock')
-rect(havn, 3, 2, 8, 5, 'wall')
-rect(havn, 5, 5, 6, 5, 'path')
-rect(havn, 9, 5, 21, 7, 'path')
-rect(havn, 11, 7, 12, 9, 'path')
-rect(havn, 16, 2, 20, 3, 'wall')
-havn[6][23] = 'exit'
+rect(havn, 1, 22, 46, 30, 'water')
+rect(havn, 22, 20, 26, 25, 'dock')
+rect(havn, 5, 5, 13, 11, 'wall')
+rect(havn, 7, 11, 10, 11, 'path')
+rect(havn, 18, 5, 29, 9, 'wall')
+rect(havn, 10, 15, 47, 17, 'path')
+rect(havn, 23, 17, 25, 20, 'path')
+havn[21][16] = 'sign'
+havn[16][47] = 'exit'
 
 const skogstjern = grid()
-rect(skogstjern, 8, 2, 21, 8, 'water')
-rect(skogstjern, 2, 11, 15, 13, 'path')
-rect(skogstjern, 13, 9, 15, 11, 'path')
-rect(skogstjern, 1, 6, 7, 6, 'path')
-skogstjern[6][0] = 'exit'
-for (const [x, y] of [[3, 3], [4, 3], [5, 4], [2, 7], [4, 8], [19, 11], [20, 11], [21, 12], [17, 13], [5, 13], [6, 2], [7, 4]] as const) {
+rect(skogstjern, 18, 5, 42, 19, 'water')
+rect(skogstjern, 1, 15, 17, 17, 'path')
+rect(skogstjern, 8, 17, 10, 25, 'path')
+rect(skogstjern, 10, 23, 36, 25, 'path')
+for (const [x, y] of [[4, 5], [5, 5], [6, 6], [3, 9], [5, 10], [12, 7], [13, 7], [11, 28], [39, 25], [40, 25], [41, 26], [43, 27]] as const) {
   skogstjern[y][x] = 'wall'
 }
+skogstjern[13][17] = 'sign'
+skogstjern[16][0] = 'exit'
 
 export const MAPS: Record<MapId, WorldMap> = {
   havn: {
@@ -55,6 +60,7 @@ export const MAPS: Record<MapId, WorldMap> = {
     tiles: havn,
     neighbors: { right: 'skogstjern' },
     fishingZone: 'havn',
+    signs: { '16,21': { title: 'Bryggehavn', text: 'Her finnes mort og abbor. En sjelden gang biter gjedda på.' } },
   },
   skogstjern: {
     id: 'skogstjern',
@@ -62,6 +68,7 @@ export const MAPS: Record<MapId, WorldMap> = {
     description: 'Vend deg mot vannet og trykk E eller Fisk for å kaste ut.',
     tiles: skogstjern,
     fishingZone: 'skogstjern',
+    signs: { '17,13': { title: 'Skogstjernet', text: 'Mort, abbor og gjedde lever her. Noen forteller om den sjeldne gullørreten.' } },
     neighbors: { left: 'havn' },
   },
 }
@@ -71,6 +78,11 @@ export function facingTile(position: Position): Tile | undefined {
     up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0],
   }[position.facing]
   return MAPS[position.mapId].tiles[position.y + dy]?.[position.x + dx]
+}
+
+export function signAhead(position: Position) {
+  const [dx, dy] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[position.facing]
+  return MAPS[position.mapId].signs[`${position.x + dx},${position.y + dy}`]
 }
 
 export function canFish(position: Position): boolean {
@@ -101,6 +113,7 @@ export function isPosition(value: unknown): value is Position {
     && (p.y as number) >= 0 && (p.y as number) < HEIGHT
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'wall'
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'water'
+    && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'sign'
     && ['up', 'down', 'left', 'right'].includes(String(p.facing))
 }
 
