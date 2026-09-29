@@ -179,7 +179,7 @@ export default function GamePage({ user }: { user: User }) {
   const worldPosition = useRef(position)
   worldPosition.current = position
   const map = position ? MAPS[position.mapId] : null
-  const canAct = Boolean(position && (canFish(position) || ['sign', 'door', 'wardrobe', 'npc'].includes(interactionAhead(position).tile ?? '')))
+  const canAct = Boolean(position && (canFish(position) || ['sign', 'wardrobe', 'npc'].includes(interactionAhead(position).tile ?? '')))
   const caughtSpecies = book.filter(entry => entry.caughtCount > 0).length
 
   return <div className="py-6">
@@ -258,6 +258,6 @@ export default function GamePage({ user }: { user: User }) {
       {(['left', 'down', 'right'] as Direction[]).map((direction, index) =>
         <button key={direction} className="control-button" aria-label={['Gå venstre', 'Gå ned', 'Gå høyre'][index]} onClick={() => scene.current?.move(direction)}>{['◀', '▼', '▶'][index]}</button>)}
     </div>
-    <p className="mt-3 text-xs text-slate-400">Bevegelse: piltaster eller WASD · Handling: E eller mellomrom (fisk, skilt, dører, NPC og garderobe) · Gå gjennom åpningen i kanten for å bytte kart.</p>
+    <p className="mt-3 text-xs text-slate-400">Bevegelse: piltaster eller WASD · Handling: E eller mellomrom (fisk, skilt, NPC og garderobe · Gå på dører og trapper for å bytte rom) · Gå gjennom åpningen i kanten for å bytte kart.</p>
   </div>
 }

@@ -44,7 +44,7 @@ service cloud.firestore {
       function validSave() {
         return request.resource.data.keys().hasAll(['mapId', 'x', 'y', 'facing', 'updatedAt'])
           && request.resource.data.keys().hasOnly(['mapId', 'x', 'y', 'facing', 'updatedAt'])
-          && request.resource.data.mapId in ['havn', 'skogstjern', 'hjem']
+          && request.resource.data.mapId in ['havn', 'skogstjern', 'hjem', 'hjem2']
           && request.resource.data.x is int
           && request.resource.data.x >= 0
           && request.resource.data.x <= 47

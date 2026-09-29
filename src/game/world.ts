@@ -1,7 +1,7 @@
-export type MapId = 'havn' | 'skogstjern' | 'hjem'
+export type MapId = 'havn' | 'skogstjern' | 'hjem' | 'hjem2'
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type Position = { mapId: MapId; x: number; y: number; facing: Direction }
-export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture' | 'bed' | 'table' | 'rug' | 'window' | 'hearth' | 'houseWall' | 'roof'
+export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture' | 'bed' | 'table' | 'rug' | 'window' | 'hearth' | 'houseWall' | 'roof' | 'stairs' | 'counter' | 'stove' | 'sofa'
 
 export const WIDTH = 48
 export const HEIGHT = 32
@@ -18,7 +18,7 @@ export type WorldMap = {
   neighbors: Partial<Record<Direction, MapId>>
   fishingZone?: string
   signs: Record<string, { title: string; text: string }>
-  doors?: Record<string, Position>
+  transitions?: Record<string, Position>
   npcs?: Record<string, { name: string; text: string }>
 }
 
@@ -60,18 +60,37 @@ skogstjern[16][0] = 'exit'
 havn[11][8] = 'door'
 havn[12][14] = 'npc'
 
-const hjem = Array.from({ length: 16 }, (_, y) =>
-  Array.from({ length: 24 }, (_, x): Tile =>
-    x === 0 || y === 0 || x === 23 || y === 15 ? 'wall' : 'floor'))
-rect(hjem, 3, 4, 6, 6, 'bed')
-rect(hjem, 15, 7, 17, 8, 'table')
-rect(hjem, 9, 8, 13, 10, 'rug')
+function indoorGrid(): Tile[][] {
+  return Array.from({ length: 16 }, (_, y) =>
+    Array.from({ length: 24 }, (_, x): Tile =>
+      x === 0 || y === 0 || x === 23 || y === 15 ? 'wall' : 'floor'))
+}
+
+const hjem = indoorGrid()
+// Kjøkkenet ligger til venstre. Åpningen i deleveggen forbinder det med stuen.
+rect(hjem, 11, 2, 11, 12, 'wall')
+rect(hjem, 11, 8, 11, 9, 'floor')
+rect(hjem, 3, 3, 8, 3, 'counter')
+rect(hjem, 2, 5, 2, 7, 'counter')
+hjem[3][8] = 'stove'
+rect(hjem, 5, 10, 7, 11, 'table')
+rect(hjem, 15, 10, 18, 10, 'sofa')
+rect(hjem, 14, 7, 18, 9, 'rug')
+hjem[3][20] = 'hearth'
 hjem[0][5] = 'window'
-hjem[0][18] = 'window'
-hjem[4][19] = 'hearth'
-hjem[6][15] = 'furniture'
-hjem[5][8] = 'wardrobe'
-hjem[14][12] = 'door'
+hjem[0][17] = 'window'
+hjem[4][19] = 'stairs'
+hjem[15][12] = 'door'
+
+const hjem2 = indoorGrid()
+rect(hjem2, 4, 4, 7, 6, 'bed')
+rect(hjem2, 11, 7, 15, 9, 'rug')
+rect(hjem2, 14, 3, 16, 3, 'table')
+hjem2[9][3] = 'wardrobe'
+hjem2[4][10] = 'furniture'
+hjem2[0][5] = 'window'
+hjem2[0][18] = 'window'
+hjem2[11][19] = 'stairs'
 
 export const MAPS: Record<MapId, WorldMap> = {
   havn: {
@@ -81,15 +100,24 @@ export const MAPS: Record<MapId, WorldMap> = {
     tiles: havn,
     neighbors: { right: 'skogstjern' },
     fishingZone: 'havn',
-    doors: { '8,11': { mapId: 'hjem', x: 12, y: 13, facing: 'up' } },
-    npcs: { '14,12': { name: 'Mira', text: 'Velkommen hjem! Garderoben står inne i huset. Vend deg mot døren og trykk E eller mellomrom.' } },
+    transitions: { '8,11': { mapId: 'hjem', x: 12, y: 14, facing: 'up' } },
+    npcs: { '14,12': { name: 'Mira', text: 'Velkommen hjem! Garderoben står i soverommet oppe. Gå gjennom døren og ta trappen i stuen.' } },
     signs: { '16,21': { title: 'Bryggehavn', text: 'Her finnes mort og abbor. En sjelden gang biter gjedda på.' } },
   },
   hjem: {
-    id: 'hjem', name: 'Hjemme hos deg',
-    description: 'Garderoben står langs nordveggen.',
+    id: 'hjem', name: 'Hjemme · 1. etasje',
+    description: 'Kjøkken og stue.',
     tiles: hjem, neighbors: {}, signs: {},
-    doors: { '12,14': { mapId: 'havn', x: 8, y: 12, facing: 'down' } },
+    transitions: {
+      '12,15': { mapId: 'havn', x: 8, y: 12, facing: 'down' },
+      '19,4': { mapId: 'hjem2', x: 19, y: 10, facing: 'up' },
+    },
+  },
+  hjem2: {
+    id: 'hjem2', name: 'Hjemme · 2. etasje',
+    description: 'Soverom med garderobe.',
+    tiles: hjem2, neighbors: {}, signs: {},
+    transitions: { '19,11': { mapId: 'hjem', x: 19, y: 5, facing: 'down' } },
   },
   skogstjern: {
     id: 'skogstjern',
@@ -119,7 +147,11 @@ export function interactionAhead(position: Position) {
   const map = MAPS[position.mapId]
   const x = position.x + dx, y = position.y + dy
   const key = `${x},${y}`
-  return { tile: map.tiles[y]?.[x], door: map.doors?.[key], npc: map.npcs?.[key], sign: map.signs[key] }
+  return { tile: map.tiles[y]?.[x], npc: map.npcs?.[key], sign: map.signs[key] }
+}
+
+export function stepTransition(position: Position): Position | null {
+  return MAPS[position.mapId].transitions?.[`${position.x},${position.y}`] ?? null
 }
 
 export function canFish(position: Position): boolean {
@@ -144,13 +176,13 @@ export function edgeTransition(position: Position): Position | null {
 export function isPosition(value: unknown): value is Position {
   if (!value || typeof value !== 'object') return false
   const p = value as Partial<Position>
-  return (p.mapId === 'havn' || p.mapId === 'skogstjern' || p.mapId === 'hjem')
+  return (p.mapId === 'havn' || p.mapId === 'skogstjern' || p.mapId === 'hjem' || p.mapId === 'hjem2')
     && Number.isInteger(p.x) && Number.isInteger(p.y)
     && (p.x as number) >= 0 && (p.x as number) < MAPS[p.mapId].tiles[0].length
     && (p.y as number) >= 0 && (p.y as number) < MAPS[p.mapId].tiles.length
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'wall'
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'water'
-    && !['sign', 'door', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window'].includes(MAPS[p.mapId].tiles[p.y as number][p.x as number])
+    && !['sign', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window', 'counter', 'stove', 'sofa'].includes(MAPS[p.mapId].tiles[p.y as number][p.x as number])
     && ['up', 'down', 'left', 'right'].includes(String(p.facing))
 }
 
