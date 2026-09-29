@@ -103,7 +103,8 @@ service cloud.firestore {
       }
 
       allow get: if owner();
-      allow create, update: if owner() && validInventory();
+      allow create: if owner() && validInventory() && request.resource.data.coins == 60;
+      allow update: if owner() && validInventory();
       allow list, delete: if false;
     }
 
