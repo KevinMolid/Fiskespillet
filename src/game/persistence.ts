@@ -1,6 +1,7 @@
-import { collection, doc, getDoc, getDocs, runTransaction, serverTimestamp, setDoc, type Timestamp } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, runTransaction, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { DEFAULT_APPEARANCE, FISH_BY_ID, isAppearance, isPosition, START, type Appearance, type Position } from './world'
+import { ITEM_BY_ID, type BaitId, type ItemId } from './items'
+import { DIG_SPOTS, DEFAULT_APPEARANCE, FISH_BY_ID, isAppearance, isPosition, START, type Appearance, type Position } from './world'
 
 export type FishBookEntry = {
   speciesId: string
@@ -37,11 +38,110 @@ export async function loadFishBook(uid: string): Promise<FishBookEntry[]> {
   return snapshot.docs.map(entry => entry.data() as FishBookEntry)
 }
 
-export async function recordEncounter(uid: string, speciesId: string, grams: number, caught: boolean) {
+export type ItemCounts = Partial<Record<ItemId, number>>
+export type Inventory = { bag: ItemCounts; storage: ItemCounts; equippedBait: BaitId | null }
+const STARTER_INVENTORY: Inventory = { bag: { rod: 1, shovel: 1, bread: 3 }, storage: {}, equippedBait: null }
+const DIG_COOLDOWN_MS = 2 * 60 * 1000
+
+function inventoryRef(uid: string) {
+  return doc(database(), 'playerInventories', uid)
+}
+
+function inventoryData(snapshot: { data: () => unknown; exists: () => boolean }): Inventory {
+  if (!snapshot.exists()) return { bag: { ...STARTER_INVENTORY.bag }, storage: {}, equippedBait: null }
+  const data = snapshot.data() as Inventory
+  return { bag: { ...data.bag }, storage: { ...data.storage }, equippedBait: data.equippedBait ?? null }
+}
+
+export async function loadInventory(uid: string): Promise<Inventory> {
+  const ref = inventoryRef(uid)
+  const snapshot = await getDoc(ref)
+  if (snapshot.exists()) return inventoryData(snapshot)
+  return runTransaction(database(), async transaction => {
+    const latest = await transaction.get(ref)
+    if (latest.exists()) return inventoryData(latest)
+    transaction.set(ref, { ...STARTER_INVENTORY, updatedAt: serverTimestamp() })
+    return inventoryData(latest)
+  })
+}
+
+export async function setEquippedBait(uid: string, bait: BaitId | null): Promise<Inventory> {
+  if (bait && !ITEM_BY_ID[bait]?.bait) throw new Error('Ukjent agn.')
+  const ref = inventoryRef(uid)
+  return runTransaction(database(), async transaction => {
+    const snapshot = await transaction.get(ref)
+    if (!snapshot.exists()) throw new Error('Inventaret mangler.')
+    const inventory = inventoryData(snapshot)
+    if (bait && !(inventory.bag[bait] ?? 0)) throw new Error('Du har ikke dette agnet i sekken.')
+    const next = { ...inventory, equippedBait: bait }
+    transaction.set(ref, { ...next, updatedAt: serverTimestamp() })
+    return next
+  })
+}
+
+export async function transferItem(uid: string, itemId: ItemId, toStorage: boolean): Promise<Inventory> {
+  if (!ITEM_BY_ID[itemId]) throw new Error('Ukjent gjenstand.')
+  const ref = inventoryRef(uid)
+  return runTransaction(database(), async transaction => {
+    const snapshot = await transaction.get(ref)
+    if (!snapshot.exists()) throw new Error('Inventaret mangler.')
+    const inventory = inventoryData(snapshot)
+    const from = toStorage ? inventory.bag : inventory.storage
+    const to = toStorage ? inventory.storage : inventory.bag
+    if (!(from[itemId] ?? 0)) throw new Error('Gjenstanden finnes ikke her.')
+    if ((to[itemId] ?? 0) >= 999) throw new Error('Det er ikke plass til flere.')
+    from[itemId] = (from[itemId] ?? 0) - 1
+    if (!from[itemId]) delete from[itemId]
+    to[itemId] = (to[itemId] ?? 0) + 1
+    if (toStorage && inventory.equippedBait === itemId && !inventory.bag[itemId]) inventory.equippedBait = null
+    transaction.set(ref, { ...inventory, updatedAt: serverTimestamp() })
+    return inventory
+  })
+}
+
+export async function digForWorms(uid: string, spotId: string): Promise<{ inventory: Inventory; amount: number }> {
+  if (!DIG_SPOTS[spotId]) throw new Error('Ukjent jordflekk.')
+  const ref = inventoryRef(uid)
+  const spotRef = doc(database(), 'digSpots', uid, 'entries', spotId)
+  return runTransaction(database(), async transaction => {
+    const inventorySnap = await transaction.get(ref)
+    const spotSnap = await transaction.get(spotRef)
+    if (!inventorySnap.exists()) throw new Error('Inventaret mangler.')
+    const inventory = inventoryData(inventorySnap)
+    if (!(inventory.bag.shovel ?? 0)) throw new Error('Du trenger en spade i sekken for å grave.')
+    const lastDugAt = spotSnap.data()?.lastDugAt as Timestamp | undefined
+    if (lastDugAt && Date.now() - lastDugAt.toMillis() < DIG_COOLDOWN_MS) {
+      throw new Error('Jorden er nylig gravd opp. Kom tilbake om litt.')
+    }
+    const amount = 1 + Math.floor(Math.random() * 3)
+    if ((inventory.bag.worm ?? 0) + amount > 999) throw new Error('Sekken er full av mark.')
+    inventory.bag.worm = (inventory.bag.worm ?? 0) + amount
+    transaction.set(ref, { ...inventory, updatedAt: serverTimestamp() })
+    transaction.set(spotRef, { lastDugAt: serverTimestamp() })
+    return { inventory, amount }
+  })
+}
+
+export async function recordEncounter(uid: string, speciesId: string, grams: number, caught: boolean, bait: BaitId | null) {
   if (!FISH_BY_ID[speciesId]) throw new Error('Ukjent fisk.')
   const ref = doc(database(), 'fishBooks', uid, 'entries', speciesId)
-  await runTransaction(database(), async transaction => {
+  const bagRef = inventoryRef(uid)
+  return runTransaction(database(), async transaction => {
     const snapshot = await transaction.get(ref)
+    const bagSnapshot = await transaction.get(bagRef)
+    if (!bagSnapshot.exists()) throw new Error('Inventaret mangler.')
+    const inventory = inventoryData(bagSnapshot)
+    if (!(inventory.bag.rod ?? 0)) throw new Error('Du trenger en fiskestang i sekken.')
+    if (inventory.equippedBait !== bait) throw new Error('Valgt agn ble endret under kastet. Prøv igjen.')
+    if (bait) {
+      if (!(inventory.bag[bait] ?? 0)) throw new Error('Du er tom for valgt agn.')
+      inventory.bag[bait] = (inventory.bag[bait] ?? 0) - 1
+      if (!inventory.bag[bait]) {
+        delete inventory.bag[bait]
+        inventory.equippedBait = null
+      }
+      transaction.set(bagRef, { ...inventory, updatedAt: serverTimestamp() })
+    }
     const previous = snapshot.exists() ? snapshot.data() as FishBookEntry : null
     const caughtCount = (previous?.caughtCount ?? 0) + (caught ? 1 : 0)
     transaction.set(ref, {
@@ -55,6 +155,7 @@ export async function recordEncounter(uid: string, speciesId: string, grams: num
       firstCaughtAt: previous?.firstCaughtAt ?? (caught ? serverTimestamp() : null),
       updatedAt: serverTimestamp(),
     })
+    return inventory
   })
 }
 

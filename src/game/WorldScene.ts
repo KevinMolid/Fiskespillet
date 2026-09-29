@@ -1,11 +1,13 @@
 import Phaser from 'phaser'
-import { canFish, edgeTransition, HAIR_COLORS, interactionAhead, MAPS, SHIRT_COLORS, SKIN_COLORS, stepTransition, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, type Appearance, type Direction, type Position, type Tile } from './world'
+import { canFish, digSpotAhead, edgeTransition, HAIR_COLORS, interactionAhead, MAPS, SHIRT_COLORS, SKIN_COLORS, stepTransition, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, type Appearance, type Direction, type Position, type Tile } from './world'
 
 type Callbacks = {
   onPosition: (position: Position, transitioned: boolean) => void
   onFishing: () => void
   onSign: (sign: { title: string; text: string }) => void
   onWardrobe: () => void
+  onDig: (spotId: string) => void
+  onStorage: () => void
 }
 
 export class WorldScene extends Phaser.Scene {
@@ -77,7 +79,7 @@ export class WorldScene extends Phaser.Scene {
       } else this.callbacks.onPosition({ ...this.position }, false)
       return
     }
-    if (['wall', 'water', 'sign', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window', 'counter', 'stove', 'sofa'].includes(tile)) {
+    if (['wall', 'water', 'sign', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window', 'counter', 'stove', 'sofa', 'soil', 'chest'].includes(tile)) {
       this.callbacks.onPosition({ ...this.position }, false)
       return
     }
@@ -103,6 +105,11 @@ export class WorldScene extends Phaser.Scene {
     const target = interactionAhead(this.position)
     if (target.npc) this.callbacks.onSign({ title: target.npc.name, text: target.npc.text })
     else if (target.tile === 'wardrobe') this.callbacks.onWardrobe()
+    else if (target.tile === 'chest') this.callbacks.onStorage()
+    else if (target.tile === 'soil') {
+      const spotId = digSpotAhead(this.position)
+      if (spotId) this.callbacks.onDig(spotId)
+    }
     else if (target.sign) this.callbacks.onSign(target.sign)
     else if (canFish(this.position)) {
       this.fishing = true
@@ -157,7 +164,7 @@ export class WorldScene extends Phaser.Scene {
     const base = indoor ? (tile === 'wall' || tile === 'window' ? 0x675442
       : tile === 'rug' ? 0x815553 : tile === 'door' ? 0xb49a76 : tile === 'stairs' ? 0x8e6948 : 0xc5a883)
       : tile === 'water' ? 0x236f88 : tile === 'path' || tile === 'exit' ? 0xc5a56d
-        : tile === 'dock' ? 0x95704a : tile === 'roof' ? 0x814c3d : tile === 'houseWall' || tile === 'window' ? 0xc8a47b : tile === 'door' ? 0x7b4b31 : tile === 'npc' || tile === 'sign' ? 0x4a8a53
+        : tile === 'dock' ? 0x95704a : tile === 'soil' ? 0x805f43 : tile === 'roof' ? 0x814c3d : tile === 'houseWall' || tile === 'window' ? 0xc8a47b : tile === 'door' ? 0x7b4b31 : tile === 'npc' || tile === 'sign' ? 0x4a8a53
           : tile === 'wall' ? 0x174b38 : 0x4a8a53
     g.fillStyle(base).fillRect(x, y, TILE_SIZE, TILE_SIZE)
     if (indoor && (tile === 'wall' || tile === 'window')) {
@@ -203,6 +210,15 @@ export class WorldScene extends Phaser.Scene {
       g.fillStyle(0x64412f).fillRect(x + 2, y + 3, 28, 27)
       g.fillStyle(0x4d7469).fillRect(x + 5, y + 8, 22, 19)
       g.fillStyle(0x789585).fillRect(x + 5, y + 8, 22, 6)
+    } else if (tile === 'soil') {
+      g.fillStyle(0x957150).fillRect(x + 2, y + 2, 28, 28)
+      g.fillStyle(0x584533).fillRect(x + 5, y + 8, 4, 3).fillRect(x + 19, y + 16, 6, 3)
+      g.fillRect(x + 12, y + 24, 5, 2)
+    } else if (tile === 'chest') {
+      g.fillStyle(0x63452d).fillRect(x + 2, y + 7, 28, 22)
+      g.fillStyle(0xa97845).fillRect(x + 4, y + 4, 24, 9)
+      g.lineStyle(2, 0x382c24).strokeRect(x + 2, y + 7, 28, 22)
+      g.fillStyle(0xe1c16e).fillRect(x + 14, y + 13, 5, 7)
     } else if (tile === 'bed') {
       g.fillStyle(0x64452f).fillRect(x + 2, y + 1, 28, 30)
       g.fillStyle(0xe9dfc6).fillRect(x + 5, y + 4, 22, 9)

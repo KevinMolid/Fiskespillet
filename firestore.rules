@@ -60,6 +60,68 @@ service cloud.firestore {
       allow list, delete: if false;
     }
 
+    match /playerInventories/{uid} {
+      function owner() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+
+      function validCounts(counts) {
+        return counts is map
+          && counts.keys().hasOnly(['rod', 'shovel', 'worm', 'bread', 'spinner'])
+          && counts.get('rod', 0) is int
+          && counts.get('rod', 0) >= 0
+          && counts.get('rod', 0) <= 999
+          && counts.get('shovel', 0) is int
+          && counts.get('shovel', 0) >= 0
+          && counts.get('shovel', 0) <= 999
+          && counts.get('worm', 0) is int
+          && counts.get('worm', 0) >= 0
+          && counts.get('worm', 0) <= 999
+          && counts.get('bread', 0) is int
+          && counts.get('bread', 0) >= 0
+          && counts.get('bread', 0) <= 999
+          && counts.get('spinner', 0) is int
+          && counts.get('spinner', 0) >= 0
+          && counts.get('spinner', 0) <= 999;
+      }
+
+      function validInventory() {
+        return request.resource.data.keys().hasAll(['bag', 'storage', 'equippedBait', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['bag', 'storage', 'equippedBait', 'updatedAt'])
+          && validCounts(request.resource.data.bag)
+          && validCounts(request.resource.data.storage)
+          && (request.resource.data.equippedBait == null
+            || (request.resource.data.equippedBait in ['worm', 'bread', 'spinner']
+              && request.resource.data.bag.get(request.resource.data.equippedBait, 0) > 0))
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      allow get: if owner();
+      allow create, update: if owner() && validInventory();
+      allow list, delete: if false;
+    }
+
+    match /digSpots/{uid}/entries/{spotId} {
+      function owner() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+
+      function validSpot() {
+        return spotId in [
+          'havn_3_17', 'havn_6_19', 'havn_15_20',
+          'skogstjern_5_20', 'skogstjern_13_26', 'skogstjern_44_23'
+        ] && request.resource.data.keys().hasAll(['lastDugAt'])
+          && request.resource.data.keys().hasOnly(['lastDugAt'])
+          && request.resource.data.lastDugAt == request.time;
+      }
+
+      allow get: if owner();
+      allow create: if owner() && validSpot();
+      allow update: if owner() && validSpot()
+        && request.time >= resource.data.lastDugAt + duration.value(2, 'm');
+      allow list, delete: if false;
+    }
+
     match /characterLooks/{uid} {
       function owner() {
         return request.auth != null && request.auth.uid == uid;

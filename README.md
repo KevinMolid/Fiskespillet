@@ -37,3 +37,8 @@ Logg inn og bruk piltaster eller WASD for å gå rundt på kartet. Gå gjennom �
 Kart, fiskearter og områdets fangstvekter er definert i `src/game/world.ts`. Firestore lagrer siste posisjon i `gameSaves/{uid}` og en post per oppdaget fiskeart i `fishBooks/{uid}/entries/{speciesId}`. Andre innloggede spillere kan lese fiskeboken gjennom Spillere-siden. Fangsttrekningen kjører foreløpig i nettleseren og er ment for enspillerversjonen, ikke konkurranse eller handel.
 
 Ved endringer i `firestore.rules` publiserer GitHub Actions reglene automatisk når workflowens service account er konfigurert.
+
+
+### Inventar, graving og agn
+
+Sekken åpnes med knappen inne i spillvinduet og er sortert i Utstyr, Forbruksutstyr, Nøkkelgjenstander og Klær. Spilleren starter med fiskestang, spade og litt brød. Vend figuren mot en brun jordflekk og trykk E eller mellomrom for å grave etter 1–3 mark. Den samme flekken kan graves igjen etter to minutter. Du må ha spaden i sekken. I sekken kan du velge mark eller brød som agn; ulike agn endrer sannsynligheten for artene i vannet. Ett agn brukes for hvert kast, også når fisken slipper unna. Du kan fiske uten agn, men må ha fiskestangen i sekken. Sluk er definert som et tredje agn for fremtidige butikker. I andre etasje står en kiste som du kan åpne med handlingsknappen for å flytte gjenstander mellom sekken og oppbevaringen. Nøkkelgjenstander og klær har egne kategorier som kan fylles med innhold senere.

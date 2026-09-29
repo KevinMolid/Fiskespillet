@@ -1,7 +1,9 @@
+import { BAIT_WEIGHTS, type BaitId } from './items'
+
 export type MapId = 'havn' | 'skogstjern' | 'hjem' | 'hjem2'
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type Position = { mapId: MapId; x: number; y: number; facing: Direction }
-export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture' | 'bed' | 'table' | 'rug' | 'window' | 'hearth' | 'houseWall' | 'roof' | 'stairs' | 'counter' | 'stove' | 'sofa'
+export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture' | 'bed' | 'table' | 'rug' | 'window' | 'hearth' | 'houseWall' | 'roof' | 'stairs' | 'counter' | 'stove' | 'sofa' | 'soil' | 'chest'
 
 export const WIDTH = 48
 export const HEIGHT = 32
@@ -59,6 +61,12 @@ skogstjern[16][0] = 'exit'
 
 havn[11][8] = 'door'
 havn[12][14] = 'npc'
+havn[17][3] = 'soil'
+havn[19][6] = 'soil'
+havn[20][15] = 'soil'
+skogstjern[20][5] = 'soil'
+skogstjern[26][13] = 'soil'
+skogstjern[23][44] = 'soil'
 
 function indoorGrid(): Tile[][] {
   return Array.from({ length: 16 }, (_, y) =>
@@ -88,6 +96,7 @@ rect(hjem2, 11, 7, 15, 9, 'rug')
 rect(hjem2, 14, 3, 16, 3, 'table')
 hjem2[9][3] = 'wardrobe'
 hjem2[4][10] = 'furniture'
+hjem2[4][20] = 'chest'
 hjem2[0][5] = 'window'
 hjem2[0][18] = 'window'
 hjem2[11][19] = 'stairs'
@@ -150,6 +159,23 @@ export function interactionAhead(position: Position) {
   return { tile: map.tiles[y]?.[x], npc: map.npcs?.[key], sign: map.signs[key] }
 }
 
+export const DIG_SPOTS: Record<string, { mapId: MapId; x: number; y: number }> = {
+  havn_3_17: { mapId: 'havn', x: 3, y: 17 },
+  havn_6_19: { mapId: 'havn', x: 6, y: 19 },
+  havn_15_20: { mapId: 'havn', x: 15, y: 20 },
+  skogstjern_5_20: { mapId: 'skogstjern', x: 5, y: 20 },
+  skogstjern_13_26: { mapId: 'skogstjern', x: 13, y: 26 },
+  skogstjern_44_23: { mapId: 'skogstjern', x: 44, y: 23 },
+}
+
+export function digSpotAhead(position: Position): string | null {
+  const [dx, dy] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[position.facing]
+  return Object.keys(DIG_SPOTS).find(id => {
+    const spot = DIG_SPOTS[id]
+    return spot.mapId === position.mapId && spot.x === position.x + dx && spot.y === position.y + dy
+  }) ?? null
+}
+
 export function stepTransition(position: Position): Position | null {
   return MAPS[position.mapId].transitions?.[`${position.x},${position.y}`] ?? null
 }
@@ -182,7 +208,7 @@ export function isPosition(value: unknown): value is Position {
     && (p.y as number) >= 0 && (p.y as number) < MAPS[p.mapId].tiles.length
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'wall'
     && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'water'
-    && !['sign', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window', 'counter', 'stove', 'sofa'].includes(MAPS[p.mapId].tiles[p.y as number][p.x as number])
+    && !['sign', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window', 'counter', 'stove', 'sofa', 'soil', 'chest'].includes(MAPS[p.mapId].tiles[p.y as number][p.x as number])
     && ['up', 'down', 'left', 'right'].includes(String(p.facing))
 }
 
@@ -238,12 +264,14 @@ export const FISHING_ZONES: Record<string, { name: string; catches: { speciesId:
   },
 }
 
-export function rollFish(zoneId: string) {
+export function rollFish(zoneId: string, bait: BaitId | null = null) {
   const zone = FISHING_ZONES[zoneId]
   if (!zone) throw new Error('Ukjent fiskeområde.')
-  const total = zone.catches.reduce((sum, entry) => sum + entry.weight, 0)
+  const weights = zone.catches.map(entry => entry.weight * (bait ? BAIT_WEIGHTS[bait][entry.speciesId] ?? 1 : 1))
+  const total = weights.reduce((sum, weight) => sum + weight, 0)
   let roll = Math.random() * total
-  const entry = zone.catches.find(entry => (roll -= entry.weight) < 0) ?? zone.catches.at(-1)!
+  const index = weights.findIndex(weight => (roll -= weight) < 0)
+  const entry = zone.catches[index < 0 ? zone.catches.length - 1 : index]
   const species = FISH_BY_ID[entry.speciesId]
   const grams = Math.round(species.minGrams + Math.random() * (species.maxGrams - species.minGrams))
   return { species, grams, caught: Math.random() >= 0.18 }
