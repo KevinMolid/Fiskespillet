@@ -8,21 +8,18 @@ Krever Node.js 20.19+ eller 22.12+.
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
-Åpne adressen Vite skriver ut. Firebase er valgfri for å vise startsiden.
+Åpne adressen Vite skriver ut. Firebase-konfigurasjonen for dette prosjektet ligger i `src/lib/firebase.ts`, så innloggingen fungerer uten en lokal `.env.local`.
 
 ## Koble til Firebase
 
-1. Opprett et Firebase-prosjekt i Firebase Console og registrer en webapp.
-2. Firebase-webappen er allerede lagt inn i `.env.example`. Kopier filen til `.env.local` (eller bruk den vedlagte konfigurasjonen) før oppstart.
-3. I Firebase Console: Authentication → Sign-in method → Email/Password → Enable → Save. Registrering, innlogging, utlogging og tilbakestilling av passord bruker denne metoden.
-4. Opprett Cloud Firestore først når vi skal lagre spilldata. Analytics-ID er inkludert i konfigurasjonen, men Analytics startes først når vi tar funksjonen i bruk.
-4. Start utviklingsserveren på nytt etter endring av miljøvariabler.
+1. Firebase-webappen er allerede konfigurert i `src/lib/firebase.ts`. Valgfrie `VITE_FIREBASE_*`-variabler kan overstyre verdiene, for eksempel for et annet prosjekt; se `.env.example`.
+2. I Firebase Console: Authentication → Sign-in method → Email/Password → Enable → Save. Registrering, innlogging, utlogging og tilbakestilling av passord bruker denne metoden.
+3. Opprett Cloud Firestore først når vi skal lagre spilldata. Analytics-ID er inkludert i konfigurasjonen, men Analytics startes først når vi tar funksjonen i bruk.
 
-`src/lib/firebase.ts` eksporterer `firebaseApp`, `auth` og `db`. Verdiene er `null` før appen er konfigurert; sjekk derfor at tjenesten finnes før bruk.
+`src/lib/firebase.ts` eksporterer `firebaseApp`, `auth` og `db`.
 
 Firebase webkonfigurasjonen er klientkonfigurasjon, ikke en hemmelig servernøkkel. Tilgang til data må styres med Firebase Security Rules før ekte spillerdata lagres. Legg aldri tjenestekontonøkler eller private nøkler i `VITE_`-variabler.
 
