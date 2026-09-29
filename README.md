@@ -30,4 +30,10 @@ Firebase webkonfigurasjonen er klientkonfigurasjon, ikke en hemmelig servernøkk
 
 ## Neste steg
 
-Bestem spillmekanikk og datamodell. Skriv Firestore-regler før flerspillerdata tas i bruk.
+## Første spillbare versjon
+
+Logg inn og bruk piltaster eller WASD for å gå rundt på kartet. Følg stien østover fra Bryggehavn til Skogstjernet. Mørke felt og vann blokkerer bevegelse, mens skiltet flytter deg mellom kartene. Stå på den lyse fiskeruten sør for vannet og trykk E, mellomrom eller Fisk-knappen. På mobil finnes enkle retningsknapper.
+
+Kart, fiskearter og områdets fangstvekter er definert i `src/game/world.ts`. Firestore lagrer siste posisjon i `gameSaves/{uid}` og en post per oppdaget fiskeart i `fishBooks/{uid}/entries/{speciesId}`. Andre innloggede spillere kan lese fiskeboken gjennom Spillere-siden. Fangsttrekningen kjører foreløpig i nettleseren og er ment for enspillerversjonen, ikke konkurranse eller handel.
+
+Ved endringer i `firestore.rules` publiserer GitHub Actions reglene automatisk når workflowens service account er konfigurert.

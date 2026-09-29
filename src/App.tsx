@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react'
 import {
   createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail,
   signInWithEmailAndPassword, signOut, type User,
@@ -7,6 +7,8 @@ import { auth } from './lib/firebase'
 import { ensureProfile, profileError, watchProfile, type Profile } from './lib/profile'
 import ProfilePage from './ProfilePage'
 import PlayersPage from './PlayersPage'
+
+const GamePage = lazy(() => import('./game/GamePage'))
 
 type Mode = 'login' | 'register' | 'reset'
 
@@ -140,6 +142,7 @@ function App() {
         <header className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
           <button onClick={() => setPage('home')} className="text-lg font-semibold tracking-wide">🎣 Fiskespill</button>
           {user && <div className="flex items-center gap-3">
+            <button onClick={() => setPage('home')} className="rounded-lg px-2 py-2 text-sm hover:bg-white/10">Spill</button>
             <button onClick={() => setPage('profile')} className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-white/10" aria-label="Åpne min profil">
               <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-cyan-300/15">
                 {profile?.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : '🎣'}
@@ -154,7 +157,8 @@ function App() {
         : user && page === 'profile' ? <div className="flex-1">
           {profileIssue && <p role="alert" className="mt-6 rounded-lg bg-rose-400/10 p-3 text-sm text-rose-200">{profileIssue}</p>}
           <ProfilePage user={user} profile={profile} onBack={() => setPage('home')} />
-        </div> : <section className="grid flex-1 items-center gap-12 py-16 md:grid-cols-2">
+        </div> : user ? <div className="flex-1"><Suspense fallback={<p className="py-16 text-slate-300">Laster spillet …</p>}><GamePage user={user} /></Suspense></div>
+        : <section className="grid flex-1 items-center gap-12 py-16 md:grid-cols-2">
           <div>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">Et nytt online fiskespill</p>
             <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">Eventyret starter ved vannkanten.</h1>
@@ -163,14 +167,6 @@ function App() {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
             {!auth ? <p role="alert" className="text-amber-200">Firebase er ikke konfigurert. Se README for oppsett.</p>
               : checking ? <p role="status" className="text-slate-300">Sjekker innlogging …</p>
-              : user ? <div>
-                  <p className="text-sm font-medium text-cyan-300">Du er logget inn</p>
-                  <h2 className="mt-2 break-words text-2xl font-bold">Velkommen, {user.email}</h2>
-                  <p className="mt-4 text-slate-300">Spillet er under utvikling. Kontoen din er klar.</p>
-                  {profileIssue && <p role="alert" className="mt-5 text-sm text-amber-200">{profileIssue}</p>}
-                  <button onClick={() => setPage('profile')} className="mt-6 rounded-lg bg-cyan-300 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-200">Min profil</button>
-                  {error && <p role="alert" className="mt-5 text-sm text-rose-300">{error}</p>}
-                </div>
               : <>
                   <h2 className="text-2xl font-bold">{mode === 'register' ? 'Opprett konto' : mode === 'reset' ? 'Glemt passord?' : 'Logg inn'}</h2>
                   <p className="mt-2 text-sm text-slate-400">{mode === 'reset' ? 'Vi sender deg en lenke for å velge nytt passord.' : 'Bruk e-postadressen din for å komme i gang.'}</p>

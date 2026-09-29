@@ -35,5 +35,90 @@ service cloud.firestore {
         && request.resource.data.createdAt == resource.data.createdAt;
       allow delete: if false;
     }
+
+    match /gameSaves/{uid} {
+      function owner() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+
+      function validSave() {
+        return request.resource.data.keys().hasAll(['mapId', 'x', 'y', 'facing', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['mapId', 'x', 'y', 'facing', 'updatedAt'])
+          && request.resource.data.mapId in ['havn', 'skogstjern']
+          && request.resource.data.x is int
+          && request.resource.data.x >= 1
+          && request.resource.data.x <= 22
+          && request.resource.data.y is int
+          && request.resource.data.y >= 1
+          && request.resource.data.y <= 14
+          && request.resource.data.facing in ['up', 'down', 'left', 'right']
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      allow get: if owner();
+      allow create, update: if owner() && validSave();
+      allow list, delete: if false;
+    }
+
+    match /fishBooks/{uid}/entries/{speciesId} {
+      function signedIn() {
+        return request.auth != null;
+      }
+
+      function owner() {
+        return signedIn() && request.auth.uid == uid;
+      }
+
+      function validEntry() {
+        return speciesId in ['mort', 'abbor', 'gjedde', 'gullorret']
+          && request.resource.data.keys().hasAll([
+            'speciesId', 'seenCount', 'caughtCount', 'smallestGrams',
+            'largestGrams', 'lastGrams', 'firstSeenAt', 'firstCaughtAt', 'updatedAt'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'speciesId', 'seenCount', 'caughtCount', 'smallestGrams',
+            'largestGrams', 'lastGrams', 'firstSeenAt', 'firstCaughtAt', 'updatedAt'
+          ])
+          && request.resource.data.speciesId == speciesId
+          && request.resource.data.seenCount is int
+          && request.resource.data.seenCount >= 1
+          && request.resource.data.caughtCount is int
+          && request.resource.data.caughtCount >= 0
+          && request.resource.data.caughtCount <= request.resource.data.seenCount
+          && request.resource.data.firstSeenAt is timestamp
+          && request.resource.data.updatedAt == request.time
+          && (
+            (request.resource.data.caughtCount == 0
+              && request.resource.data.smallestGrams == null
+              && request.resource.data.largestGrams == null
+              && request.resource.data.lastGrams == null
+              && request.resource.data.firstCaughtAt == null)
+            || (request.resource.data.caughtCount > 0
+              && request.resource.data.smallestGrams is int
+              && request.resource.data.largestGrams is int
+              && request.resource.data.lastGrams is int
+              && request.resource.data.smallestGrams >= 1
+              && request.resource.data.smallestGrams <= request.resource.data.lastGrams
+              && request.resource.data.lastGrams <= request.resource.data.largestGrams
+              && request.resource.data.largestGrams <= 100000
+              && request.resource.data.firstCaughtAt is timestamp)
+          );
+      }
+
+      allow get, list: if signedIn();
+      allow create: if owner() && validEntry()
+        && request.resource.data.seenCount == 1
+        && request.resource.data.caughtCount <= 1
+        && request.resource.data.firstSeenAt == request.time
+        && (request.resource.data.firstCaughtAt == null || request.resource.data.firstCaughtAt == request.time);
+      allow update: if owner() && validEntry()
+        && request.resource.data.seenCount == resource.data.seenCount + 1
+        && request.resource.data.caughtCount >= resource.data.caughtCount
+        && request.resource.data.caughtCount <= resource.data.caughtCount + 1
+        && request.resource.data.firstSeenAt == resource.data.firstSeenAt
+        && (request.resource.data.firstCaughtAt == resource.data.firstCaughtAt
+          || (resource.data.firstCaughtAt == null && request.resource.data.firstCaughtAt == request.time));
+      allow delete: if false;
+    }
   }
 }
