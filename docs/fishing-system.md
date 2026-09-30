@@ -19,3 +19,5 @@ Med dagens utstyr kan gjedde, sild, rødspette, brosme, lange, gjørs og kveite 
 - `node tools/check-world.mjs`: kart og tilgang til fiskeplasser.
 - `/tools/game-preview.html`: faktiske kontroller med lokal agnbruk, belønning og fangstbok, uten å skrive til en konto.
 - `firestore.rules` er oppdatert med alle 22 arts-ID-er og vektgrensen på 240 000 gram. Reglene må publiseres før nye arter kan lagres mot Firebase. Prosjektets eksisterende GitHub-workflow publiserer reglene ved endring på main. Ingen regler er publisert ved lokal testing. Reglene er kontrollert som tekst, ikke kjørt i en Firestore-emulator.
+
+Fiskeboken viser nå informasjon og fangstrekorder til venstre og en rullbar artsliste til høyre. Fokus i artslisten velger fisken automatisk. Opp/ned flytter én art av gangen via tastatur eller mobilens styrekryss, og listen ruller markeringen inn i synsfeltet. Ekstra bekreftelse er ikke nødvendig.

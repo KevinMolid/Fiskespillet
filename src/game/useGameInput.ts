@@ -30,6 +30,13 @@ export function useGameInput(options: Options) {
   function direction(value: Direction) {
     if (latest.current.locked) return
     if (!latest.current.modal) { latest.current.move(value); return }
+    const list = selected.current?.closest('[data-nav-list]')
+    if (list && (value === 'up' || value === 'down')) {
+      const entries = Array.from(list.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+      const index = entries.indexOf(selected.current!)
+      select(entries[Math.max(0, Math.min(entries.length - 1, index + (value === 'down' ? 1 : -1)))])
+      return
+    }
     const controls = buttons()
     const index = controls.indexOf(selected.current!)
     const points = controls.map(button => {

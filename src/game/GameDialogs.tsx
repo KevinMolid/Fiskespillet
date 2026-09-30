@@ -86,32 +86,29 @@ export function WardrobeDialog({ appearance, pending, onPreview, onSave, onClose
 
 export function FishBookDialog({ book, onClose }: { book: FishBookEntry[]; onClose: () => void }) {
   const [page, setPage] = useState(0)
-  const [guide, setGuide] = useState(true)
   const species = FISH[page]
   const entry = book.find(e => e.speciesId === species.id)
   const zones = availableZones(species)
   const baits = compatibleBaits(species)
-  return <Panel className="fish-book-dialog" title="Fiskeboken" subtitle={`Oppdaget ${book.length} av ${FISH.length} arter`} onClose={onClose}>
-    <div className="dialog-tabs" role="tablist" aria-label="Fiskebokvisning">
-      <button role="tab" aria-selected={guide} onClick={() => setGuide(true)}>Finn fisken</button>
-      <button role="tab" aria-selected={!guide} onClick={() => setGuide(false)}>Mine fangster</button>
+  return <Panel className="fish-book-dialog" title="Fiskeboken" subtitle={'Oppdaget '+book.length+' av '+FISH.length+' arter'} onClose={onClose}>
+    <div className="fish-book-layout">
+      <article className="fish-details" aria-label={species.name}>
+        <header className="fish-details-heading"><span className="fish-picture" role="img" aria-label={species.name}>{species.icon}</span><div><h3>{species.name}</h3><p>{species.rarity}</p><p>{weightRange(species)}</p></div></header>
+        <dl className="fish-facts">
+          <div><dt>Levested</dt><dd>{species.habitats.join(', ')}</dd></div>
+          <div><dt>Metoder</dt><dd>{species.methods.join(', ')}</dd></div>
+          <div><dt>I spillet</dt><dd>{zones.length ? zones.join(', ') : 'Ingen av dagens områder'}</dd></div>
+          <div><dt>Bruk nå</dt><dd>{!zones.length ? 'Ikke tilgjengelig her ennå.' : baits.length ? baits.map(id => ITEM_BY_ID[id].name).join(', ') : 'Krever fremtidig utstyr.'}</dd></div>
+        </dl>
+        <div className="fish-records">{entry ? <><p>Sett {entry.seenCount} · Fanget {entry.caughtCount}</p>{entry.caughtCount > 0 && <p>Minst {formatWeight(entry.smallestGrams!)} · Størst {formatWeight(entry.largestGrams!)}</p>}</> : <p>Ikke oppdaget ennå</p>}</div>
+      </article>
+      <div className="fish-list" role="listbox" aria-label="Fiskearter" data-nav-list>
+        {FISH.map((fish,index) => <button key={fish.id} role="option" aria-selected={index === page} tabIndex={index === page ? 0 : -1} data-autofocus={index === page ? '' : undefined}
+          onFocus={event => { setPage(index); event.currentTarget.scrollIntoView({ block: 'nearest' }) }} onClick={() => setPage(index)}>
+          <span>{fish.name}</span><small>{book.some(e => e.speciesId === fish.id) ? '●' : '○'}</small>
+        </button>)}
+      </div>
     </div>
-    {guide ? <article className="fish-entry fish-guide">
-      <div><h3>{species.icon} {species.name}</h3>
-        <p>{species.rarity} · {weightRange(species)}</p>
-        <p><strong>Levested:</strong> {species.habitats.join(', ')}</p>
-        <p><strong>Metoder:</strong> {species.methods.join(', ')}</p>
-        <p><strong>I spillet:</strong> {zones.length ? zones.join(', ') : 'Ingen av dagens områder'}</p>
-        <p><strong>Bruk nå:</strong> {!zones.length ? 'Ikke tilgjengelig her ennå.' : baits.length ? baits.map(id => ITEM_BY_ID[id].name).join(', ') : 'Krever utstyr som ikke finnes ennå.'}</p>
-      </div>
-    </article> : <article className="fish-entry">
-      <span className="fish-illustration" aria-hidden="true">{entry ? species.icon : '?'}</span>
-      <div><span className="fish-number">#{String(page + 1).padStart(2, '0')}</span><h3>{species.name}</h3>
-        <p>{entry ? species.description : 'Denne fisken er ikke oppdaget ennå.'}</p>
-        {entry && <p>Sett {entry.seenCount} · Fanget {entry.caughtCount}</p>}
-        {entry && entry.caughtCount > 0 && <dl><div><dt>Minst</dt><dd>{formatWeight(entry.smallestGrams!)}</dd></div><div><dt>Størst</dt><dd>{formatWeight(entry.largestGrams!)}</dd></div></dl>}
-      </div>
-    </article>}
-    <footer className="dialog-footer"><span>Din samling</span><Pager page={page} count={FISH.length} onChange={setPage} /></footer>
+    <footer className="fish-book-footer">↑ ↓ Velg fisk <span>{page+1} / {FISH.length}</span></footer>
   </Panel>
 }
