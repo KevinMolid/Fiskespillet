@@ -138,8 +138,8 @@ function App() {
 
   return (
     <main className="min-h-screen bg-[#061c2b] text-slate-100">
-      <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-8 sm:px-10">
-        <header className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
+      <div className={`app-shell ${user && page === 'home' ? 'game-active' : ''} mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-8 sm:px-10`}>
+        <header className="app-header flex items-center justify-between gap-4 border-b border-white/10 pb-5">
           <button onClick={() => setPage('home')} className="text-lg font-semibold tracking-wide">🎣 Fiskespill</button>
           {user && <div className="flex items-center gap-3">
             <button onClick={() => setPage('home')} className="rounded-lg px-2 py-2 text-sm hover:bg-white/10">Spill</button>

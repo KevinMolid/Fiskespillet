@@ -5,9 +5,11 @@ import * as persistence from './persistence'
 import { type FishBookEntry, type Inventory } from './persistence'
 import { GameMenu } from './GameMenu'
 import { PlaceNotice } from './PlaceNotice'
-import { FisherPortrait } from './FisherPortrait'
-import { CATEGORIES, FISH_REWARDS, ITEMS, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemCategory, type ItemId } from './items'
-import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, HAIR_COLORS, interactionAhead, MAPS, rollFish, SHIRT_COLORS, SKIN_COLORS, type Appearance, type Direction, type Position } from './world'
+import { InventoryDialog, ShopDialog, WardrobeDialog, FishBookDialog } from './GameDialogs'
+import { MobileControls } from './MobileControls'
+import { useGameInput } from './useGameInput'
+import { FISH_REWARDS } from './items'
+import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, interactionAhead, MAPS, rollFish, type Appearance, type Position } from './world'
 
 type Result = { name: string; icon: string; grams: number; caught: boolean; coins: number }
 
@@ -27,13 +29,11 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const [inventory, setInventory] = useState<Inventory | null>(null)
   const [inventoryView, setInventoryView] = useState<'bag' | 'chest' | null>(null)
   const [showShop, setShowShop] = useState(false)
-  const [itemCategory, setItemCategory] = useState<ItemCategory>('equipment')
   const [inventoryPending, setInventoryPending] = useState(false)
   const [inventoryError, setInventoryError] = useState('')
   const [appearance, setAppearance] = useState<Appearance | null>(null)
   const [draftLook, setDraftLook] = useState<Appearance>(DEFAULT_APPEARANCE)
   const [showWardrobe, setShowWardrobe] = useState(false)
-  const [wardrobeCursor, setWardrobeCursor] = useState({ row: 0, column: 0 })
   const [savingLook, setSavingLook] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -51,79 +51,6 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   useEffect(() => {
     scene.current?.setUiBlocked(uiBlocked)
   }, [uiBlocked, position])
-
-  useEffect(() => {
-    if (!inventoryView && !showBook && !showShop && !showWardrobe) return
-    const dialog = gameFrame.current?.querySelector<HTMLElement>('[role="dialog"]')
-    dialog?.querySelector<HTMLButtonElement>(showWardrobe ? 'button[aria-pressed="true"]' : 'button:not(:disabled)')?.focus()
-    function trapTab(event: KeyboardEvent) {
-      if (event.key !== 'Tab' || !dialog) return
-      const buttons = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
-      if (!buttons.length) return
-      event.preventDefault()
-      const index = buttons.indexOf(document.activeElement as HTMLButtonElement)
-      buttons[(index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length]?.focus()
-    }
-    window.addEventListener('keydown', trapTab, true)
-    return () => window.removeEventListener('keydown', trapTab, true)
-  }, [inventoryView, showBook, showShop, showWardrobe])
-
-  useEffect(() => {
-    function handleKey(event: KeyboardEvent) {
-      if (event.target instanceof HTMLElement && (event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName))) return
-      if (event.repeat && ['Enter', 'Escape', 'e', 'E', ' '].includes(event.key)) { event.preventDefault(); return }
-      if (showMenu && !showBook && !inventoryView) return // The menu owns focus and selection.
-      if (showBook && event.key === 'Escape') setShowBook(false)
-      else if (inventoryView && event.key === 'Escape' && !inventoryPending) setInventoryView(null)
-      else if (showShop && event.key === 'Escape' && !inventoryPending) setShowShop(false)
-      else if (showWardrobe) {
-        if (!['Escape', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'e', 'E', ' ', 'Enter'].includes(event.key)) return
-        event.preventDefault()
-        event.stopPropagation()
-        if (savingLook) return
-        if (event.key === 'Escape') closeWardrobe()
-        else if (event.key.startsWith('Arrow')) {
-          setWardrobeCursor(current => {
-            const row = event.key === 'ArrowUp' ? Math.max(0, current.row - 1)
-              : event.key === 'ArrowDown' ? Math.min(3, current.row + 1) : current.row
-            const maxColumn = row === 2 ? SKIN_COLORS.length - 1 : row === 3 ? 1 : 4
-            const column = event.key === 'ArrowLeft' ? Math.max(0, current.column - 1)
-              : event.key === 'ArrowRight' ? Math.min(maxColumn, current.column + 1)
-                : Math.min(current.column, maxColumn)
-            return { row, column }
-          })
-        } else if (!event.repeat) {
-          if (wardrobeCursor.row === 3) {
-            if (wardrobeCursor.column === 0) void confirmLook()
-            else closeWardrobe()
-          } else {
-            const key = (['shirt', 'hair', 'skin'] as const)[wardrobeCursor.row]
-            previewLook({ ...draftLook, [key]: wardrobeCursor.column })
-          }
-        }
-      }
-      else if ((result || error || signMessage) && ['Enter', ' ', 'e', 'E'].includes(event.key)) {
-        event.preventDefault()
-        setResult(null)
-        setError('')
-        setSignMessage(null)
-      }
-      else if (event.key === 'Enter' && !showBook && !inventoryView && !showShop && !busy && position && inventory) {
-        // Let unrelated page buttons retain their normal Enter action.
-        if (event.target instanceof HTMLElement && event.target.closest('button, a') && !gameFrame.current?.contains(event.target)) return
-        event.preventDefault()
-        scene.current?.setUiBlocked(true)
-        setShowMenu(true)
-      }
-      else return
-      if (['Escape', 'Enter', 'e', 'E', ' '].includes(event.key)) {
-        event.preventDefault()
-        event.stopPropagation()
-      }
-    }
-    window.addEventListener('keydown', handleKey, true)
-    return () => window.removeEventListener('keydown', handleKey, true)
-  }, [showMenu, showBook, showWardrobe, inventoryView, showShop, inventoryPending, savingLook, wardrobeCursor, draftLook, result, error, signMessage, appearance, busy, position, inventory])
 
   useEffect(() => {
     let active = true
@@ -157,7 +84,6 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       },
       onStorage() {
         setInventoryError('')
-        setItemCategory('equipment')
         setInventoryView('chest')
       },
       onDig(spotId) {
@@ -175,7 +101,6 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       },
       onWardrobe() {
         setDraftLook(currentLook.current)
-        setWardrobeCursor({ row: 0, column: currentLook.current.shirt })
         setShowWardrobe(true)
       },
       onSign(sign) {
@@ -299,8 +224,26 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
                 : canFish(position) && canFishNow ? 'Fisk' : null
   const caughtSpecies = book.filter(entry => entry.caughtCount > 0).length
 
-  return <div className="py-6">
-    <div ref={gameFrame} tabIndex={-1} className="relative aspect-[3/2] w-full overflow-hidden rounded-xl border-4 border-[#27474a] bg-[#183a36] shadow-2xl">
+  const modal = Boolean(showMenu || showBook || showWardrobe || inventoryView || showShop)
+  const inputContext = showWardrobe ? 'wardrobe' : inventoryView ?? (showBook ? 'book' : showShop ? 'shop' : showMenu ? 'menu' : error || result || signMessage ? 'message' : 'world')
+  function dismissMessage() { setError(''); setResult(null); setSignMessage(null) }
+  function menuControl() {
+    if (inventoryPending || savingLook || busy) return
+    if (showWardrobe) closeWardrobe()
+    else if (inventoryView) setInventoryView(null)
+    else if (showBook) setShowBook(false)
+    else if (showShop) setShowShop(false)
+    else if (error || result || signMessage) dismissMessage()
+    else if (showMenu) closeMenu()
+    else if (position && inventory) { scene.current?.setUiBlocked(true); setShowMenu(true) }
+  }
+  const input = useGameInput({ frame: gameFrame, context: inputContext, modal, locked: busy || inventoryPending || savingLook,
+    move: direction => { if (!uiBlocked) scene.current?.move(direction) },
+    action: () => { if (error || result || signMessage) dismissMessage(); else scene.current?.action() }, menu: menuControl,
+  })
+
+  return <div className="game-shell">
+    <div ref={gameFrame} tabIndex={-1} className="game-frame relative aspect-[3/2] w-full overflow-hidden rounded-xl border-4 border-[#27474a] bg-[#183a36] shadow-2xl">
       <div ref={canvasParent} className="absolute inset-0 [&_canvas]:block" aria-label="Spillkart" />
 
       {map && <PlaceNotice key={map.id} name={map.name} />}
@@ -322,108 +265,23 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
 
       {showMenu && !inventoryView && !showBook && inventory && appearance && <GameMenu
         inventory={inventory} appearance={appearance} caughtSpecies={caughtSpecies} speciesCount={FISH.length}
-        onBag={() => { setInventoryError(''); setItemCategory('equipment'); setInventoryView('bag') }}
+        onBag={() => { setInventoryError(''); setInventoryView('bag') }}
         onBook={() => setShowBook(true)} onClose={closeMenu}
       />}
 
-      {inventoryView && inventory && <section role="dialog" aria-label={inventoryView === 'chest' ? 'Oppbevaringskiste' : 'Inventar'} aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-3 text-[#233b3a] sm:p-6">
-        <div className="mx-auto max-w-3xl">
-          <div className="flex items-start justify-between gap-3">
-            <div><p className="text-xs font-bold uppercase tracking-widest">{inventoryView === 'chest' ? 'Soverommet' : 'Figuren din'}</p><h2 className="text-2xl font-black">{inventoryView === 'chest' ? 'Oppbevaringskiste' : 'Sekken'}</h2></div>
-            <button onClick={() => setInventoryView(null)} disabled={inventoryPending} className="rounded-md border-2 border-[#38564d] bg-[#f7f4df] px-3 py-2 text-sm font-bold disabled:opacity-50">{showMenu ? '← Spillmeny' : 'Lukk ✕'}</button>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Gjenstandskategori">
-            {CATEGORIES.map(category => <button key={category.id} role="tab" aria-selected={itemCategory === category.id} onClick={() => setItemCategory(category.id)} className={`rounded border-2 px-2 py-1 text-xs font-bold sm:text-sm ${itemCategory === category.id ? 'border-[#38564d] bg-[#225c66] text-white' : 'border-[#73897a] bg-[#f7f4df]'}`}>{category.name}</button>)}
-          </div>
-          {inventoryError && <p role="alert" className="mt-3 rounded bg-red-100 p-2 text-sm text-red-900">{inventoryError}</p>}
-          <div className={`mt-3 grid gap-3 ${inventoryView === 'chest' ? 'sm:grid-cols-2' : ''}`}>
-            {(['bag', ...(inventoryView === 'chest' ? ['storage'] as const : [])] as const).map(location => {
-              const entries = ITEMS.filter(item => item.category === itemCategory && (inventory[location][item.id] ?? 0) > 0)
-              return <div key={location} className="border-2 border-[#73897a] bg-[#f7f4df] p-3">
-                <h3 className="mb-2 font-black">{location === 'bag' ? 'Sekk' : 'Kiste'}</h3>
-                {entries.length === 0 && <p className="text-sm">Ingen gjenstander i denne kategorien.</p>}
-                {entries.map(item => <div key={item.id} className="flex items-center justify-between gap-2 border-t border-[#adbca9] py-2 text-sm">
-                  <div><p className="font-bold">{item.icon} {item.name} ×{inventory[location][item.id]}</p><p className="text-xs">{item.description}</p></div>
-                  <div className="flex shrink-0 flex-col gap-1">
-                    {location === 'bag' && item.bait && <button disabled={inventoryPending} onClick={() => void updateInventory(() => setEquippedBait(user.uid, inventory.equippedBait === item.id ? null : item.id as BaitId))} className="rounded bg-[#225c66] px-2 py-1 text-xs font-bold text-white disabled:opacity-50">{inventory.equippedBait === item.id ? 'Ta av agn' : 'Velg agn'}</button>}
-                    {inventoryView === 'chest' && <button disabled={inventoryPending} onClick={() => void updateInventory(() => transferItem(user.uid, item.id as ItemId, location === 'bag'))} className="rounded border border-[#38564d] px-2 py-1 text-xs font-bold disabled:opacity-50">{location === 'bag' ? 'Legg i kiste' : 'Ta i sekk'}</button>}
-                  </div>
-                </div>)}
-              </div>
-            })}
-          </div>
-          <p className="mt-3 text-xs">Valgt agn: {inventory.equippedBait ? ITEM_BY_ID[inventory.equippedBait].name : 'Ingen'} · Ett agn brukes per kast. Du må velge agn for å fiske. · {inventory.coins} mynter</p>
-        </div>
-      </section>}
-
-      {showShop && inventory && <section role="dialog" aria-label="Agnbutikken" aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-3 text-[#233b3a] sm:p-6">
-        <div className="mx-auto max-w-2xl">
-          <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-widest">Bryggehavn</p><h2 className="text-2xl font-black">Agnbutikken</h2><p className="text-sm font-bold">🪙 {inventory.coins} mynter</p></div>
-            <button onClick={() => setShowShop(false)} disabled={inventoryPending} className="rounded-md border-2 border-[#38564d] bg-[#f7f4df] px-3 py-2 text-sm font-bold disabled:opacity-50">Lukk ✕</button></div>
-          <p className="mt-3 text-sm">Velkommen! Fang fisk for å tjene mynter, og velg agn i sekken etter kjøpet.</p>
-          {inventoryError && <p role="alert" className="mt-2 rounded bg-red-100 p-2 text-sm text-red-900">{inventoryError}</p>}
-          <div className="mt-3 grid gap-2">
-            {(Object.keys(SHOP_PRICES) as BaitId[]).map(bait => <div key={bait} className="flex items-center justify-between gap-2 border-2 border-[#73897a] bg-[#f7f4df] p-2 text-sm">
-              <div><p className="font-black">{ITEM_BY_ID[bait].icon} {ITEM_BY_ID[bait].name}</p><p className="text-xs">{ITEM_BY_ID[bait].description} · {SHOP_PRICES[bait]} mynter/stk.</p></div>
-              <div className="flex shrink-0 gap-1">
-                {([1, 5] as const).map(quantity => <button key={quantity} disabled={inventoryPending || inventory.coins < SHOP_PRICES[bait] * quantity} onClick={() => void updateInventory(() => buyBait(user.uid, bait, quantity))} className="rounded bg-[#225c66] px-2 py-1 text-xs font-bold text-white disabled:opacity-40">Kjøp {quantity}</button>)}
-              </div>
-            </div>)}
-          </div>
-        </div>
-      </section>}
-
-      {showWardrobe && <section role="dialog" aria-label="Garderobe" aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-4 text-[#233b3a] sm:p-7">
-        <div className="mx-auto max-w-md">
-          <h2 className="text-2xl font-black">Garderoben</h2>
-          <div className="wardrobe-preview"><FisherPortrait appearance={draftLook} /><FisherPortrait appearance={draftLook} direction="right" /><FisherPortrait appearance={draftLook} direction="up" /></div>
-          <p className="mt-1 text-sm">Piltaster flytter markeringen. E eller mellomrom velger. Gå ned til Lagre eller Avbryt, eller trykk Escape for å gå ut.</p>
-          {([['Klær og hattebånd', 'shirt', SHIRT_COLORS], ['Hår', 'hair', HAIR_COLORS], ['Hudtone', 'skin', SKIN_COLORS]] as const).map(([label, key, colors], row) =>
-            <div key={key} className="mt-5"><h3 className="mb-2 font-bold">{label}</h3><div className="flex flex-wrap gap-3">
-              {colors.map((color, index) => <button key={index} type="button" aria-label={`${label} ${index + 1}`} aria-pressed={draftLook[key] === index}
-                onFocus={() => setWardrobeCursor({ row, column: index })}
-                onClick={() => { setWardrobeCursor({ row, column: index }); previewLook({ ...draftLook, [key]: index }) }}
-                className={`h-11 w-11 rounded border-4 ${draftLook[key] === index ? 'border-[#233b3a]' : 'border-white'} ${wardrobeCursor.row === row && wardrobeCursor.column === index ? 'ring-4 ring-amber-500 ring-offset-2' : ''}`} 
-                style={{ backgroundColor: `#${color.toString(16).padStart(6, '0')}` }} />)}
-            </div></div>)}
-          <div className="mt-8 flex gap-3">
-            <button onClick={() => void confirmLook()} onFocus={() => setWardrobeCursor({ row: 3, column: 0 })} onMouseEnter={() => setWardrobeCursor({ row: 3, column: 0 })} disabled={savingLook} className={`rounded-md bg-[#225c66] px-4 py-2 font-bold text-white disabled:opacity-50 ${wardrobeCursor.row === 3 && wardrobeCursor.column === 0 ? 'ring-4 ring-amber-500 ring-offset-2' : ''}`}>{savingLook ? 'Lagrer …' : 'Lagre utseende'}</button>
-            <button onClick={closeWardrobe} onFocus={() => setWardrobeCursor({ row: 3, column: 1 })} onMouseEnter={() => setWardrobeCursor({ row: 3, column: 1 })} disabled={savingLook} className={`rounded-md border-2 border-[#38564d] px-4 py-2 font-bold disabled:opacity-50 ${wardrobeCursor.row === 3 && wardrobeCursor.column === 1 ? 'ring-4 ring-amber-500 ring-offset-2' : ''}`}>Avbryt</button>
-          </div>
-        </div>
-      </section>}
-
-      {showBook && <section role="dialog" aria-label="Fiskeboken" aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-4 text-[#233b3a] sm:p-7">
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b-4 border-[#506f62] bg-[#e5e5c9] pb-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em]">Fiskespill</p>
-            <h2 className="text-2xl font-black sm:text-3xl">Fiskeboken</h2>
-            <p className="text-xs sm:text-sm">Oppdaget {book.length} av {FISH.length} arter · Fanget {caughtSpecies}</p>
-          </div>
-          <button onClick={() => setShowBook(false)} className="rounded-md border-2 border-[#38564d] bg-[#f7f4df] px-3 py-2 text-sm font-bold hover:bg-white">← Spillmeny</button>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {FISH.map((species, index) => {
-            const entry = book.find(item => item.speciesId === species.id)
-            return <article key={species.id} className="border-2 border-[#73897a] bg-[#f7f4df] p-3 shadow-[3px_3px_0_#8ba091]">
-              <h3 className="text-lg font-black">#{String(index + 1).padStart(2, '0')} {entry ? `${species.icon} ${species.name}` : '❔ Ukjent art'}</h3>
-              {entry ? <>
-                <p className="mt-1 text-sm">{species.description}</p>
-                <p className="mt-2 text-sm font-semibold">Sett {entry.seenCount} · Fanget {entry.caughtCount}</p>
-                {entry.caughtCount > 0 && <p className="text-sm">Minst {formatWeight(entry.smallestGrams!)} · Størst {formatWeight(entry.largestGrams!)}</p>}
-              </> : <p className="mt-2 text-sm">Ikke oppdaget ennå.</p>}
-            </article>
-          })}
-        </div>
-      </section>}
+      {inventoryView && inventory && <InventoryDialog inventory={inventory} chest={inventoryView === 'chest'} pending={inventoryPending} error={inventoryError}
+        onClose={() => setInventoryView(null)}
+        onBait={bait => void updateInventory(() => setEquippedBait(user.uid, bait))}
+        onTransfer={(id, toStorage) => void updateInventory(() => transferItem(user.uid, id, toStorage))} />}
+      {showShop && inventory && <ShopDialog inventory={inventory} pending={inventoryPending} error={inventoryError} onClose={() => setShowShop(false)} onBuy={(bait, amount) => void updateInventory(() => buyBait(user.uid, bait, amount))} />}
+      {showWardrobe && <WardrobeDialog appearance={draftLook} pending={savingLook} onPreview={previewLook} onSave={() => void confirmLook()} onClose={closeWardrobe} />}
+      {showBook && <FishBookDialog book={book} onClose={() => setShowBook(false)} />}
     </div>
 
-    <div className="mt-4 grid w-fit grid-cols-3 gap-1 sm:hidden">
-      <span /><button className="control-button" disabled={uiBlocked} aria-label="Gå opp" onClick={() => scene.current?.move('up')}>▲</button><span />
-      {(['left', 'down', 'right'] as Direction[]).map((direction, index) =>
-        <button key={direction} className="control-button" disabled={uiBlocked} aria-label={['Gå venstre', 'Gå ned', 'Gå høyre'][index]} onClick={() => scene.current?.move(direction)}>{['◀', '▼', '▶'][index]}</button>)}
-    </div>
-    <button className="mt-2 text-xs text-slate-300 underline sm:hidden" disabled={!inventory || !position || uiBlocked} onClick={() => { scene.current?.setUiBlocked(true); setShowMenu(true) }}>Spillmeny</button>
-    <p className="mt-3 text-xs text-slate-400">Enter: spillmeny · Piltaster / WASD: bevegelse · E / mellomrom: handling · Esc: tilbake · Gå på dører og trapper for å bytte rom.</p>
+    <MobileControls context={inputContext} onDirection={input.direction} onAction={input.action} onMenu={input.menu}
+      actionLabel={modal ? 'Velg' : (error || result || signMessage) ? 'Videre' : actionLabel ?? ''}
+      disabled={!position || !inventory || busy || inventoryPending || savingLook}
+      actionDisabled={!position || busy || inventoryPending || savingLook || (!modal && !actionLabel && !error && !result && !signMessage)} />
+    <p className="desktop-control-hint mt-3 text-xs text-slate-400">Enter: spillmeny · Piltaster / WASD: bevegelse · E / mellomrom: handling · Esc: tilbake · Gå på dører og trapper for å bytte rom.</p>
   </div>
 }

@@ -3,26 +3,39 @@ import { createRoot } from 'react-dom/client'
 import GamePage, { type GameServices } from '../src/game/GamePage'
 import { DEFAULT_APPEARANCE, START, type Position } from '../src/game/world'
 import type { Inventory } from '../src/game/persistence'
+import { Timestamp } from 'firebase/firestore'
+import { SHOP_PRICES } from '../src/game/items'
 import '../src/style.css'
 
 // This entry is served only by the dev server and uses in-memory services.
 // The actual GamePage, dialogs and Phaser scene are exercised without account writes.
 let savedPosition = { ...START }
 let savedAppearance = { ...DEFAULT_APPEARANCE }
-let inventory: Inventory = { bag: { rod: 1, shovel: 1, bread: 3, worm: 5 }, storage: {}, equippedBait: 'bread', coins: 60 }
+let inventory: Inventory = { bag: { rod: 1, shovel: 1, bread: 3, worm: 5, corn: 2, spinner: 1 }, storage: { rod: 1, bread: 5, worm: 5 }, equippedBait: 'bread', coins: 60 }
 const snapshot = () => structuredClone(inventory)
 const services: GameServices = {
   loadPosition: async () => ({ ...savedPosition }),
   loadAppearance: async () => ({ ...savedAppearance }),
-  loadFishBook: async () => [], loadInventory: async () => snapshot(),
+  loadFishBook: async () => [{ speciesId: 'gullorret', seenCount: 12, caughtCount: 4, smallestGrams: 450, largestGrams: 2700, lastGrams: 1100, firstSeenAt: Timestamp.fromMillis(0), firstCaughtAt: Timestamp.fromMillis(0), updatedAt: Timestamp.fromMillis(0) }], loadInventory: async () => snapshot(),
   savePosition: async (_uid, p) => {
     const output = document.querySelector('#preview-position')
     if (output) output.textContent = `${p.mapId}: ${p.x}, ${p.y} (${p.facing})`
   },
   saveAppearance: async (_uid, a) => { savedAppearance = { ...a } },
   setEquippedBait: async (_uid, bait) => { inventory = { ...inventory, equippedBait: bait }; return snapshot() },
-  transferItem: async () => { throw new Error('Oppbevaring testes i det ordinære spillet.') },
-  buyBait: async () => { throw new Error('Kjøp testes i det ordinære spillet.') },
+  transferItem: async (_uid, id, toStorage) => {
+    const from = toStorage ? inventory.bag : inventory.storage, to = toStorage ? inventory.storage : inventory.bag
+    if (!(from[id] ?? 0)) throw new Error('Gjenstanden finnes ikke her.')
+    from[id] = (from[id] ?? 0) - 1; to[id] = (to[id] ?? 0) + 1
+    if (!inventory.bag[id] && inventory.equippedBait === id) inventory.equippedBait = null
+    return snapshot()
+  },
+  buyBait: async (_uid, bait, amount) => {
+    const cost = SHOP_PRICES[bait] * amount
+    if (cost > inventory.coins) throw new Error('Ikke nok mynter.')
+    inventory.coins -= cost; inventory.bag[bait] = (inventory.bag[bait] ?? 0) + amount
+    return snapshot()
+  },
   digForWorms: async () => ({ inventory: snapshot(), amount: 2 }),
   recordEncounter: async () => snapshot(),
 }
@@ -33,16 +46,18 @@ function Preview() {
     savedPosition = { ...position }
     setRevision(current => current + 1)
   }
-  return <main className="mx-auto max-w-4xl px-4 py-5 text-white">
-    <h1 className="text-xl font-bold">Fiskespillet · meny og fisker</h1>
-    <p className="mt-1 text-xs text-slate-300">Lokal forhåndsvisning. Prøv Enter, Sekk, Fiskebok og garderoben. Ingen endringer lagres til kontoen.</p>
-    <div className="mt-3 flex flex-wrap gap-2">
+  return <main className="game-preview-page mx-auto max-w-4xl text-white">
+    <header className="preview-heading"><strong>Fiskespillet</strong><span>Lokal prøve · ingen kontolagring</span></header>
+    <GamePage key={revision} user={{ uid: 'local-preview' }} services={services} />
+    <details className="preview-tools p-3"><summary>Teststeder og posisjon</summary><div className="mt-3 flex flex-wrap gap-2">
       <button className="game-hud-button" onClick={() => go(START)}>Bryggehavn</button>
       <button className="game-hud-button" onClick={() => go({ mapId: 'havn', x: 46, y: 16, facing: 'right' })}>Ved kartgrensen</button>
       <button className="game-hud-button" onClick={() => go({ mapId: 'hjem2', x: 4, y: 9, facing: 'left' })}>Ved garderoben</button>
+      <button className="game-hud-button" onClick={() => go({ mapId: 'butikk', x: 12, y: 6, facing: 'up' })}>Ved butikkdisken</button>
+      <button className="game-hud-button" onClick={() => go({ mapId: 'hjem2', x: 20, y: 5, facing: 'up' })}>Ved kisten</button>
     </div>
-    <GamePage key={revision} user={{ uid: 'local-preview' }} services={services} />
     <p className="text-xs text-slate-400">Testposisjon: <output id="preview-position">{savedPosition.mapId}: {savedPosition.x}, {savedPosition.y}</output></p>
+    </details>
   </main>
 }
 document.body.style.background = '#172e30'

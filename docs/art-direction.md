@@ -32,3 +32,9 @@ Figurreferanser: [Red i FireRed/LeafGreen](https://bulbapedia.bulbagarden.net/wi
 Enter åpner spillmenyen. Utstyr står til venstre, Sekk/Fiskebok/Fortsett til høyre. Piltaster eller Tab flytter fokus, Enter/E/mellomrom velger, og Escape går tilbake. Sekk og Fiskebok lukkes tilbake til menyen. Kartet er blokkert mens en meny vises. Stedsnavn vises i 3,2 sekunder ved første innlasting og kartbytte; bevegelse eller åpning av menyen starter ikke varselet på nytt.
 
 `/tools/game-preview.html` bruker den faktiske GamePage med lokale minnetjenester, uten kontolagring. Test menyflyt, agnvalg, garderobens lagre/avbryt og kartovergang. `node tools/check-fisher.mjs` kontrollerer alle fargekombinasjoner, retninger og gangposisjoner.
+
+## Mobilkontroller
+
+Mobilvisningen bruker hele bredden, med styrekryss til venstre og A / meny-tilbake til høyre. Hold en retning inne for gjentatt bevegelse; slipp, avbrutt berøring, vindusbytte og menybytte stopper gjentakelsen. Alle knapper har `user-select: none`. Menyene bruker samme retningsnavigasjon på mobil og tastatur; E, mellomrom eller A aktiverer markert valg. Samlinger er delt i sider slik at sekken, kisten, butikken og fiskeboken ikke trenger rulling.
+
+`node tools/check-controls.mjs` tester gjentakelse, stopp og geografisk menyvalg. Mobiloppsettet er kontrollert i nettleser ved 320 × 568, 390 × 844 og 844 × 390; garderoben også ved 568 × 320. Forhåndsvisningens teststeder gir tilgang til garderobe, butikk og kiste med lokale minnedata. Berøring på fysisk telefon er ikke testet.

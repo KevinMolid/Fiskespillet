@@ -305,16 +305,26 @@ export class WorldScene extends Phaser.Scene {
 
 export function createWorld(parent: HTMLElement, position: Position, appearance: Appearance, callbacks: Callbacks) {
   const scene = new WorldScene(position, appearance, callbacks)
+  const dimensions = () => {
+    const mobile = window.matchMedia('(max-width: 767px), (max-width: 1023px) and (max-height: 500px)').matches
+    const width = mobile ? 12 * TILE_SIZE : VIEW_WIDTH * TILE_SIZE
+    return { width, height: mobile ? Math.round(width * parent.clientHeight / Math.max(1, parent.clientWidth)) : VIEW_HEIGHT * TILE_SIZE }
+  }
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
-    width: VIEW_WIDTH * TILE_SIZE,
-    height: VIEW_HEIGHT * TILE_SIZE,
+    ...dimensions(),
     backgroundColor: '#183a36',
     pixelArt: true,
     render: { antialias: false },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [scene],
   })
+  const observer = new ResizeObserver(() => {
+    const size = dimensions()
+    if (game.scale.width !== size.width || game.scale.height !== size.height) game.scale.resize(size.width, size.height)
+  })
+  observer.observe(parent)
+  game.events.once('destroy', () => observer.disconnect())
   return { game, scene }
 }
