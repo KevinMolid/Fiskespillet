@@ -1,14 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { type User } from 'firebase/auth'
 import { createWorld, type WorldScene } from './WorldScene'
-import { buyBait, digForWorms, loadAppearance, loadFishBook, loadInventory, loadPosition, recordEncounter, saveAppearance, savePosition, setEquippedBait, transferItem, type FishBookEntry, type Inventory } from './persistence'
+import * as persistence from './persistence'
+import { type FishBookEntry, type Inventory } from './persistence'
+import { GameMenu } from './GameMenu'
+import { PlaceNotice } from './PlaceNotice'
+import { FisherPortrait } from './FisherPortrait'
 import { CATEGORIES, FISH_REWARDS, ITEMS, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemCategory, type ItemId } from './items'
 import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, HAIR_COLORS, interactionAhead, MAPS, rollFish, SHIRT_COLORS, SKIN_COLORS, type Appearance, type Direction, type Position } from './world'
 
 type Result = { name: string; icon: string; grams: number; caught: boolean; coins: number }
 
-export default function GamePage({ user }: { user: User }) {
+export type GameServices = Pick<typeof persistence, 'buyBait' | 'digForWorms' | 'loadAppearance' | 'loadFishBook' | 'loadInventory' | 'loadPosition' | 'recordEncounter' | 'saveAppearance' | 'savePosition' | 'setEquippedBait' | 'transferItem'>
+
+export default function GamePage({ user, services = persistence }: { user: Pick<User, 'uid'>; services?: GameServices }) {
+  const { buyBait, digForWorms, loadAppearance, loadFishBook, loadInventory, loadPosition, recordEncounter, saveAppearance, savePosition, setEquippedBait, transferItem } = services
   const canvasParent = useRef<HTMLDivElement>(null)
+  const gameFrame = useRef<HTMLDivElement>(null)
   const scene = useRef<WorldScene | null>(null)
   const saveTimer = useRef<number | null>(null)
   const castTimer = useRef<number | null>(null)
@@ -32,14 +40,39 @@ export default function GamePage({ user }: { user: User }) {
   const [busyText, setBusyText] = useState('Du kastet ut snøret … Vent på napp!')
   const [result, setResult] = useState<Result | null>(null)
   const [showBook, setShowBook] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const closeMenu = useCallback(() => {
+    setShowMenu(false)
+    window.requestAnimationFrame(() => gameFrame.current?.focus({ preventScroll: true }))
+  }, [])
   const [signMessage, setSignMessage] = useState<{ title: string; text: string } | null>(null)
+  const uiBlocked = showMenu || showBook || showWardrobe || Boolean(inventoryView) || showShop || inventoryPending || savingLook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy
 
   useEffect(() => {
-    scene.current?.setUiBlocked(showBook || showWardrobe || Boolean(inventoryView) || showShop || inventoryPending || savingLook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy)
-  }, [showBook, showWardrobe, inventoryView, showShop, inventoryPending, savingLook, result, error, signMessage, busy, position])
+    scene.current?.setUiBlocked(uiBlocked)
+  }, [uiBlocked, position])
+
+  useEffect(() => {
+    if (!inventoryView && !showBook && !showShop && !showWardrobe) return
+    const dialog = gameFrame.current?.querySelector<HTMLElement>('[role="dialog"]')
+    dialog?.querySelector<HTMLButtonElement>(showWardrobe ? 'button[aria-pressed="true"]' : 'button:not(:disabled)')?.focus()
+    function trapTab(event: KeyboardEvent) {
+      if (event.key !== 'Tab' || !dialog) return
+      const buttons = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+      if (!buttons.length) return
+      event.preventDefault()
+      const index = buttons.indexOf(document.activeElement as HTMLButtonElement)
+      buttons[(index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length]?.focus()
+    }
+    window.addEventListener('keydown', trapTab, true)
+    return () => window.removeEventListener('keydown', trapTab, true)
+  }, [inventoryView, showBook, showShop, showWardrobe])
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
+      if (event.target instanceof HTMLElement && (event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName))) return
+      if (event.repeat && ['Enter', 'Escape', 'e', 'E', ' '].includes(event.key)) { event.preventDefault(); return }
+      if (showMenu && !showBook && !inventoryView) return // The menu owns focus and selection.
       if (showBook && event.key === 'Escape') setShowBook(false)
       else if (inventoryView && event.key === 'Escape' && !inventoryPending) setInventoryView(null)
       else if (showShop && event.key === 'Escape' && !inventoryPending) setShowShop(false)
@@ -75,10 +108,22 @@ export default function GamePage({ user }: { user: User }) {
         setError('')
         setSignMessage(null)
       }
+      else if (event.key === 'Enter' && !showBook && !inventoryView && !showShop && !busy && position && inventory) {
+        // Let unrelated page buttons retain their normal Enter action.
+        if (event.target instanceof HTMLElement && event.target.closest('button, a') && !gameFrame.current?.contains(event.target)) return
+        event.preventDefault()
+        scene.current?.setUiBlocked(true)
+        setShowMenu(true)
+      }
+      else return
+      if (['Escape', 'Enter', 'e', 'E', ' '].includes(event.key)) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
     }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [showBook, showWardrobe, inventoryView, showShop, inventoryPending, savingLook, wardrobeCursor, draftLook, result, error, signMessage, appearance])
+    window.addEventListener('keydown', handleKey, true)
+    return () => window.removeEventListener('keydown', handleKey, true)
+  }, [showMenu, showBook, showWardrobe, inventoryView, showShop, inventoryPending, savingLook, wardrobeCursor, draftLook, result, error, signMessage, appearance, busy, position, inventory])
 
   useEffect(() => {
     let active = true
@@ -243,35 +288,26 @@ export default function GamePage({ user }: { user: User }) {
   worldPosition.current = position
   const map = position ? MAPS[position.mapId] : null
   const canFishNow = Boolean(inventory?.bag.rod && inventory.equippedBait && inventory.bag[inventory.equippedBait])
-  const canAct = Boolean(position && ((canFish(position) && canFishNow) || ['sign', 'wardrobe', 'npc', 'soil', 'chest', 'shopCounter'].includes(interactionAhead(position).tile ?? '')))
+  const target = position ? interactionAhead(position) : null
+  const actionLabel = !position || uiBlocked ? null
+    : target?.npc ? 'Snakk'
+      : target?.tile === 'wardrobe' ? 'Skift klær'
+        : target?.tile === 'chest' ? 'Åpne kiste'
+          : target?.tile === 'shopCounter' ? 'Handle'
+            : target?.tile === 'soil' && inventory?.bag.shovel ? 'Grav'
+              : target?.sign ? 'Les'
+                : canFish(position) && canFishNow ? 'Fisk' : null
   const caughtSpecies = book.filter(entry => entry.caughtCount > 0).length
 
   return <div className="py-6">
-    <div className="relative aspect-[3/2] w-full overflow-hidden rounded-xl border-4 border-[#27474a] bg-[#183a36] shadow-2xl">
+    <div ref={gameFrame} tabIndex={-1} className="relative aspect-[3/2] w-full overflow-hidden rounded-xl border-4 border-[#27474a] bg-[#183a36] shadow-2xl">
       <div ref={canvasParent} className="absolute inset-0 [&_canvas]:block" aria-label="Spillkart" />
 
-      {!showBook && !showWardrobe && !inventoryView && !showShop && <>
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-[#092520d9] to-transparent p-2 sm:p-4">
-          <div className="rounded-md bg-[#092520d9] px-2 py-1 text-xs font-bold text-white sm:text-base">{map?.name ?? 'Laster kart …'}</div>
-          <div className="flex gap-2">
-            <button onClick={() => { setInventoryError(''); setInventoryView('bag') }} disabled={!inventory || busy} className="rounded-md border-2 border-[#dae7ce] bg-[#183f3b] px-2 py-1 text-xs font-bold text-white disabled:opacity-50 sm:px-3 sm:text-sm">
-              🎒 Sekk {inventory?.equippedBait ? `· ${ITEM_BY_ID[inventory.equippedBait].name}` : ''}
-            </button>
-            <button onClick={() => setShowBook(true)} disabled={!position || busy} className="rounded-md border-2 border-[#dae7ce] bg-[#183f3b] px-2 py-1 text-xs font-bold text-white disabled:opacity-50 sm:px-3 sm:text-sm">
-              📖 Fiskebok {caughtSpecies}/{FISH.length}
-            </button>
-            <button onClick={() => scene.current?.action()} disabled={!canAct || busy || Boolean(result) || Boolean(error) || Boolean(signMessage)} className="rounded-md border-2 border-[#dae7ce] bg-[#225c66] px-2 py-1 text-xs font-bold text-white disabled:opacity-40 sm:px-3 sm:text-sm">
-              ✦ Handling
-            </button>
-          </div>
-        </div>
+      {map && <PlaceNotice key={map.id} name={map.name} />}
 
-        <aside aria-label="Aktivt utstyr" className="pointer-events-none absolute left-2 top-12 rounded border-2 border-[#dae7ce] bg-[#092520e6] px-2 py-1 text-[10px] font-semibold leading-tight text-white shadow-md sm:left-4 sm:top-16 sm:px-3 sm:py-2 sm:text-xs">
-          <p className="mb-1 font-black uppercase tracking-wide">Aktivt utstyr</p>
-          <p>🎣 Stang: {inventory?.bag.rod ? 'Fiskestang' : 'Ingen'}</p>
-          <p>🪏 Redskap: {inventory?.bag.shovel ? 'Spade' : 'Ingen'}</p>
-          <p>🪱 Agn: {inventory?.equippedBait ? `${ITEM_BY_ID[inventory.equippedBait].name} ×${inventory.bag[inventory.equippedBait] ?? 0}` : 'Ingen'}</p>
-        </aside>
+      {!showMenu && !showBook && !showWardrobe && !inventoryView && !showShop && <>
+        {!position && <p role="status" className="absolute left-4 top-4 text-white">Laster kart …</p>}
+        {actionLabel && <button onClick={() => scene.current?.action()} className="context-action">{actionLabel}</button>}
 
         {(error || busy || result || signMessage) && <div role={error ? 'alert' : 'status'} className="absolute inset-x-2 bottom-2 min-h-16 border-4 border-[#405e59] bg-[#f7f4df] p-2 text-sm font-semibold text-[#233b3a] shadow-[0_4px_0_#122b29] sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:text-lg">
           {error ? <p>{error}</p>
@@ -284,11 +320,17 @@ export default function GamePage({ user }: { user: User }) {
         </div>}
       </>}
 
+      {showMenu && !inventoryView && !showBook && inventory && appearance && <GameMenu
+        inventory={inventory} appearance={appearance} caughtSpecies={caughtSpecies} speciesCount={FISH.length}
+        onBag={() => { setInventoryError(''); setItemCategory('equipment'); setInventoryView('bag') }}
+        onBook={() => setShowBook(true)} onClose={closeMenu}
+      />}
+
       {inventoryView && inventory && <section role="dialog" aria-label={inventoryView === 'chest' ? 'Oppbevaringskiste' : 'Inventar'} aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-3 text-[#233b3a] sm:p-6">
         <div className="mx-auto max-w-3xl">
           <div className="flex items-start justify-between gap-3">
             <div><p className="text-xs font-bold uppercase tracking-widest">{inventoryView === 'chest' ? 'Soverommet' : 'Figuren din'}</p><h2 className="text-2xl font-black">{inventoryView === 'chest' ? 'Oppbevaringskiste' : 'Sekken'}</h2></div>
-            <button onClick={() => setInventoryView(null)} disabled={inventoryPending} className="rounded-md border-2 border-[#38564d] bg-[#f7f4df] px-3 py-2 text-sm font-bold disabled:opacity-50">Lukk ✕</button>
+            <button onClick={() => setInventoryView(null)} disabled={inventoryPending} className="rounded-md border-2 border-[#38564d] bg-[#f7f4df] px-3 py-2 text-sm font-bold disabled:opacity-50">{showMenu ? '← Spillmeny' : 'Lukk ✕'}</button>
           </div>
           <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Gjenstandskategori">
             {CATEGORIES.map(category => <button key={category.id} role="tab" aria-selected={itemCategory === category.id} onClick={() => setItemCategory(category.id)} className={`rounded border-2 px-2 py-1 text-xs font-bold sm:text-sm ${itemCategory === category.id ? 'border-[#38564d] bg-[#225c66] text-white' : 'border-[#73897a] bg-[#f7f4df]'}`}>{category.name}</button>)}
@@ -334,17 +376,19 @@ export default function GamePage({ user }: { user: User }) {
       {showWardrobe && <section role="dialog" aria-label="Garderobe" aria-modal="true" className="absolute inset-0 overflow-y-auto bg-[#e5e5c9] p-4 text-[#233b3a] sm:p-7">
         <div className="mx-auto max-w-md">
           <h2 className="text-2xl font-black">Garderoben</h2>
+          <div className="wardrobe-preview"><FisherPortrait appearance={draftLook} /><FisherPortrait appearance={draftLook} direction="right" /><FisherPortrait appearance={draftLook} direction="up" /></div>
           <p className="mt-1 text-sm">Piltaster flytter markeringen. E eller mellomrom velger. Gå ned til Lagre eller Avbryt, eller trykk Escape for å gå ut.</p>
-          {([['Genser', 'shirt', SHIRT_COLORS], ['Hår', 'hair', HAIR_COLORS], ['Hudtone', 'skin', SKIN_COLORS]] as const).map(([label, key, colors], row) =>
+          {([['Klær og hattebånd', 'shirt', SHIRT_COLORS], ['Hår', 'hair', HAIR_COLORS], ['Hudtone', 'skin', SKIN_COLORS]] as const).map(([label, key, colors], row) =>
             <div key={key} className="mt-5"><h3 className="mb-2 font-bold">{label}</h3><div className="flex flex-wrap gap-3">
               {colors.map((color, index) => <button key={index} type="button" aria-label={`${label} ${index + 1}`} aria-pressed={draftLook[key] === index}
+                onFocus={() => setWardrobeCursor({ row, column: index })}
                 onClick={() => { setWardrobeCursor({ row, column: index }); previewLook({ ...draftLook, [key]: index }) }}
                 className={`h-11 w-11 rounded border-4 ${draftLook[key] === index ? 'border-[#233b3a]' : 'border-white'} ${wardrobeCursor.row === row && wardrobeCursor.column === index ? 'ring-4 ring-amber-500 ring-offset-2' : ''}`} 
                 style={{ backgroundColor: `#${color.toString(16).padStart(6, '0')}` }} />)}
             </div></div>)}
           <div className="mt-8 flex gap-3">
-            <button onClick={() => void confirmLook()} onMouseEnter={() => setWardrobeCursor({ row: 3, column: 0 })} disabled={savingLook} className={`rounded-md bg-[#225c66] px-4 py-2 font-bold text-white disabled:opacity-50 ${wardrobeCursor.row === 3 && wardrobeCursor.column === 0 ? 'ring-4 ring-amber-500 ring-offset-2' : ''}`}>{savingLook ? 'Lagrer …' : 'Lagre utseende'}</button>
-            <button onClick={closeWardrobe} onMouseEnter={() => setWardrobeCursor({ row: 3, column: 1 })} disabled={savingLook} className={`rounded-md border-2 border-[#38564d] px-4 py-2 font-bold disabled:opacity-50 ${wardrobeCursor.row === 3 && wardrobeCursor.column === 1 ? 'ring-4 ring-amber-500 ring-offset-2' : ''}`}>Avbryt</button>
+            <button onClick={() => void confirmLook()} onFocus={() => setWardrobeCursor({ row: 3, column: 0 })} onMouseEnter={() => setWardrobeCursor({ row: 3, column: 0 })} disabled={savingLook} className={`rounded-md bg-[#225c66] px-4 py-2 font-bold text-white disabled:opacity-50 ${wardrobeCursor.row === 3 && wardrobeCursor.column === 0 ? 'ring-4 ring-amber-500 ring-offset-2' : ''}`}>{savingLook ? 'Lagrer …' : 'Lagre utseende'}</button>
+            <button onClick={closeWardrobe} onFocus={() => setWardrobeCursor({ row: 3, column: 1 })} onMouseEnter={() => setWardrobeCursor({ row: 3, column: 1 })} disabled={savingLook} className={`rounded-md border-2 border-[#38564d] px-4 py-2 font-bold disabled:opacity-50 ${wardrobeCursor.row === 3 && wardrobeCursor.column === 1 ? 'ring-4 ring-amber-500 ring-offset-2' : ''}`}>Avbryt</button>
           </div>
         </div>
       </section>}
@@ -356,7 +400,7 @@ export default function GamePage({ user }: { user: User }) {
             <h2 className="text-2xl font-black sm:text-3xl">Fiskeboken</h2>
             <p className="text-xs sm:text-sm">Oppdaget {book.length} av {FISH.length} arter · Fanget {caughtSpecies}</p>
           </div>
-          <button onClick={() => setShowBook(false)} className="rounded-md border-2 border-[#38564d] bg-[#f7f4df] px-3 py-2 text-sm font-bold hover:bg-white">Lukk ✕</button>
+          <button onClick={() => setShowBook(false)} className="rounded-md border-2 border-[#38564d] bg-[#f7f4df] px-3 py-2 text-sm font-bold hover:bg-white">← Spillmeny</button>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {FISH.map((species, index) => {
@@ -375,10 +419,11 @@ export default function GamePage({ user }: { user: User }) {
     </div>
 
     <div className="mt-4 grid w-fit grid-cols-3 gap-1 sm:hidden">
-      <span /><button className="control-button" aria-label="Gå opp" onClick={() => scene.current?.move('up')}>▲</button><span />
+      <span /><button className="control-button" disabled={uiBlocked} aria-label="Gå opp" onClick={() => scene.current?.move('up')}>▲</button><span />
       {(['left', 'down', 'right'] as Direction[]).map((direction, index) =>
-        <button key={direction} className="control-button" aria-label={['Gå venstre', 'Gå ned', 'Gå høyre'][index]} onClick={() => scene.current?.move(direction)}>{['◀', '▼', '▶'][index]}</button>)}
+        <button key={direction} className="control-button" disabled={uiBlocked} aria-label={['Gå venstre', 'Gå ned', 'Gå høyre'][index]} onClick={() => scene.current?.move(direction)}>{['◀', '▼', '▶'][index]}</button>)}
     </div>
-    <p className="mt-3 text-xs text-slate-400">Bevegelse: piltaster eller WASD · Handling: E eller mellomrom (fisk, grav, butikk, skilt, NPC, kiste og garderobe) · Gå på dører og trapper for å bytte rom · Åpninger i kartkanten bytter kart.</p>
+    <button className="mt-2 text-xs text-slate-300 underline sm:hidden" disabled={!inventory || !position || uiBlocked} onClick={() => { scene.current?.setUiBlocked(true); setShowMenu(true) }}>Spillmeny</button>
+    <p className="mt-3 text-xs text-slate-400">Enter: spillmeny · Piltaster / WASD: bevegelse · E / mellomrom: handling · Esc: tilbake · Gå på dører og trapper for å bytte rom.</p>
   </div>
 }

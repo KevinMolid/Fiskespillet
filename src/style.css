@@ -4,3 +4,41 @@
 body { margin: 0; }
 .control-button { width: 3rem; height: 3rem; border: 1px solid #ffffff33; border-radius: .5rem; background: #ffffff14; color: white; touch-action: manipulation; }
 .control-button:active { background: #67e8f966; }
+.control-button:disabled { opacity: .35; }
+
+.game-hud-button { border: 1px solid #e4dfbc88; border-radius: 5px; background: #173d36e8; color: #faf3d8; padding: 7px 11px; font-size: 12px; font-weight: 700; }
+.game-hud-button:disabled { opacity: .4; }
+.game-hud-button kbd { margin-left: 7px; color: #bdd0b9; font-size: 10px; }
+.context-action { position: absolute; top: 8px; right: 8px; border: 1px solid #e4dfbc88; border-radius: 4px; background: #173d36ed; color: #faf3d8; padding: 4px 8px; font-size: 11px; line-height: 16px; font-weight: 700; cursor: pointer; }
+.context-action:focus-visible { outline: 2px solid #dac38c; outline-offset: 2px; }
+.place-notice { position: absolute; top: 16px; left: 16px; pointer-events: none; color: #fff5d8; background: #183a36ed; border-left: 4px solid #dac38c; padding: 10px 24px 12px 14px; border-radius: 0 4px 4px 0; box-shadow: 0 3px 0 #102d2c44; animation: place-arrival 3.2s ease both; }
+.place-notice span { display: block; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #b7cbb2; }
+.place-notice strong { display: block; font-size: 19px; font-family: Georgia, serif; margin-top: 2px; }
+@keyframes place-arrival { 0% { opacity: 0; transform: translateX(-12px); } 10%, 78% { opacity: 1; transform: translateX(0); } 100% { opacity: 0; transform: translateX(-6px); } }
+.game-menu { position: absolute; inset: 0; overflow-y: auto; padding: clamp(12px, 4%, 32px); color: #263e38; background: #eae4cfee; backdrop-filter: blur(3px); border: 6px solid #476454; box-shadow: inset 0 0 0 2px #f7f0d9; }
+.game-menu-heading { border-bottom: 2px solid #9aa68a; padding-bottom: 12px; margin-bottom: 18px; }
+.game-menu-heading > span { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #667b62; }
+.game-menu-heading h2 { margin: 2px 0 0; font: bold clamp(22px, 4vw, 32px) Georgia, serif; }
+.game-menu-columns { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(12px, 4%, 28px); align-items: start; }
+.equipment-card { background: #f9f3df; border: 2px solid #96a486; box-shadow: 3px 3px 0 #b4baa2; padding: 14px; }
+.equipment-portrait { display: flex; align-items: center; gap: 12px; padding-bottom: 9px; border-bottom: 1px solid #d3d4b8; font-size: 14px; font-weight: 800; }
+.fisher-portrait { width: 66px; height: 78px; flex: 0 0 auto; image-rendering: pixelated; }
+.equipment-card dl { margin: 10px 0; font-size: 13px; }
+.equipment-card dl > div { display: flex; gap: 6px; flex-wrap: wrap; justify-content: space-between; padding: 6px 0; }
+.equipment-card dt { color: #6f7b65; }.equipment-card dd { font-weight: 700; }
+.menu-coins { border-top: 1px solid #d3d4b8; padding-top: 10px; font-weight: 800; color: #8e6f36; }.menu-coins span { font-size: 11px; font-weight: 500; }
+.game-menu-list { display: grid; gap: 10px; }
+.game-menu-list button { display: grid; grid-template-columns: 30px 1fr 10px; align-items: center; gap: 10px; text-align: left; padding: 16px 12px; border: 2px solid #9aa68a; border-radius: 3px; background: #f8f2dc; box-shadow: 0 3px 0 #b4baa2; cursor: pointer; }
+.game-menu-list button:hover, .game-menu-list button:focus-visible { outline: 3px solid #bb9349; outline-offset: 2px; background: #fff8df; }
+.game-menu-list button strong { display: block; font-size: 16px; }.game-menu-list button small { display: block; font-size: 10px; margin-top: 3px; color: #6f7b65; }.menu-symbol { font-size: 23px; text-align: center; }
+.game-menu-hint { margin: 20px 0 0; font-size: 10px; color: #687761; text-align: right; }
+.wardrobe-preview { display: flex; justify-content: center; gap: 20px; margin: 14px 0; padding: 10px; background: #ced7b7; border: 2px solid #9cae8c; }
+@media (max-width: 520px) {
+  .game-hud-button { font-size: 10px; padding: 5px 7px; }.game-hud-button kbd { display: none; }
+  .place-notice { top: 8px; left: 8px; padding: 5px 10px; }.place-notice strong { font-size: 14px; }.place-notice span { font-size: 7px; }
+  .game-menu { padding: 10px; border-width: 3px; }.game-menu-heading { padding-bottom: 6px; margin-bottom: 10px; }.game-menu-heading > span { display: none; }
+  .game-menu-columns { gap: 10px; }.equipment-card { padding: 6px; }.equipment-portrait { gap: 3px; padding-bottom: 4px; font-size: 10px; }.equipment-portrait .fisher-portrait { width: 25px; height: 30px; }
+  .equipment-card dl { margin: 2px 0; font-size: 10px; }.equipment-card dl > div { padding: 2px 0; }.menu-coins { padding-top: 3px; font-size: 11px; line-height: 1.2; }
+  .game-menu-list { gap: 7px; }.game-menu-list button { padding: 9px 6px; gap: 5px; grid-template-columns: 18px 1fr 6px; }.game-menu-list button strong { font-size: 11px; }.game-menu-list button small { display: none; }.menu-symbol { font-size: 15px; }.game-menu-hint { font-size: 8px; margin-top: 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .place-notice { animation: none; } }

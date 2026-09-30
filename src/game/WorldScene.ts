@@ -1,7 +1,8 @@
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorTile } from './outdoorTiles'
 import { isWalkable } from './world'
-import { canFish, digSpotAhead, edgeTransition, HAIR_COLORS, interactionAhead, MAPS, SHIRT_COLORS, SKIN_COLORS, stepTransition, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, type Appearance, type Direction, type Position, type Tile } from './world'
+import { fisherPixels } from './fisherSprite'
+import { canFish, digSpotAhead, edgeTransition, interactionAhead, MAPS, stepTransition, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, type Appearance, type Direction, type Position, type Tile } from './world'
 
 type Callbacks = {
   onPosition: (position: Position, transitioned: boolean) => void
@@ -24,6 +25,8 @@ export class WorldScene extends Phaser.Scene {
   private fishing = false
   private uiBlocked = false
   private nextMove = 0
+  private stride = 0
+  private nextStride = 1
 
   constructor(position: Position, appearance: Appearance, callbacks: Callbacks) {
     super('world')
@@ -87,6 +90,9 @@ export class WorldScene extends Phaser.Scene {
       return
     }
     this.moving = true
+    this.stride = this.nextStride
+    this.nextStride = this.nextStride === 1 ? 2 : 1
+    this.drawPlayer()
     this.tweens.add({
       targets: this.player,
       x: x * TILE_SIZE + 16,
@@ -95,7 +101,9 @@ export class WorldScene extends Phaser.Scene {
       ease: 'Linear',
       onComplete: () => {
         this.moving = false
+        this.stride = 0
         this.position = { ...this.position, x, y }
+        this.drawPlayer()
         const target = stepTransition(this.position) ?? edgeTransition(this.position)
         if (target) this.enterMap(target)
         else this.callbacks.onPosition({ ...this.position }, false)
@@ -287,16 +295,9 @@ export class WorldScene extends Phaser.Scene {
     if (!this.player) return
     this.player.removeAll(true)
     const g = this.add.graphics()
-    g.fillStyle(0x152d33).fillEllipse(0, 11, 22, 7)
-    g.fillStyle(SHIRT_COLORS[this.appearance.shirt]).fillRect(-9, -2, 18, 14)
-    g.fillStyle(0x183345).fillRect(-9, 10, 7, 4).fillRect(2, 10, 7, 4)
-    g.fillStyle(SKIN_COLORS[this.appearance.skin]).fillRect(-7, -13, 14, 12)
-    g.fillStyle(HAIR_COLORS[this.appearance.hair]).fillRect(-10, -17, 20, 5).fillRect(-7, -22, 14, 6)
-    if (this.position.facing !== 'up') {
-      g.fillStyle(0x162833)
-      if (this.position.facing === 'left') g.fillRect(-6, -8, 2, 2)
-      else if (this.position.facing === 'right') g.fillRect(4, -8, 2, 2)
-      else g.fillRect(-4, -8, 2, 2).fillRect(3, -8, 2, 2)
+    g.fillStyle(0x213e39, 0.3).fillRect(-12, 10, 24, 4)
+    for (const pixel of fisherPixels(this.appearance, this.position.facing, this.stride)) {
+      g.fillStyle(pixel.color).fillRect(pixel.x * 2 - 18, pixel.y * 2 - 30, 2, 2)
     }
     this.player.add(g)
   }
