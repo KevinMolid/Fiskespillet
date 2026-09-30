@@ -48,3 +48,5 @@ Mira er erstattet av Kevin, Oda og Magnus i Bryggehavn, og Bendik og Nils ved Sk
 `node tools/check-npcs.mjs` kontrollerer rutene, samtaletilgang og alle 60 figurposer. `/tools/npc-preview.html` viser figurene fra tre sider. Spillforhåndsvisningen har teststeder ved hver NPC.
 
 Morten står bak disken i agnbutikken med mørkt hår og grønn skjorte. Den gamle inntegnede butikkfiguren er fjernet. Stillestående NPC-er vender nedover som standard, kikker kort til siden og vender tilbake. Spilleren og NPC-ene sorteres etter føttenes skjermposisjon hver bilderamme, også under bevegelse og etter kartbytte. Oda har egne tydelige øyne, et lite smil og hår ved kinnene uten mørk hakeskygge. Figurtesten dekker nå seks NPC-er og 72 poser.
+
+NPC-ene har nå egne profil- og baktegninger: én synlig arm og ett øye/brilleglass i profil, nese og føtter i gangretningen, samt ryggkrage og hår som dekker bakhodet. Odas skulderlange hår ligger over genseren. Forhåndsvisningen viser alle fire retninger. Figurtestene kontrollerer også speilvendte profiler og at ansiktsdetaljer ikke vises bakfra.

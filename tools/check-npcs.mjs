@@ -28,3 +28,18 @@ for(const direction of ['down','left','right']) {
 }
 assert(NPCS.filter(n=>n.route.length===1).every(n=>n.facing==='down'))
 assert.equal(MAPS.butikk.tiles[4][12],'floor','Remove the old painted shopkeeper')
+
+// Profiles must mirror exactly, and rear hair must cover the face area.
+for (const npc of NPCS) {
+ for (let stride=0; stride<3; stride++) {
+  const right=npcPixels(npc,'right',stride)
+  const left=new Map(npcPixels(npc,'left',stride).map(p=>[`${p.x},${p.y}`,p.color]))
+  for(const pixel of right) assert.equal(left.get(`${17-pixel.x},${pixel.y}`),pixel.color,`${npc.name}: asymmetric profile`)
+  const rear=npcPixels(npc,'up',stride)
+  assert(!rear.some(p=>[0xfff4df,0x384d42,0xb56c69,0xa8c6c0].includes(p.color)),`${npc.name}: face details on back`)
+  if(!npc.bald) {
+   const top=npc.tall?-2:0
+   assert.equal(rear.find(p=>p.x===9&&p.y===6+top)?.color,npc.hair,`${npc.name}: exposed face through rear hair`)
+  }
+ }
+}
