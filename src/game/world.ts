@@ -57,6 +57,7 @@ rect(havn, 22, 10, 24, 15, 'path')
 rect(havn, 10, 15, 47, 17, 'path')
 rect(havn, 23, 17, 25, 20, 'path')
 havn[21][16] = 'sign'
+havn[11][25] = 'sign'
 havn[16][47] = 'exit'
 
 const skogstjern = grid()
@@ -195,7 +196,10 @@ export const MAPS: Record<MapId, WorldMap> = {
     neighbors: { right: 'skogstjern' },
     fishingZone: 'havn',
     transitions: { '8,11': { mapId: 'hjem', x: 12, y: 14, facing: 'up' }, '23,9': { mapId: 'butikk', x: 12, y: 14, facing: 'up' } },
-    signs: { '16,21': { title: 'Bryggehavn', text: 'Her finnes mort og abbor. En sjelden gang biter gjedda på.' } },
+    signs: {
+      '16,21': { title: 'Bryggehavn', text: 'Her finnes mort og abbor. En sjelden gang biter gjedda på.' },
+      '25,11': { title: 'Mortens FiskShop.', text: 'Helt vanlig fiskeutstyr.' },
+    },
   },
   hjem: {
     id: 'hjem', name: 'Hjemme · 1. etasje',

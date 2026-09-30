@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict'
 const bundle = await build({ stdin: { contents: `export * from './src/game/world'; export * from './src/game/npcs'; export * from './src/game/npcSprite'`, resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'esm' })
 const { NPCS, MAPS, isWalkable, npcPixels } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
-assert.equal(NPCS.length,6)
-assert.equal(new Set(NPCS.map(n=>n.id)).size,6)
+assert.equal(NPCS.length,8)
+assert.equal(new Set(NPCS.map(n=>n.id)).size,8)
 for(const n of NPCS) {
  for(let i=0;i<n.route.length;i++) {
   const [x,y]=n.route[i],next=n.route[(i+1)%n.route.length]

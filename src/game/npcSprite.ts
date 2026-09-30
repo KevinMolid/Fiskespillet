@@ -122,7 +122,7 @@ export function npcPixels(npc: NpcDefinition, direction: Direction = 'down', str
   if (!npc.bald) {
     rect(5,1+top,8,3,npc.hair); rect(4,3+top,2,npc.longHair ? 11 : 3,npc.hair)
     rect(6,1+top,6,1,ink)
-    rect(6,2+top,4,1,npc.longHair ? 0x49404b : npc.hair < 0x800000 ? 0x625246 : 0xefcf7d)
+    rect(6,2+top,4,1,tint(npc.hair,24))
     rect(12,3+top,2,npc.longHair ? 11 : 3,npc.hair)
   }
   {
