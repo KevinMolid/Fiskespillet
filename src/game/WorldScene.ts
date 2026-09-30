@@ -30,7 +30,7 @@ export class WorldScene extends Phaser.Scene {
   private nextMove = 0
   private stride = 0
   private nextStride = 1
-  private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; sprite: Phaser.GameObjects.Container }[] = []
+  private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container }[] = []
   private conversations = new Map<string, number>()
 
   constructor(position: Position, appearance: Appearance, callbacks: Callbacks) {
@@ -44,7 +44,7 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#183a36')
     this.drawMap()
     this.player = this.add.container(this.position.x * TILE_SIZE + 16, this.position.y * TILE_SIZE + 16)
-    this.player.setDepth(20)
+    this.player.setDepth(this.player.y)
     this.drawPlayer()
     this.setCameraBounds()
     this.cameras.main.roundPixels = true
@@ -58,6 +58,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   update(time: number) {
+    // Sort by feet every frame, including between tween endpoints and after map changes.
+    this.player?.setDepth(this.player.y)
+    for (const n of this.residents) n.sprite.setDepth(n.sprite.y)
     this.updateResidents(time)
     if (!this.keys || this.moving || this.fishing || this.uiBlocked || time < this.nextMove) return
     const key = this.keys
@@ -199,7 +202,7 @@ export class WorldScene extends Phaser.Scene {
         ?? [[0,1],[1,0],[0,-1],[-1,0]].map(([dx,dy]) => [definition.route[0][0]+dx,definition.route[0][1]+dy] as const).find(([x,y]) => isWalkable(map.tiles[y]?.[x]) && (x !== this.position.x || y !== this.position.y))
       if (!start) continue
       const [x,y] = start
-      const resident = { definition, x, y, fromX: x, fromY: y, facing: definition.facing, index: Math.max(0, definition.route.indexOf(start)), moving: false, next: this.time.now + 1800, sprite: this.add.container(x*TILE_SIZE+16,y*TILE_SIZE+16).setDepth(20) }
+      const resident = { definition, x, y, fromX: x, fromY: y, facing: definition.facing, index: Math.max(0, definition.route.indexOf(start)), moving: false, next: this.time.now + 1800, nextLook: this.time.now + 5000 + this.residents.length * 1300, lookingAside: false, sprite: this.add.container(x*TILE_SIZE+16,y*TILE_SIZE+16).setDepth(y*TILE_SIZE+16) }
       this.residents.push(resident)
       this.drawResident(resident)
     }
@@ -338,7 +341,16 @@ export class WorldScene extends Phaser.Scene {
   private updateResidents(time: number) {
     if (this.uiBlocked || this.fishing || this.moving) return
     for (const n of this.residents) {
-      if (n.definition.route.length < 2 || n.moving || time < n.next) continue
+      if (n.definition.route.length < 2) {
+        if (time >= n.nextLook) {
+          n.lookingAside = !n.lookingAside
+          n.facing = n.lookingAside ? (Math.floor(time / 1000) % 2 ? 'left' : 'right') : 'down'
+          n.nextLook = time + (n.lookingAside ? 1400 : 6500)
+          this.drawResident(n)
+        }
+        continue
+      }
+      if (n.moving || time < n.next) continue
       // Let the player read the action prompt and start a conversation without chasing.
       if (Math.abs(n.x-this.position.x)+Math.abs(n.y-this.position.y) <= 1) continue
       const index = (n.index+1)%n.definition.route.length

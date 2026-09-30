@@ -167,7 +167,7 @@ hjem[15][12] = 'door'
 const butikk = indoorGrid()
 rect(butikk, 7, 5, 16, 5, 'counter')
 butikk[5][12] = 'shopCounter'
-butikk[4][12] = 'npc'
+butikk[4][12] = 'floor'
 rect(butikk, 4, 4, 5, 7, 'furniture')
 rect(butikk, 18, 4, 19, 7, 'furniture')
 butikk[0][5] = 'window'

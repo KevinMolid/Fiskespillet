@@ -20,13 +20,23 @@ export function npcPixels(npc: NpcDefinition, direction: Direction = 'down', str
   if (!npc.bald) {
     rect(5,1+top,8,3,npc.hair); rect(4,3+top,2,npc.longHair ? 11 : 3,npc.hair)
     rect(6,1+top,6,1,ink)
-    rect(6,2+top,4,1,npc.longHair ? 0x49404b : 0xefcf7d)
-    rect(12,3+top,2,npc.longHair ? 11 : 3,npc.hair)
+    rect(6,2+top,4,1,npc.longHair ? 0x49404b : npc.hair < 0x800000 ? 0x625246 : 0xefcf7d)
+    if (!(npc.longHair && side)) rect(12,3+top,2,npc.longHair ? 11 : 3,npc.hair)
     if (back) rect(5,3+top,8,npc.longHair ? 10 : 6,npc.hair)
   }
   if (!back) {
     if (side) { rect(12,6+top,2,1,ink); rect(14,7+top,1,2,skin) }
     else { rect(6,6+top,1,2,ink); rect(11,6+top,1,2,ink) }
+    if (npc.longHair) {
+      // Open face, bright eyes and a small smile; keep the hair beside the cheeks.
+      rect(side ? 9 : 6,9+top,side ? 5 : 6,3,skin)
+      for (const x of side ? [11] : [6,10]) {
+        rect(x,6+top,2,2,0xfff4df)
+        rect(x+1,6+top,1,2,0x384d42)
+        rect(x,5+top,2,1,ink)
+      }
+      rect(side ? 12 : 8,10+top,2,1,0xb56c69)
+    }
     if (npc.glasses) {
       outline(side ? 10 : 5,5+top,4,4,0xa8c6c0)
       if (!side) { outline(10,5+top,4,4,0xa8c6c0); rect(9,6+top,1,1,ink) }

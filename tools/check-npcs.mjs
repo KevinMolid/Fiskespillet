@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict'
 const bundle = await build({ stdin: { contents: `export * from './src/game/world'; export * from './src/game/npcs'; export * from './src/game/npcSprite'`, resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'esm' })
 const { NPCS, MAPS, isWalkable, npcPixels } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
-assert.equal(NPCS.length,5)
-assert.equal(new Set(NPCS.map(n=>n.id)).size,5)
+assert.equal(NPCS.length,6)
+assert.equal(new Set(NPCS.map(n=>n.id)).size,6)
 for(const n of NPCS) {
  for(let i=0;i<n.route.length;i++) {
   const [x,y]=n.route[i],next=n.route[(i+1)%n.route.length]
@@ -19,3 +19,12 @@ for(const n of NPCS) {
  assert(n.lines.length>=2)
  console.log(`${n.name}: route, interaction access and 12 sprite poses OK`)
 }
+
+const oda=NPCS.find(n=>n.id==='oda')
+for(const direction of ['down','left','right']) {
+ const pixels=npcPixels(oda,direction)
+ assert(pixels.some(p=>p.color===0xfff4df),'Oda needs visible eye whites')
+ assert(pixels.some(p=>p.color===0xb56c69),'Oda needs her smile')
+}
+assert(NPCS.filter(n=>n.route.length===1).every(n=>n.facing==='down'))
+assert.equal(MAPS.butikk.tiles[4][12],'floor','Remove the old painted shopkeeper')

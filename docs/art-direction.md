@@ -46,3 +46,5 @@ Mira er erstattet av Kevin, Oda og Magnus i Bryggehavn, og Bendik og Nils ved Sk
 `npcSprite.ts` tegner originale figurer med samme pikselstørrelse og konturfarge som spilleren. De har egne kroppsformer, klær, hår, briller og skjegg. Oda og Nils følger korte lukkede ruter. Figurenes kilde- og målrute reserveres under bevegelse, og de starter ikke et steg mens spilleren beveger seg eller en meny er åpen. De venter når spilleren er på en naborute. NPC-bevegelse oppdaterer handlingsknappen uten å lagre spillerposisjonen.
 
 `node tools/check-npcs.mjs` kontrollerer rutene, samtaletilgang og alle 60 figurposer. `/tools/npc-preview.html` viser figurene fra tre sider. Spillforhåndsvisningen har teststeder ved hver NPC.
+
+Morten står bak disken i agnbutikken med mørkt hår og grønn skjorte. Den gamle inntegnede butikkfiguren er fjernet. Stillestående NPC-er vender nedover som standard, kikker kort til siden og vender tilbake. Spilleren og NPC-ene sorteres etter føttenes skjermposisjon hver bilderamme, også under bevegelse og etter kartbytte. Oda har egne tydelige øyne, et lite smil og hår ved kinnene uten mørk hakeskygge. Figurtesten dekker nå seks NPC-er og 72 poser.
