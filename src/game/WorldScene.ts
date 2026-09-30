@@ -1,3 +1,5 @@
+import { NPCS, type NpcDefinition } from './npcs'
+import { npcPixels } from './npcSprite'
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorTile } from './outdoorTiles'
 import { isWalkable } from './world'
@@ -5,6 +7,7 @@ import { fisherPixels } from './fisherSprite'
 import { canFish, digSpotAhead, edgeTransition, interactionAhead, MAPS, stepTransition, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, type Appearance, type Direction, type Position, type Tile } from './world'
 
 type Callbacks = {
+  onInteractionChange?: () => void
   onPosition: (position: Position, transitioned: boolean) => void
   onFishing: () => void
   onSign: (sign: { title: string; text: string }) => void
@@ -27,6 +30,8 @@ export class WorldScene extends Phaser.Scene {
   private nextMove = 0
   private stride = 0
   private nextStride = 1
+  private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; sprite: Phaser.GameObjects.Container }[] = []
+  private conversations = new Map<string, number>()
 
   constructor(position: Position, appearance: Appearance, callbacks: Callbacks) {
     super('world')
@@ -49,9 +54,11 @@ export class WorldScene extends Phaser.Scene {
     this.input.keyboard?.addCapture('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE')
     this.input.keyboard?.on('keydown-E', () => this.action())
     this.input.keyboard?.on('keydown-SPACE', () => this.action())
+    this.callbacks.onInteractionChange?.()
   }
 
   update(time: number) {
+    this.updateResidents(time)
     if (!this.keys || this.moving || this.fishing || this.uiBlocked || time < this.nextMove) return
     const key = this.keys
     const direction: Direction | null =
@@ -85,7 +92,7 @@ export class WorldScene extends Phaser.Scene {
       } else this.callbacks.onPosition({ ...this.position }, false)
       return
     }
-    if (!isWalkable(tile)) {
+    if (!isWalkable(tile) || this.residents.some(n => (n.x === x && n.y === y) || (n.moving && n.fromX === x && n.fromY === y))) {
       this.callbacks.onPosition({ ...this.position }, false)
       return
     }
@@ -114,7 +121,16 @@ export class WorldScene extends Phaser.Scene {
   action() {
     if (this.moving || this.fishing || this.uiBlocked) return
     const target = interactionAhead(this.position)
-    if (target.npc) this.callbacks.onSign({ title: target.npc.name, text: target.npc.text })
+    const resident = this.npcAhead()
+    if (resident) {
+      resident.facing = ({ up: 'down', down: 'up', left: 'right', right: 'left' } as const)[this.position.facing]
+      this.drawResident(resident)
+      const index = this.conversations.get(resident.definition.id) ?? 0
+      this.conversations.set(resident.definition.id, index + 1)
+      this.setUiBlocked(true)
+      this.callbacks.onSign({ title: resident.definition.name, text: resident.definition.lines[index % resident.definition.lines.length] })
+    }
+    else if (target.npc) this.callbacks.onSign({ title: target.npc.name, text: target.npc.text })
     else if (target.tile === 'wardrobe') this.callbacks.onWardrobe()
     else if (target.tile === 'chest') this.callbacks.onStorage()
     else if (target.tile === 'shopCounter') this.callbacks.onShop()
@@ -158,6 +174,11 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private drawMap() {
+    for (const resident of this.residents) {
+      this.tweens.killTweensOf(resident.sprite)
+      resident.sprite.destroy()
+    }
+    this.residents = []
     this.terrain?.destroy()
     const graphics = this.add.graphics()
     this.terrain = graphics
@@ -172,6 +193,16 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     for (const decoration of map.decorations ?? []) drawDecoration(graphics, decoration)
+    for (const definition of NPCS.filter(n => n.mapId === this.position.mapId)) {
+      // A saved player may be standing on a route's start; choose a free route tile or wait off-route.
+      const start = definition.route.find(([x,y]) => x !== this.position.x || y !== this.position.y)
+        ?? [[0,1],[1,0],[0,-1],[-1,0]].map(([dx,dy]) => [definition.route[0][0]+dx,definition.route[0][1]+dy] as const).find(([x,y]) => isWalkable(map.tiles[y]?.[x]) && (x !== this.position.x || y !== this.position.y))
+      if (!start) continue
+      const [x,y] = start
+      const resident = { definition, x, y, fromX: x, fromY: y, facing: definition.facing, index: Math.max(0, definition.route.indexOf(start)), moving: false, next: this.time.now + 1800, sprite: this.add.container(x*TILE_SIZE+16,y*TILE_SIZE+16).setDepth(20) }
+      this.residents.push(resident)
+      this.drawResident(resident)
+    }
   }
 
   private drawTile(g: Phaser.GameObjects.Graphics, tile: Tile, x: number, y: number, col: number, row: number, indoor: boolean) {
@@ -289,6 +320,39 @@ export class WorldScene extends Phaser.Scene {
       g.fillRect(x + 22, y + 23, 4, 3)
     }
     g.lineStyle(1, 0x102b28, 0.14).strokeRect(x, y, TILE_SIZE, TILE_SIZE)
+  }
+
+  npcAhead() {
+    const [dx,dy] = { up: [0,-1], down: [0,1], left: [-1,0], right: [1,0] }[this.position.facing]
+    return this.residents.find(n => !n.moving && n.x === this.position.x+dx && n.y === this.position.y+dy)
+  }
+
+  private drawResident(n: WorldScene['residents'][number], stride = 0) {
+    n.sprite.removeAll(true)
+    const g = this.add.graphics()
+    g.fillStyle(0x213e39, 0.3).fillRect(-12,10,24,4)
+    for (const p of npcPixels(n.definition,n.facing,stride)) g.fillStyle(p.color).fillRect(p.x*2-18,p.y*2-30,2,2)
+    n.sprite.add(g)
+  }
+
+  private updateResidents(time: number) {
+    if (this.uiBlocked || this.fishing || this.moving) return
+    for (const n of this.residents) {
+      if (n.definition.route.length < 2 || n.moving || time < n.next) continue
+      // Let the player read the action prompt and start a conversation without chasing.
+      if (Math.abs(n.x-this.position.x)+Math.abs(n.y-this.position.y) <= 1) continue
+      const index = (n.index+1)%n.definition.route.length
+      const [x,y] = n.definition.route[index]
+      if (!isWalkable(MAPS[this.position.mapId].tiles[y]?.[x]) || (x === this.position.x && y === this.position.y) || this.residents.some(other => other !== n && ((other.x === x && other.y === y) || (other.moving && other.fromX === x && other.fromY === y)))) continue
+      n.facing = x > n.x ? 'right' : x < n.x ? 'left' : y > n.y ? 'down' : 'up'
+      n.fromX=n.x; n.fromY=n.y; n.x=x; n.y=y; n.index=index; n.moving=true
+      this.drawResident(n,index%2+1)
+      this.tweens.add({ targets:n.sprite, x:x*TILE_SIZE+16, y:y*TILE_SIZE+16, duration:300, onComplete:()=>{
+        n.moving=false; n.next=this.time.now+1600; this.drawResident(n)
+        this.callbacks.onInteractionChange?.()
+      } })
+      this.callbacks.onInteractionChange?.()
+    }
   }
 
   private drawPlayer() {

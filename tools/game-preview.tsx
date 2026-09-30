@@ -1,3 +1,4 @@
+import { NPCS } from '../src/game/npcs'
 import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import GamePage, { type GameServices } from '../src/game/GamePage'
@@ -55,6 +56,7 @@ function Preview() {
       <button className="game-hud-button" onClick={() => go({ mapId: 'hjem2', x: 4, y: 9, facing: 'left' })}>Ved garderoben</button>
       <button className="game-hud-button" onClick={() => go({ mapId: 'butikk', x: 12, y: 6, facing: 'up' })}>Ved butikkdisken</button>
       <button className="game-hud-button" onClick={() => go({ mapId: 'hjem2', x: 20, y: 5, facing: 'up' })}>Ved kisten</button>
+      {NPCS.map(npc => <button key={npc.id} className="game-hud-button" onClick={() => go({ mapId: npc.mapId, x: npc.route[0][0], y: npc.route[0][1]+1, facing: 'up' })}>Ved {npc.name}</button>)}
     </div>
     <p className="text-xs text-slate-400">Testposisjon: <output id="preview-position">{savedPosition.mapId}: {savedPosition.x}, {savedPosition.y}</output></p>
     </details>

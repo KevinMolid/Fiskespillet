@@ -71,7 +71,7 @@ skogstjern[13][17] = 'sign'
 skogstjern[16][0] = 'exit'
 
 havn[11][8] = 'door'
-havn[12][14] = 'npc'
+havn[12][14] = 'grass'
 havn[17][3] = 'soil'
 havn[19][6] = 'soil'
 havn[20][15] = 'soil'
@@ -195,7 +195,6 @@ export const MAPS: Record<MapId, WorldMap> = {
     neighbors: { right: 'skogstjern' },
     fishingZone: 'havn',
     transitions: { '8,11': { mapId: 'hjem', x: 12, y: 14, facing: 'up' }, '23,9': { mapId: 'butikk', x: 12, y: 14, facing: 'up' } },
-    npcs: { '14,12': { name: 'Mira', text: 'Velkommen hjem! Garderoben står i soverommet oppe. Gå gjennom døren og ta trappen i stuen.' } },
     signs: { '16,21': { title: 'Bryggehavn', text: 'Her finnes mort og abbor. En sjelden gang biter gjedda på.' } },
   },
   hjem: {

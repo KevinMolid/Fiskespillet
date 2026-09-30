@@ -38,3 +38,11 @@ Enter åpner spillmenyen. Utstyr står til venstre, Sekk/Fiskebok/Fortsett til h
 Mobilvisningen bruker hele bredden, med styrekryss til venstre og A / meny-tilbake til høyre. Hold en retning inne for gjentatt bevegelse; slipp, avbrutt berøring, vindusbytte og menybytte stopper gjentakelsen. Alle knapper har `user-select: none`. Menyene bruker samme retningsnavigasjon på mobil og tastatur; E, mellomrom eller A aktiverer markert valg. Samlinger er delt i sider slik at sekken, kisten, butikken og fiskeboken ikke trenger rulling.
 
 `node tools/check-controls.mjs` tester gjentakelse, stopp og geografisk menyvalg. Mobiloppsettet er kontrollert i nettleser ved 320 × 568, 390 × 844 og 844 × 390; garderoben også ved 568 × 320. Forhåndsvisningens teststeder gir tilgang til garderobe, butikk og kiste med lokale minnedata. Berøring på fysisk telefon er ikke testet.
+
+## Naboer og vandreruter
+
+Mira er erstattet av Kevin, Oda og Magnus i Bryggehavn, og Bendik og Nils ved Skogstjernet. Definisjoner og to vekslende replikker per figur ligger i `src/game/npcs.ts`. Kevin, Bendik og Oda gir spilltips; Magnus og Nils forteller tydelig fiktive rykter om fisk som ikke er lagt til. Fisketabellene er uendret.
+
+`npcSprite.ts` tegner originale figurer med samme pikselstørrelse og konturfarge som spilleren. De har egne kroppsformer, klær, hår, briller og skjegg. Oda og Nils følger korte lukkede ruter. Figurenes kilde- og målrute reserveres under bevegelse, og de starter ikke et steg mens spilleren beveger seg eller en meny er åpen. De venter når spilleren er på en naborute. NPC-bevegelse oppdaterer handlingsknappen uten å lagre spillerposisjonen.
+
+`node tools/check-npcs.mjs` kontrollerer rutene, samtaletilgang og alle 60 figurposer. `/tools/npc-preview.html` viser figurene fra tre sider. Spillforhåndsvisningen har teststeder ved hver NPC.

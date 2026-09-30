@@ -24,6 +24,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const castTimer = useRef<number | null>(null)
   const casting = useRef(false)
   const interacting = useRef(false)
+  const [, refreshInteraction] = useState(0)
   const [position, setPosition] = useState<Position | null>(null)
   const [book, setBook] = useState<FishBookEntry[]>([])
   const [inventory, setInventory] = useState<Inventory | null>(null)
@@ -70,6 +71,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   useEffect(() => {
     if (!canvasParent.current || !position || !appearance || !inventory || scene.current) return
     const { game, scene: world } = createWorld(canvasParent.current, position, appearance, {
+      onInteractionChange() { refreshInteraction(n => n + 1) },
       onPosition(next, transitioned) {
         setPosition(next)
         if (saveTimer.current !== null) window.clearTimeout(saveTimer.current)
@@ -215,7 +217,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const canFishNow = Boolean(inventory?.bag.rod && inventory.equippedBait && inventory.bag[inventory.equippedBait])
   const target = position ? interactionAhead(position) : null
   const actionLabel = !position || uiBlocked ? null
-    : target?.npc ? 'Snakk'
+    : (scene.current?.npcAhead() || target?.npc) ? 'Snakk'
       : target?.tile === 'wardrobe' ? 'Skift klær'
         : target?.tile === 'chest' ? 'Åpne kiste'
           : target?.tile === 'shopCounter' ? 'Handle'
@@ -252,7 +254,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
         {!position && <p role="status" className="absolute left-4 top-4 text-white">Laster kart …</p>}
         {actionLabel && <button onClick={() => scene.current?.action()} className="context-action">{actionLabel}</button>}
 
-        {(error || busy || result || signMessage) && <div role={error ? 'alert' : 'status'} className="absolute inset-x-2 bottom-2 min-h-16 border-4 border-[#405e59] bg-[#f7f4df] p-2 text-sm font-semibold text-[#233b3a] shadow-[0_4px_0_#122b29] sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:text-lg">
+        {(error || busy || result || signMessage) && <div role={error ? 'alert' : 'status'} className="absolute inset-x-2 bottom-2 min-h-16 border-4 border-[#405e59] bg-[#f7f4df] p-2 pb-6 text-sm font-semibold text-[#233b3a] shadow-[0_4px_0_#122b29] sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:pb-8 sm:text-lg">
           {error ? <p>{error}</p>
             : busy ? <p>{busyText}</p>
               : result ? <p>{result.icon} {result.caught
