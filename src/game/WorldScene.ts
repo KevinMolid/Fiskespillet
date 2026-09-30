@@ -1,4 +1,6 @@
 import Phaser from 'phaser'
+import { drawDecoration, drawOutdoorTile } from './outdoorTiles'
+import { isWalkable } from './world'
 import { canFish, digSpotAhead, edgeTransition, HAIR_COLORS, interactionAhead, MAPS, SHIRT_COLORS, SKIN_COLORS, stepTransition, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, type Appearance, type Direction, type Position, type Tile } from './world'
 
 type Callbacks = {
@@ -80,7 +82,7 @@ export class WorldScene extends Phaser.Scene {
       } else this.callbacks.onPosition({ ...this.position }, false)
       return
     }
-    if (['wall', 'water', 'sign', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window', 'counter', 'stove', 'sofa', 'soil', 'chest', 'shopCounter'].includes(tile)) {
+    if (!isWalkable(tile)) {
       this.callbacks.onPosition({ ...this.position }, false)
       return
     }
@@ -157,9 +159,11 @@ export class WorldScene extends Phaser.Scene {
         const tile = map.tiles[y][x]
         const left = x * TILE_SIZE
         const top = y * TILE_SIZE
-        this.drawTile(graphics, tile, left, top, x, y, map.id === 'hjem' || map.id === 'hjem2' || map.id === 'butikk')
+        if (map.id === 'havn' || map.id === 'skogstjern') drawOutdoorTile(graphics, map, x, y)
+        else this.drawTile(graphics, tile, left, top, x, y, true)
       }
     }
+    for (const decoration of map.decorations ?? []) drawDecoration(graphics, decoration)
   }
 
   private drawTile(g: Phaser.GameObjects.Graphics, tile: Tile, x: number, y: number, col: number, row: number, indoor: boolean) {

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="nb">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fiskespillet · kartverksted</title>
+<style>
+  * { box-sizing: border-box } body { margin: 0; background: #192f30; color: #ede6c8; font: 15px system-ui; }
+  main { max-width: 1160px; padding: 32px; margin: auto; } h1 { margin: 8px 0; font: 32px Georgia; }
+  p { color: #b8c7b5; line-height: 1.6; } .eyebrow { letter-spacing: 3px; font-size: 11px; color: #d8bc81; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0; } button { cursor: pointer; border: 1px solid #627668; border-radius: 5px; padding: 10px 18px; background: #29433f; color: #eee5c8; }
+  button[aria-pressed=true] { background: #d9c58f; color: #233f39; } canvas { image-rendering: pixelated; max-width: 100%; }
+  #overview { line-height: 0; border: 8px solid #3b5247; aspect-ratio: 3 / 2; } #play { width: 768px; height: 512px; max-width: 100%; }
+  #status { min-height: 24px; } details { margin: 24px 0; } a { color: #d9c58f; }
+</style>
+<main>
+  <div class="eyebrow">FISKESPILLET / ORIGINALT TILESET</div>
+  <h1>Bryggehavn & Skogstjernet</h1>
+  <p>Varme trehus, lyse grusstier og et stille skogstjern. Egne pikseltegninger med 16 × 16 grunnruter, vist i dobbel størrelse.</p>
+  <nav><button id="harbor" aria-pressed="true">Bryggehavn</button><button id="forest" aria-pressed="false">Skogstjernet</button></nav>
+  <div id="overview"></div>
+  <h2>Gå en tur</h2><p>Piltaster / WASD: gå · E: undersøk. Lokal grafikkvisning uten innlogging eller lagring.</p>
+  <div id="play"></div><p id="status" role="status">Velkommen til Bryggehavn.</p>
+  <nav aria-label="Bevegelse"><button data-direction="left">← Venstre</button><button data-direction="up">↑ Opp</button><button data-direction="down">↓ Ned</button><button data-direction="right">→ Høyre</button></nav>
+  <details><summary>Visuelle referanser og tile-oppbygning</summary><p>Inspirert av sammenhengende takflater, avgrensede hager, lyse gangveier og vegetasjonsrammer i <a href="https://www.poketools.com/firered/pallet-town">Pallet Town fra FireRed/LeafGreen</a>. Alle tegningene her er laget for Fiskespillet. Stier og vann velger kanter ut fra naborutene. Trær, tak, fasader, vinduer, dører, gjerder, steiner, brygger og jord kompletteres av blomster, siv, benker, lykter og tønner.</p></details>
+</main>
+<script type="module" src="./art-preview.ts"></script>
+</html>

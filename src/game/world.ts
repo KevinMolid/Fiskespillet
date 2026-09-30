@@ -1,9 +1,14 @@
 import { BAIT_WEIGHTS, type BaitId } from './items'
+import type { Decoration } from './outdoorTiles'
 
 export type MapId = 'havn' | 'skogstjern' | 'hjem' | 'hjem2' | 'butikk'
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type Position = { mapId: MapId; x: number; y: number; facing: Direction }
-export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture' | 'bed' | 'table' | 'rug' | 'window' | 'hearth' | 'houseWall' | 'roof' | 'stairs' | 'counter' | 'stove' | 'sofa' | 'soil' | 'chest' | 'shopCounter'
+export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture' | 'bed' | 'table' | 'rug' | 'window' | 'hearth' | 'houseWall' | 'roof' | 'stairs' | 'counter' | 'stove' | 'sofa' | 'soil' | 'chest' | 'shopCounter' | 'fence' | 'rock'
+
+export function isWalkable(tile: Tile | undefined): boolean {
+  return tile !== undefined && ['grass', 'path', 'dock', 'exit', 'door', 'floor', 'rug', 'stairs'].includes(tile)
+}
 
 export const WIDTH = 48
 export const HEIGHT = 32
@@ -22,6 +27,7 @@ export type WorldMap = {
   signs: Record<string, { title: string; text: string }>
   transitions?: Record<string, Position>
   npcs?: Record<string, { name: string; text: string }>
+  decorations?: Decoration[]
 }
 
 function grid(fill: Tile = 'grass'): Tile[][] {
@@ -73,6 +79,69 @@ skogstjern[20][5] = 'soil'
 skogstjern[26][13] = 'soil'
 skogstjern[23][44] = 'soil'
 
+// Keep the existing entrances, fishing pier and saved interaction coordinates.
+// Larger roof planes and connected lanes give the village readable landmarks.
+rect(havn, 5, 5, 13, 8, 'roof')
+rect(havn, 18, 4, 29, 6, 'roof')
+rect(havn, 7, 13, 9, 16, 'path')
+rect(havn, 10, 13, 14, 14, 'path')
+rect(havn, 14, 15, 26, 18, 'path')
+rect(havn, 14, 19, 26, 19, 'path')
+rect(havn, 16, 20, 26, 20, 'path')
+rect(havn, 22, 20, 26, 25, 'dock')
+rect(havn, 3, 3, 15, 3, 'fence')
+rect(havn, 3, 4, 3, 12, 'fence')
+rect(havn, 4, 13, 6, 13, 'fence')
+rect(havn, 11, 13, 13, 13, 'fence')
+rect(havn, 32, 7, 42, 7, 'fence')
+rect(havn, 34, 12, 41, 12, 'fence')
+for (const [x, y] of [[1, 2], [2, 2], [16, 2], [17, 2], [31, 2], [33, 3], [36, 2], [39, 3], [43, 2], [45, 4], [44, 10], [45, 12], [2, 20], [9, 20], [31, 20], [38, 19], [44, 20]] as const) havn[y][x] = 'wall'
+for (const [x, y] of [[4, 21], [11, 21], [34, 21], [42, 21]] as const) havn[y][x] = 'rock'
+
+// A stepped shoreline and groves replace the rectangular pond silhouette.
+rect(skogstjern, 18, 5, 21, 6, 'grass')
+rect(skogstjern, 39, 5, 42, 7, 'grass')
+rect(skogstjern, 41, 17, 42, 19, 'grass')
+rect(skogstjern, 18, 18, 20, 19, 'grass')
+rect(skogstjern, 24, 20, 35, 21, 'water')
+rect(skogstjern, 14, 15, 19, 17, 'dock')
+for (const [x, y] of [[3, 3], [4, 3], [7, 3], [10, 3], [13, 4], [15, 5], [3, 7], [7, 8], [10, 8], [14, 10], [3, 12], [6, 12], [44, 4], [45, 7], [45, 10], [44, 14], [44, 18], [4, 24], [5, 27], [8, 28], [16, 28], [20, 28], [24, 28], [29, 29], [34, 28], [38, 28]] as const) skogstjern[y][x] = 'wall'
+for (const [x, y] of [[16, 6], [39, 6], [42, 18], [22, 22], [37, 21], [5, 22]] as const) skogstjern[y][x] = 'rock'
+
+function grove(tiles: Tile[][], x: number, y: number, width: number, height: number) {
+  for (let dy = 0; dy < height; dy++) for (let dx = 0; dx < width; dx++) {
+    // Step back the corners to soften the grove silhouette.
+    if ((dx === 0 || dx === width - 1) && (dy === 0 || dy === height - 1)) continue
+    if (tiles[y + dy][x + dx] === 'grass') tiles[y + dy][x + dx] = 'wall'
+  }
+}
+grove(havn, 33, 2, 10, 3)
+grove(havn, 43, 7, 4, 6)
+grove(skogstjern, 2, 2, 11, 3)
+grove(skogstjern, 2, 7, 5, 6)
+grove(skogstjern, 43, 3, 4, 9)
+grove(skogstjern, 16, 27, 20, 4)
+
+const harborDecorations: Decoration[] = [
+  { x: 11, y: 5, kind: 'chimney' }, { x: 25, y: 8, kind: 'shopSign' },
+  { x: 18, y: 19, kind: 'bench' }, { x: 20, y: 19, kind: 'lamp' },
+  { x: 27, y: 20, kind: 'barrel' }, { x: 28, y: 20, kind: 'barrel' },
+  { x: 30, y: 10, kind: 'barrel' }, { x: 17, y: 14, kind: 'lamp' },
+]
+for (const [x, y] of [[4, 12], [5, 12], [12, 12], [13, 12], [32, 9], [33, 9], [34, 9], [35, 9], [37, 10], [38, 10], [39, 10], [40, 10], [7, 18], [8, 18], [29, 18]] as const) harborDecorations.push({ x, y, kind: 'flowers' })
+for (const x of [6, 13, 30, 36, 40]) harborDecorations.push({ x, y: 21, kind: 'reeds' })
+const forestDecorations: Decoration[] = [
+  { x: 11, y: 21, kind: 'bench' },
+  ...([ [22, 6], [18, 8], [40, 7], [43, 15], [39, 19], [23, 20], [36, 21] ] as const).map(([x, y]) => ({ x, y, kind: 'reeds' as const })),
+  ...([ [7, 10], [8, 11], [12, 27], [14, 27], [32, 26], [33, 26] ] as const).map(([x, y]) => ({ x, y, kind: 'flowers' as const })),
+]
+for (const [tiles, decorations] of [[havn, harborDecorations], [skogstjern, forestDecorations]] as const) {
+  for (const d of decorations) if (['bench', 'barrel', 'lamp'].includes(d.kind)) {
+    d.ground = tiles[d.y][d.x] === 'path' ? 'path' : 'grass'
+    tiles[d.y][d.x] = 'furniture'
+  }
+}
+
 function indoorGrid(): Tile[][] {
   return Array.from({ length: 16 }, (_, y) =>
     Array.from({ length: 24 }, (_, x): Tile =>
@@ -122,6 +191,7 @@ export const MAPS: Record<MapId, WorldMap> = {
     name: 'Bryggehavn',
     description: 'Følg stien mot øst for å finne skogstjernet.',
     tiles: havn,
+    decorations: harborDecorations,
     neighbors: { right: 'skogstjern' },
     fishingZone: 'havn',
     transitions: { '8,11': { mapId: 'hjem', x: 12, y: 14, facing: 'up' }, '23,9': { mapId: 'butikk', x: 12, y: 14, facing: 'up' } },
@@ -154,6 +224,7 @@ export const MAPS: Record<MapId, WorldMap> = {
     name: 'Skogstjernet',
     description: 'Vend deg mot vannet og trykk E eller Fisk for å kaste ut.',
     tiles: skogstjern,
+    decorations: forestDecorations,
     fishingZone: 'skogstjern',
     signs: { '17,13': { title: 'Skogstjernet', text: 'Mort, abbor og gjedde lever her. Noen forteller om den sjeldne gullørreten.' } },
     neighbors: { left: 'havn' },
@@ -227,9 +298,7 @@ export function isPosition(value: unknown): value is Position {
     && Number.isInteger(p.x) && Number.isInteger(p.y)
     && (p.x as number) >= 0 && (p.x as number) < MAPS[p.mapId].tiles[0].length
     && (p.y as number) >= 0 && (p.y as number) < MAPS[p.mapId].tiles.length
-    && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'wall'
-    && MAPS[p.mapId].tiles[p.y as number][p.x as number] !== 'water'
-    && !['sign', 'wardrobe', 'npc', 'furniture', 'bed', 'table', 'hearth', 'houseWall', 'roof', 'window', 'counter', 'stove', 'sofa', 'soil', 'chest', 'shopCounter'].includes(MAPS[p.mapId].tiles[p.y as number][p.x as number])
+    && isWalkable(MAPS[p.mapId].tiles[p.y as number][p.x as number])
     && ['up', 'down', 'left', 'right'].includes(String(p.facing))
 }
 
