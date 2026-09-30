@@ -2,10 +2,11 @@ import { useState, type ReactNode } from 'react'
 import { FisherPortrait } from './FisherPortrait'
 import { CATEGORIES, ITEMS, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemCategory, type ItemId } from './items'
 import type { FishBookEntry, Inventory } from './persistence'
+import { availableZones, compatibleBaits, weightRange } from './fish'
 import { FISH, formatWeight, HAIR_COLORS, SHIRT_COLORS, SKIN_COLORS, type Appearance } from './world'
 
-function Panel({ title, subtitle, onClose, disabled, children }: { title: string; subtitle?: string; onClose: () => void; disabled?: boolean; children: ReactNode }) {
-  return <section role="dialog" aria-label={title} aria-modal="true" className="pocket-dialog">
+function Panel({ title, subtitle, onClose, disabled, children, className = '' }: { title: string; subtitle?: string; onClose: () => void; disabled?: boolean; children: ReactNode; className?: string }) {
+  return <section role="dialog" aria-label={title} aria-modal="true" className={`pocket-dialog ${className}`}>
     <header className="dialog-heading"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button disabled={disabled} onClick={onClose}>Tilbake</button></header>
     {children}
   </section>
@@ -85,17 +86,32 @@ export function WardrobeDialog({ appearance, pending, onPreview, onSave, onClose
 
 export function FishBookDialog({ book, onClose }: { book: FishBookEntry[]; onClose: () => void }) {
   const [page, setPage] = useState(0)
+  const [guide, setGuide] = useState(true)
   const species = FISH[page]
   const entry = book.find(e => e.speciesId === species.id)
-  return <Panel title="Fiskeboken" subtitle={`Oppdaget ${book.length} av ${FISH.length} arter`} onClose={onClose}>
-    <article className="fish-entry">
+  const zones = availableZones(species)
+  const baits = compatibleBaits(species)
+  return <Panel className="fish-book-dialog" title="Fiskeboken" subtitle={`Oppdaget ${book.length} av ${FISH.length} arter`} onClose={onClose}>
+    <div className="dialog-tabs" role="tablist" aria-label="Fiskebokvisning">
+      <button role="tab" aria-selected={guide} onClick={() => setGuide(true)}>Finn fisken</button>
+      <button role="tab" aria-selected={!guide} onClick={() => setGuide(false)}>Mine fangster</button>
+    </div>
+    {guide ? <article className="fish-entry fish-guide">
+      <div><h3>{species.icon} {species.name}</h3>
+        <p>{species.rarity} · {weightRange(species)}</p>
+        <p><strong>Levested:</strong> {species.habitats.join(', ')}</p>
+        <p><strong>Metoder:</strong> {species.methods.join(', ')}</p>
+        <p><strong>I spillet:</strong> {zones.length ? zones.join(', ') : 'Ingen av dagens områder'}</p>
+        <p><strong>Bruk nå:</strong> {!zones.length ? 'Ikke tilgjengelig her ennå.' : baits.length ? baits.map(id => ITEM_BY_ID[id].name).join(', ') : 'Krever utstyr som ikke finnes ennå.'}</p>
+      </div>
+    </article> : <article className="fish-entry">
       <span className="fish-illustration" aria-hidden="true">{entry ? species.icon : '?'}</span>
-      <div><span className="fish-number">#{String(page + 1).padStart(2, '0')}</span><h3>{entry ? species.name : 'Ukjent art'}</h3>
+      <div><span className="fish-number">#{String(page + 1).padStart(2, '0')}</span><h3>{species.name}</h3>
         <p>{entry ? species.description : 'Denne fisken er ikke oppdaget ennå.'}</p>
         {entry && <p>Sett {entry.seenCount} · Fanget {entry.caughtCount}</p>}
         {entry && entry.caughtCount > 0 && <dl><div><dt>Minst</dt><dd>{formatWeight(entry.smallestGrams!)}</dd></div><div><dt>Størst</dt><dd>{formatWeight(entry.largestGrams!)}</dd></div></dl>}
       </div>
-    </article>
+    </article>}
     <footer className="dialog-footer"><span>Din samling</span><Pager page={page} count={FISH.length} onChange={setPage} /></footer>
   </Panel>
 }

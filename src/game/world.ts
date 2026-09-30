@@ -1,4 +1,5 @@
-import { BAIT_WEIGHTS, type BaitId } from './items'
+export { FISH, FISH_BY_ID, FISHING_ZONES, rollFish } from './fish'
+export type { FishSpecies } from './fish'
 import type { Decoration } from './outdoorTiles'
 
 export type MapId = 'havn' | 'skogstjern' | 'hjem' | 'hjem2' | 'butikk'
@@ -197,7 +198,7 @@ export const MAPS: Record<MapId, WorldMap> = {
     fishingZone: 'havn',
     transitions: { '8,11': { mapId: 'hjem', x: 12, y: 14, facing: 'up' }, '23,9': { mapId: 'butikk', x: 12, y: 14, facing: 'up' } },
     signs: {
-      '16,21': { title: 'Bryggehavn', text: 'Her finnes mort og abbor. En sjelden gang biter gjedda på.' },
+      '16,21': { title: 'Bryggehavn', text: 'Kystfiske: prøv sluk etter makrell og sei, eller mark som agn etter torsk. Fiskeboken viser hvor og hvordan du finner artene.' },
       '25,11': { title: 'Mortens FiskShop.', text: 'Helt vanlig fiskeutstyr.' },
     },
   },
@@ -229,7 +230,7 @@ export const MAPS: Record<MapId, WorldMap> = {
     tiles: skogstjern,
     decorations: forestDecorations,
     fishingZone: 'skogstjern',
-    signs: { '17,13': { title: 'Skogstjernet', text: 'Mort, abbor og gjedde lever her. Noen forteller om den sjeldne gullørreten.' } },
+    signs: { '17,13': { title: 'Skogstjernet', text: 'Innsjøfiske: prøv mark etter abbor, ørret og røye. Brød og mais lokker mort. Her finnes også den sjeldne gullørreten.' } },
     neighbors: { left: 'havn' },
   },
 }
@@ -317,57 +318,6 @@ export function isAppearance(value: unknown): value is Appearance {
     && (look.shirt as number) >= 0 && (look.shirt as number) < SHIRT_COLORS.length
     && (look.hair as number) >= 0 && (look.hair as number) < HAIR_COLORS.length
     && (look.skin as number) >= 0 && (look.skin as number) < SKIN_COLORS.length
-}
-
-export type FishSpecies = {
-  id: string
-  name: string
-  icon: string
-  description: string
-  minGrams: number
-  maxGrams: number
-}
-
-export const FISH: FishSpecies[] = [
-  { id: 'mort', name: 'Mort', icon: '🐟', description: 'En liten, sølvblank stimfisk som trives ved bredden.', minGrams: 80, maxGrams: 650 },
-  { id: 'abbor', name: 'Abbor', icon: '🐠', description: 'Stripete jeger med piggete ryggfinne.', minGrams: 150, maxGrams: 2200 },
-  { id: 'gjedde', name: 'Gjedde', icon: '🐟', description: 'En rask rovfisk som skjuler seg i sivet.', minGrams: 700, maxGrams: 8500 },
-  { id: 'gullorret', name: 'Gullørret', icon: '✨', description: 'En sjelden fisk som glimter i det mørke vannet.', minGrams: 300, maxGrams: 2800 },
-]
-
-export const FISH_BY_ID = Object.fromEntries(FISH.map(fish => [fish.id, fish])) as Record<string, FishSpecies>
-
-export const FISHING_ZONES: Record<string, { name: string; catches: { speciesId: string; weight: number }[] }> = {
-  havn: {
-    name: 'Bryggehavn',
-    catches: [
-      { speciesId: 'mort', weight: 60 },
-      { speciesId: 'abbor', weight: 35 },
-      { speciesId: 'gjedde', weight: 5 },
-    ],
-  },
-  skogstjern: {
-    name: 'Skogstjernet',
-    catches: [
-      { speciesId: 'mort', weight: 45 },
-      { speciesId: 'abbor', weight: 40 },
-      { speciesId: 'gjedde', weight: 12 },
-      { speciesId: 'gullorret', weight: 3 },
-    ],
-  },
-}
-
-export function rollFish(zoneId: string, bait: BaitId | null = null) {
-  const zone = FISHING_ZONES[zoneId]
-  if (!zone) throw new Error('Ukjent fiskeområde.')
-  const weights = zone.catches.map(entry => entry.weight * (bait ? BAIT_WEIGHTS[bait][entry.speciesId] ?? 1 : 1))
-  const total = weights.reduce((sum, weight) => sum + weight, 0)
-  let roll = Math.random() * total
-  const index = weights.findIndex(weight => (roll -= weight) < 0)
-  const entry = zone.catches[index < 0 ? zone.catches.length - 1 : index]
-  const species = FISH_BY_ID[entry.speciesId]
-  const grams = Math.round(species.minGrams + Math.random() * (species.maxGrams - species.minGrams))
-  return { species, grams, caught: Math.random() >= 0.18 }
 }
 
 export function formatWeight(grams: number) {

@@ -158,7 +158,7 @@ service cloud.firestore {
       }
 
       function validEntry() {
-        return speciesId in ['mort', 'abbor', 'gjedde', 'gullorret']
+        return speciesId in ['makrell', 'sei', 'torsk', 'orret', 'abbor', 'lyr', 'sjoorret', 'gjedde', 'roye', 'sild', 'hvitting', 'rodspette', 'harr', 'sik', 'laks', 'brosme', 'lange', 'gjors', 'kveite', 'steinbit', 'mort', 'gullorret']
           && request.resource.data.keys().hasAll([
             'speciesId', 'seenCount', 'caughtCount', 'smallestGrams',
             'largestGrams', 'lastGrams', 'firstSeenAt', 'firstCaughtAt', 'updatedAt'
@@ -188,7 +188,7 @@ service cloud.firestore {
               && request.resource.data.smallestGrams >= 1
               && request.resource.data.smallestGrams <= request.resource.data.lastGrams
               && request.resource.data.lastGrams <= request.resource.data.largestGrams
-              && request.resource.data.largestGrams <= 100000
+              && request.resource.data.largestGrams <= 240000
               && request.resource.data.firstCaughtAt is timestamp)
           );
       }

@@ -9,6 +9,7 @@ import { InventoryDialog, ShopDialog, WardrobeDialog, FishBookDialog } from './G
 import { MobileControls } from './MobileControls'
 import { useGameInput } from './useGameInput'
 import { FISH_REWARDS } from './items'
+import { fishingOptions } from './fish'
 import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, interactionAhead, MAPS, rollFish, type Appearance, type Position } from './world'
 
 type Result = { name: string; icon: string; grams: number; caught: boolean; coins: number }
@@ -121,6 +122,12 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
           world.finishFishing()
           return
         }
+        const zone = worldPosition.current && MAPS[worldPosition.current.mapId].fishingZone
+        if (!zone || !fishingOptions(zone, activeBait).length) {
+          setError('Dette agnet passer ikke til fiskene her. Se «Finn fisken» i fiskeboken. Agnet er ikke brukt.')
+          world.finishFishing()
+          return
+        }
         casting.current = true
         setBusyText('Du kastet ut snøret … Vent på napp!')
         setBusy(true)
@@ -136,6 +143,13 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
             return
           }
           const fish = rollFish(zoneId, activeBait)
+          if (!fish) {
+            casting.current = false
+            setBusy(false)
+            world.finishFishing()
+            setError('Ingen fisk passer til valgt agn her. Agnet er ikke brukt.')
+            return
+          }
           void recordEncounter(user.uid, fish.species.id, fish.grams, fish.caught, activeBait)
             .then(nextInventory => {
               setInventory(nextInventory)
