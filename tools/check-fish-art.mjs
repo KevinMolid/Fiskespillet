@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { inflateSync } from 'node:zlib'
 import { build } from 'esbuild'
 
-const ids=['makrell','sei','torsk','orret','abbor','lyr','sjoorret','gjedde','roye','sild','hvitting','rodspette','harr','sik','laks','brosme','lange','gjors','kveite','steinbit']
+const ids=['makrell','sei','torsk','orret','abbor','lyr','sjoorret','gjedde','roye','sild','hvitting','rodspette','harr','sik','laks','brosme','lange','gjors','kveite','steinbit','mort']
 const bundle=await build({stdin:{contents:"export { FISH_BY_ID } from './src/game/fish'",resolveDir:process.cwd()},bundle:true,write:false,platform:'node',format:'esm',loader:{'.png':'dataurl'}})
 const {FISH_BY_ID}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'))
 
@@ -25,5 +25,5 @@ for(const id of ids){
   assert(ratio>=.75&&ratio<=.85,`${id}: silhouette width ${ratio.toFixed(2)}`)
   assert.match(FISH_BY_ID[id].image,/^data:image\/png;base64,/ ,`${id}: data import`)
 }
-for(const id of ['mort','gullorret'])assert.equal(FISH_BY_ID[id].image,undefined,`${id}: not part of requested illustration set`)
-console.log(`${ids.length} fish illustrations: 96x64 RGBA, clean alpha, 12-color palette, 75-85% silhouette width, species imports and unillustrated extras OK.`)
+assert.equal(FISH_BY_ID.gullorret,undefined,'fictional gold trout is removed from the game')
+console.log(`${ids.length} fish illustrations: 96x64 RGBA, clean alpha, 12-color palette, 75-85% silhouette width, species imports OK; gold trout removed.`)

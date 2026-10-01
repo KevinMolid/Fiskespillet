@@ -19,6 +19,7 @@ import lingImage from '../assets/fish/lange.png'
 import zanderImage from '../assets/fish/gjors.png'
 import halibutImage from '../assets/fish/kveite.png'
 import wolffishImage from '../assets/fish/steinbit.png'
+import roachImage from '../assets/fish/mort.png'
 
 export type Habitat = 'kyst' | 'fjord' | 'hav' | 'bekk' | 'elv' | 'innsjø'
 export type Rarity = 'Svært vanlig' | 'Vanlig' | 'Mindre vanlig' | 'Sjelden/lokal' | 'Sjelden'
@@ -113,10 +114,6 @@ const FIELD_GUIDE: Record<string, { scientificName: string | null; description: 
     "scientificName": "Rutilus rutilus",
     "description": "Unge mort spiser mye dyreplankton. Eldre mort spiser også bunndyr og plantedeler."
   },
-  "gullorret": {
-    "scientificName": null,
-    "description": "Gullørreten er en oppdiktet fisk som bare finnes i Fiskespillet. Den har derfor ikke noe vitenskapelig artsnavn."
-  }
 }
 const sea: Habitat[] = ['kyst','fjord','hav'], fresh: Habitat[] = ['innsjø','elv']
 function species(id: string, name: string, minGrams: number, maxGrams: number, rarity: Rarity, methods: Method[], habitats: Habitat[], reward: number, plus = false): FishSpecies {
@@ -143,8 +140,7 @@ export const FISH: FishSpecies[] = [
   { ...species('gjors','Gjørs',200,12000,'Sjelden/lokal',['jigg','vertikalfiske','agnfisk'],fresh,40), image: zanderImage },
   { ...species('kveite','Kveite',1000,200000,'Sjelden',['jigg','agnfisk'],sea,80,true), image: halibutImage },
   { ...species('steinbit','Steinbit',500,20000,'Sjelden',['agn','jigg'],sea,55,true), image: wolffishImage },
-  { ...species('mort','Mort',80,650,'Svært vanlig',['mark','brød','mais'],fresh,6) },
-  { ...species('gullorret','Gullørret',300,2800,'Sjelden',['mark','sluk'],['innsjø'],65), icon: '✨' },
+  { ...species('mort','Mort',80,650,'Svært vanlig',['mark','brød','mais'],fresh,6), image: roachImage },
 ]
 export const FISH_BY_ID = Object.fromEntries(FISH.map(fish => [fish.id,fish])) as Record<string,FishSpecies>
 export const FISH_REWARDS = Object.fromEntries(FISH.map(fish => [fish.id,fish.reward])) as Record<string,number>

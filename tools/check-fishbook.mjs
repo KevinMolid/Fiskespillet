@@ -100,7 +100,7 @@ assert.deepEqual((await loadFishBook(uid))[0].discoveredLocationIds, ['havn'])
 
 for (const fish of FISH) {
   assert(fish.description.length > 20)
-  assert(fish.scientificName || fish.id === 'gullorret')
+  assert(fish.scientificName)
   assert.equal(renderToStaticMarkup(createElement(FishDetails, { fish })), '<h3>' + fish.name + '</h3>')
 }
 html = renderToStaticMarkup(createElement(FishBookDialog, { book: [], onClose() {} }))
@@ -110,9 +110,13 @@ for (const fish of FISH) {
   if (fish.scientificName) assert(!html.includes(fish.scientificName))
 }
 assert(!html.includes('Illustrasjon kommer') && !html.includes('<img') && !html.includes('Bryggehavn'))
-assert(html.includes('0 / 22 arter fanget'))
+assert(html.includes('0 / 21 arter fanget'))
 const perchEntry = { fishId: 'abbor', caughtCount: 1, seenCount: 1, smallestGrams: 120, largestGrams: 120, discoveredLocationIds: ['skogstjern'] }
 html = renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.abbor, entry: perchEntry }))
 assert(html.includes('alt="Abbor"') && html.includes('data:image/png;base64,') && html.includes('Perca fluviatilis'))
+const roachEntry = { fishId: 'mort', caughtCount: 1, seenCount: 1, smallestGrams: 100, largestGrams: 100, discoveredLocationIds: ['skogstjern'] }
+html = renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.mort, entry: roachEntry }))
+assert(html.includes('alt="Mort"') && html.includes('data:image/png;base64,') && html.includes('Rutilus rutilus'))
+assert.equal(FISH_BY_ID.gullorret, undefined, 'gold trout is absent from fish data')
 console.log('Fish book: statistics, failures, atomic writes, per-player persistence, legacy upgrade, locations, image import and locked UI passed.')
 delete globalThis.__fishBookTestDb

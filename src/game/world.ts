@@ -230,7 +230,7 @@ export const MAPS: Record<MapId, WorldMap> = {
     tiles: skogstjern,
     decorations: forestDecorations,
     fishingZone: 'skogstjern',
-    signs: { '17,13': { title: 'Skogstjernet', text: 'Innsjøfiske: prøv mark etter abbor, ørret og røye. Brød og mais lokker mort. Her finnes også den sjeldne gullørreten.' } },
+    signs: { '17,13': { title: 'Skogstjernet', text: 'Innsjøfiske: prøv mark etter abbor, ørret og røye. Brød og mais lokker mort.' } },
     neighbors: { left: 'havn' },
   },
 }

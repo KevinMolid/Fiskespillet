@@ -15,7 +15,7 @@ let savedPosition = { ...START }
 let savedAppearance = { ...DEFAULT_APPEARANCE }
 let inventory: Inventory = { bag: { rod: 1, shovel: 1, bread: 3, worm: 5, corn: 2, spinner: 1 }, storage: { rod: 1, bread: 5, worm: 5 }, equippedBait: 'bread', coins: 60 }
 const snapshot = () => structuredClone(inventory)
-let fishBook: FishBookEntry[] = [normalizeFishBookEntry({ speciesId: 'gullorret', seenCount: 12, caughtCount: 4, smallestGrams: 450, largestGrams: 2700, lastGrams: 1100, firstSeenAt: Timestamp.fromMillis(0), firstCaughtAt: Timestamp.fromMillis(0), updatedAt: Timestamp.fromMillis(0) })]
+let fishBook: FishBookEntry[] = [normalizeFishBookEntry({ speciesId: 'mort', seenCount: 12, caughtCount: 4, smallestGrams: 120, largestGrams: 630, lastGrams: 240, firstSeenAt: Timestamp.fromMillis(0), firstCaughtAt: Timestamp.fromMillis(0), updatedAt: Timestamp.fromMillis(0) })]
 const storedBook = localStorage.getItem('fiskespillet-preview-fishbook-v1')
 if (storedBook) fishBook = JSON.parse(storedBook).map(normalizeFishBookEntry)
 const services: GameServices = {
