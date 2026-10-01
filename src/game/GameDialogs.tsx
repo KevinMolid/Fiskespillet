@@ -4,9 +4,9 @@ import { CATEGORIES, ITEMS, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemCateg
 import type { Inventory } from './persistence'
 import { HAIR_COLORS, SHIRT_COLORS, SKIN_COLORS, type Appearance } from './world'
 
-export function Panel({ title, subtitle, onClose, disabled, children, className = '' }: { title: string; subtitle?: string; onClose: () => void; disabled?: boolean; children: ReactNode; className?: string }) {
+export function Panel({ title, subtitle, onClose, disabled, closeLabel = 'Tilbake', children, className = '' }: { title: string; subtitle?: string; onClose: () => void; disabled?: boolean; closeLabel?: string; children: ReactNode; className?: string }) {
   return <section role="dialog" aria-label={title} aria-modal="true" className={`pocket-dialog ${className}`}>
-    <header className="dialog-heading"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button disabled={disabled} onClick={onClose}>Tilbake</button></header>
+    <header className="dialog-heading"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button disabled={disabled} onClick={onClose}>{closeLabel}</button></header>
     {children}
   </section>
 }

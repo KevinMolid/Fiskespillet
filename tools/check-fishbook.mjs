@@ -41,7 +41,7 @@ const bundle = await build({
       : 'export const db = {}' }))
   } }],
 })
-const { FISH, FISH_BY_ID, normalizeFishBookEntry, recordEncounter, loadFishBook, FishDetails, FishBookDialog } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'))
+const { FISH, FISH_BY_ID, weightRange, normalizeFishBookEntry, recordEncounter, loadFishBook, FishDetails, FishBookDialog } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'))
 // Fixture only: exercise the future multi-location case without changing game habitats.
 FISH_BY_ID.laks.habitats = [...FISH_BY_ID.laks.habitats, 'innsjø']
 const inventory = () => ({ bag: { rod: 1, worm: 30 }, storage: {}, coins: 60, equippedBait: 'worm' })
@@ -51,10 +51,15 @@ const catchFish = (grams, caught = true, location = 'havn') => recordEncounter(u
 let result = await catchFish(2000, false)
 assert.equal(result.entry.hasCaught, false)
 assert.deepEqual(result.entry.discoveredLocationIds, [])
+assert.deepEqual(result.entry.seenLocationIds, ['havn'], 'an uncaught encounter records only the place the player visited')
 assert.equal(result.entry.smallestGrams, null)
 assert.equal(result.inventory.coins, 60)
-assert.equal(renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.laks, entry: result.entry })), '<h3>Laks</h3>')
-assert.equal(renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.abbor })), '<h3>Abbor</h3>', 'unrecorded species stays hidden')
+let detailHtml = renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.laks, entry: result.entry }))
+assert(detailHtml.includes('Sett · ikke fanget') && detailHtml.includes('Salmo salar') && detailHtml.includes('data:image/png;base64,'))
+assert(detailHtml.includes('Bryggehavn') && detailHtml.includes('Sett her'), 'seen locations are shown with their observed status')
+assert(!detailHtml.includes('Dine fangster') && !detailHtml.includes(FISH_BY_ID.laks.description), 'a seen fish reveals no catch journal or full facts')
+detailHtml = renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.abbor }))
+assert(detailHtml.includes('Ukjent art') && detailHtml.includes('fish-question') && !detailHtml.includes('Perca fluviatilis'), 'unknown fish keeps its name but conceals details')
 result = await catchFish(5000)
 assert.equal(result.entry.caughtCount, 1)
 assert.equal(result.entry.hasCaught, true)
@@ -69,8 +74,9 @@ assert.equal(entry.seenCount, 5)
 assert.equal(entry.smallestGrams, 2000)
 assert.equal(entry.largestGrams, 10000)
 assert.deepEqual(entry.discoveredLocationIds, ['havn'])
+assert.deepEqual(entry.seenLocationIds, ['havn', 'skogstjern'])
 let html = renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.laks, entry }))
-assert(html.includes('Bryggehavn') && !html.includes('Skogstjernet'))
+assert(html.includes('Bryggehavn') && html.includes('Skogstjernet') && html.includes('Sett her') && !html.includes('Sjeldenhet'))
 await catchFish(8000, true, 'skogstjern')
 await catchFish(6000, true, 'skogstjern')
 entry = (await loadFishBook(uid))[0]
@@ -92,6 +98,10 @@ const legacy = { ...entry }
 delete legacy.hasCaught; delete legacy.discoveredLocationIds
 assert.equal(normalizeFishBookEntry(legacy).caughtCount, 5)
 assert.deepEqual(normalizeFishBookEntry(legacy).discoveredLocationIds, [], 'never invent historical locations')
+assert.deepEqual(normalizeFishBookEntry(legacy).seenLocationIds, ['havn', 'skogstjern'], 'legacy caught places also count as seen')
+const legacyWithCaughtPlace = { ...legacy, discoveredLocationIds: ['havn'] }
+delete legacyWithCaughtPlace.seenLocationIds
+assert.deepEqual(normalizeFishBookEntry(legacyWithCaughtPlace).seenLocationIds, ['havn'], 'old caught locations remain visible as both seen and caught')
 documents.set('fishBooks/' + uid + '/entries/laks', legacy)
 await catchFish(7000, false)
 assert.deepEqual((await loadFishBook(uid))[0].discoveredLocationIds, [])
@@ -101,19 +111,27 @@ assert.deepEqual((await loadFishBook(uid))[0].discoveredLocationIds, ['havn'])
 for (const fish of FISH) {
   assert(fish.description.length > 20)
   assert(fish.scientificName)
-  assert.equal(renderToStaticMarkup(createElement(FishDetails, { fish })), '<h3>' + fish.name + '</h3>')
+  const unknown = renderToStaticMarkup(createElement(FishDetails, { fish }))
+  assert(unknown.includes('<h3>' + fish.name + '</h3>') && unknown.includes('fish-question'))
+  assert(!unknown.includes(fish.scientificName) && !unknown.includes(fish.description))
 }
 html = renderToStaticMarkup(createElement(FishBookDialog, { book: [], onClose() {} }))
 for (const fish of FISH) {
   assert(html.includes(fish.name))
   assert(!html.includes(fish.description))
-  if (fish.scientificName) assert(!html.includes(fish.scientificName))
+  assert(!html.includes(fish.scientificName))
 }
-assert(!html.includes('Illustrasjon kommer') && !html.includes('<img') && !html.includes('Bryggehavn'))
-assert(html.includes('0 / 21 arter fanget'))
+assert(!html.includes('<img') && !html.includes('Bryggehavn') && !html.includes('Sjeldenhet'))
+assert(html.includes('0 av 21 fanget') && html.includes('21 ukjent') && html.includes('fish-list-question'))
 const perchEntry = { fishId: 'abbor', caughtCount: 1, seenCount: 1, smallestGrams: 120, largestGrams: 120, discoveredLocationIds: ['skogstjern'] }
 html = renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.abbor, entry: perchEntry }))
 assert(html.includes('alt="Abbor"') && html.includes('data:image/png;base64,') && html.includes('Perca fluviatilis'))
+assert(html.includes('fish-weight-range') && html.includes('Dine fangster') && html.includes('Minste') && !html.includes('Sjeldenhet'))
+assert(html.includes('Rekord') && html.includes('fish-record-icon'))
+assert.equal(weightRange(FISH_BY_ID.abbor), '50 g – 3,0 kg')
+assert.equal(weightRange(FISH_BY_ID.lange), '500 g – 30,0 kg+')
+const invalidPlace = renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.laks, entry: { ...result.entry, seenLocationIds: ['havn', 'private-location'] } }))
+assert(invalidPlace.includes('Bryggehavn') && !invalidPlace.includes('private-location'), 'unknown places never leak into the field guide')
 const roachEntry = { fishId: 'mort', caughtCount: 1, seenCount: 1, smallestGrams: 100, largestGrams: 100, discoveredLocationIds: ['skogstjern'] }
 html = renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.mort, entry: roachEntry }))
 assert(html.includes('alt="Mort"') && html.includes('data:image/png;base64,') && html.includes('Rutilus rutilus'))

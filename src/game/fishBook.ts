@@ -10,17 +10,23 @@ export type FishBookEntry = {
   smallestGrams: number | null
   largestGrams: number | null
   lastGrams: number | null
+  seenLocationIds: string[]
   discoveredLocationIds: string[]
   firstSeenAt: Timestamp
   firstCaughtAt: Timestamp | null
   updatedAt: Timestamp
 }
-export type LegacyFishBookEntry = Omit<FishBookEntry, 'hasCaught' | 'discoveredLocationIds'> & Partial<Pick<FishBookEntry, 'hasCaught' | 'discoveredLocationIds'>>
+export type LegacyFishBookEntry = Omit<FishBookEntry, 'hasCaught' | 'discoveredLocationIds' | 'seenLocationIds'> & Partial<Pick<FishBookEntry, 'hasCaught' | 'discoveredLocationIds' | 'seenLocationIds'>>
 
 export function normalizeFishBookEntry(entry: LegacyFishBookEntry): FishBookEntry {
   const hasCaught = entry.caughtCount > 0
-  return { ...entry, hasCaught, discoveredLocationIds: hasCaught
-    ? [...new Set((entry.discoveredLocationIds ?? []).filter(id => Object.hasOwn(FISHING_ZONES, id)))] : [] }
+  const discoveredLocationIds = hasCaught
+    ? [...new Set((entry.discoveredLocationIds ?? []).filter(id => Object.hasOwn(FISHING_ZONES, id)))] : []
+  const seenLocationIds = [...new Set([
+    ...discoveredLocationIds,
+    ...(entry.seenLocationIds ?? []).filter(id => Object.hasOwn(FISHING_ZONES, id)),
+  ])]
+  return { ...entry, hasCaught, seenLocationIds, discoveredLocationIds }
 }
 
 export function updateFishBookEntry(previous: LegacyFishBookEntry | null, speciesId: string, grams: number, caught: boolean, locationId: string, now: Timestamp): FishBookEntry {
@@ -30,6 +36,7 @@ export function updateFishBookEntry(previous: LegacyFishBookEntry | null, specie
   if (previous && previous.speciesId !== speciesId) throw new Error('Fangsten gjelder en annen art.')
   const old = previous ? normalizeFishBookEntry(previous) : null
   const locations = old?.discoveredLocationIds ?? []
+  const seenLocations = old?.seenLocationIds ?? []
   const caughtCount = (old?.caughtCount ?? 0) + (caught ? 1 : 0)
   return {
     speciesId, hasCaught: caughtCount > 0,
@@ -37,6 +44,7 @@ export function updateFishBookEntry(previous: LegacyFishBookEntry | null, specie
     smallestGrams: caught ? Math.min(old?.smallestGrams ?? grams, grams) : old?.smallestGrams ?? null,
     largestGrams: caught ? Math.max(old?.largestGrams ?? grams, grams) : old?.largestGrams ?? null,
     lastGrams: caught ? grams : old?.lastGrams ?? null,
+    seenLocationIds: [...new Set([...seenLocations, locationId])],
     discoveredLocationIds: caught ? [...new Set([...locations, locationId])] : [...locations],
     firstSeenAt: old?.firstSeenAt ?? now,
     firstCaughtAt: old?.firstCaughtAt ?? (caught ? now : null), updatedAt: now,

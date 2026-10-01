@@ -176,6 +176,8 @@ export function rollFish(zoneId: string, bait: BaitId | null = null, random: () 
   return {species,grams,caught:random()>=0.18}
 }
 export function weightRange(fish: FishSpecies) {
-  const kg=(n:number)=>(n/1000).toLocaleString('nb-NO',{maximumFractionDigits:2})
-  return kg(fish.minGrams)+'–'+kg(fish.maxGrams)+(fish.plus?'+':'')+' kg'
+  const format=(grams:number)=>grams<1000
+    ? `${grams.toLocaleString('nb-NO')} g`
+    : `${(grams/1000).toLocaleString('nb-NO',{minimumFractionDigits:1,maximumFractionDigits:2})} kg`
+  return `${format(fish.minGrams)} – ${format(fish.maxGrams)}${fish.plus?'+':''}`
 }

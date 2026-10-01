@@ -41,6 +41,7 @@ try {
   const first = await service.recordEncounter('a', 'mort', 180, false, 'worm', 'skogstjern')
   assert.equal(first.entry.hasCaught, false)
   assert.deepEqual(first.entry.discoveredLocationIds, [])
+  assert.deepEqual(first.entry.seenLocationIds, ['skogstjern'])
   console.log('Testing first catch')
   await service.recordEncounter('a', 'mort', 200, true, 'worm', 'skogstjern')
   console.log('Testing concurrent catches')
@@ -67,6 +68,7 @@ try {
   await service.recordEncounter('a', 'orret', 1000, false, 'worm', 'skogstjern')
   let old = (await service.loadFishBook('a')).find(e => e.speciesId === 'orret')
   assert.deepEqual(old.discoveredLocationIds, [])
+  assert.deepEqual(old.seenLocationIds, ['skogstjern'])
   assert.equal(old.largestGrams, 2000)
   await service.recordEncounter('a', 'orret', 3000, true, 'worm', 'skogstjern')
   old = (await service.loadFishBook('a')).find(e => e.speciesId === 'orret')
@@ -86,10 +88,12 @@ try {
   await assertFails(setDoc(ref, { ...unchangedCatch, hasCaught: false }))
   await assertFails(setDoc(ref, { ...unchangedCatch, discoveredLocationIds: ['skogstjern', 'skogstjern'] }))
   await assertFails(setDoc(ref, { ...unchangedCatch, discoveredLocationIds: ['unknown'] }))
+  await assertFails(setDoc(ref, { ...unchangedCatch, seenLocationIds: ['skogstjern', 'skogstjern'] }))
+  await assertFails(setDoc(ref, { ...unchangedCatch, seenLocationIds: ['unknown'] }))
   await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'fishBooks/a/entries/mort')))
   // Exercise adding a second known location at rules level. Real fishing tables
   // currently put each species in only one of the two existing outdoor areas.
-  const secondLocation = { ...unchangedCatch, caughtCount: original.caughtCount + 1, lastGrams: 300, discoveredLocationIds: ['skogstjern', 'havn'] }
+  const secondLocation = { ...unchangedCatch, caughtCount: original.caughtCount + 1, lastGrams: 300, discoveredLocationIds: ['skogstjern', 'havn'], seenLocationIds: ['skogstjern', 'havn'] }
   await assertSucceeds(setDoc(ref, secondLocation))
   entry = (await service.loadFishBook('a')).find(e => e.speciesId === 'mort')
   assert.deepEqual(entry.discoveredLocationIds, ['skogstjern', 'havn'])

@@ -162,18 +162,22 @@ service cloud.firestore {
           && request.resource.data.keys().hasAll([
             'speciesId', 'seenCount', 'caughtCount', 'smallestGrams',
             'largestGrams', 'lastGrams', 'firstSeenAt', 'firstCaughtAt', 'updatedAt',
-            'hasCaught', 'discoveredLocationIds'
+            'hasCaught', 'discoveredLocationIds', 'seenLocationIds'
           ])
           && request.resource.data.keys().hasOnly([
             'speciesId', 'seenCount', 'caughtCount', 'smallestGrams',
             'largestGrams', 'lastGrams', 'firstSeenAt', 'firstCaughtAt', 'updatedAt',
-            'hasCaught', 'discoveredLocationIds'
+            'hasCaught', 'discoveredLocationIds', 'seenLocationIds'
           ])
           && request.resource.data.hasCaught == (request.resource.data.caughtCount > 0)
           && request.resource.data.discoveredLocationIds is list
           && request.resource.data.discoveredLocationIds.hasOnly(['havn', 'skogstjern'])
           && request.resource.data.discoveredLocationIds.size() == request.resource.data.discoveredLocationIds.toSet().size()
           && (request.resource.data.hasCaught || request.resource.data.discoveredLocationIds.size() == 0)
+          && request.resource.data.seenLocationIds is list
+          && request.resource.data.seenLocationIds.hasOnly(['havn', 'skogstjern'])
+          && request.resource.data.seenLocationIds.size() == request.resource.data.seenLocationIds.toSet().size()
+          && request.resource.data.seenLocationIds.hasAll(request.resource.data.discoveredLocationIds)
           && request.resource.data.speciesId == speciesId
           && request.resource.data.seenCount is int
           && request.resource.data.seenCount >= 1
@@ -205,14 +209,19 @@ service cloud.firestore {
         let old = resource.data;
         let next = request.resource.data;
         let locations = old.get('discoveredLocationIds', []);
+        // Historical caught locations count as seen; older records have no separate seen list.
+        let seenLocations = old.get('seenLocationIds', locations);
         let caught = next.caughtCount == old.caughtCount + 1;
         return next.discoveredLocationIds.hasAll(locations)
+          && next.seenLocationIds.hasAll(seenLocations)
+          && next.seenLocationIds.size() <= seenLocations.size() + 1
           && (caught
             ? (next.discoveredLocationIds.size() >= 1
               && next.discoveredLocationIds.size() <= locations.size() + 1
               && next.smallestGrams == (old.caughtCount == 0 || next.lastGrams < old.smallestGrams ? next.lastGrams : old.smallestGrams)
               && next.largestGrams == (old.caughtCount == 0 || next.lastGrams > old.largestGrams ? next.lastGrams : old.largestGrams))
             : (next.discoveredLocationIds == locations
+              && next.seenLocationIds.size() >= seenLocations.size()
               && next.smallestGrams == old.smallestGrams
               && next.largestGrams == old.largestGrams
               && next.lastGrams == old.lastGrams));
@@ -223,6 +232,7 @@ service cloud.firestore {
         && request.resource.data.seenCount == 1
         && request.resource.data.caughtCount <= 1
         && request.resource.data.discoveredLocationIds.size() == request.resource.data.caughtCount
+        && request.resource.data.seenLocationIds.size() == 1
         && request.resource.data.smallestGrams == request.resource.data.lastGrams
         && request.resource.data.largestGrams == request.resource.data.lastGrams
         && request.resource.data.firstSeenAt == request.time

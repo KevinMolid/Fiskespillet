@@ -43,6 +43,9 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const [busyText, setBusyText] = useState('Du kastet ut snøret … Vent på napp!')
   const [result, setResult] = useState<Result | null>(null)
   const [showBook, setShowBook] = useState(false)
+  const fishBookBack = useRef<(() => void) | null>(null)
+  const closeBook = useCallback(() => setShowBook(false), [])
+  const registerFishBookMenuBack = useCallback((handler: (() => void) | null) => { fishBookBack.current = handler }, [])
   const [showMenu, setShowMenu] = useState(false)
   const closeMenu = useCallback(() => {
     setShowMenu(false)
@@ -246,7 +249,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
     if (inventoryPending || savingLook || busy) return
     if (showWardrobe) closeWardrobe()
     else if (inventoryView) setInventoryView(null)
-    else if (showBook) setShowBook(false)
+    else if (showBook) { if (fishBookBack.current) fishBookBack.current(); else closeBook() }
     else if (showShop) setShowShop(false)
     else if (error || result || signMessage) dismissMessage()
     else if (showMenu) closeMenu()
@@ -290,7 +293,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
         onTransfer={(id, toStorage) => void updateInventory(() => transferItem(user.uid, id, toStorage))} />}
       {showShop && inventory && <ShopDialog inventory={inventory} pending={inventoryPending} error={inventoryError} onClose={() => setShowShop(false)} onBuy={(bait, amount) => void updateInventory(() => buyBait(user.uid, bait, amount))} />}
       {showWardrobe && <WardrobeDialog appearance={draftLook} pending={savingLook} onPreview={previewLook} onSave={() => void confirmLook()} onClose={closeWardrobe} />}
-      {showBook && <FishBookDialog book={book} onClose={() => setShowBook(false)} />}
+      {showBook && <FishBookDialog book={book} onClose={closeBook} registerMenuBack={registerFishBookMenuBack} />}
     </div>
 
     <MobileControls context={inputContext} onDirection={input.direction} onAction={input.action} onMenu={input.menu}
