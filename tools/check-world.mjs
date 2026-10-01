@@ -1,7 +1,7 @@
 import { build } from 'esbuild'
 import assert from 'node:assert/strict'
 
-const bundle = await build({ entryPoints: ['src/game/world.ts'], bundle: true, write: false, platform: 'node', format: 'esm' })
+const bundle = await build({ entryPoints: ['src/game/world.ts'], bundle: true, write: false, platform: 'node', format: 'esm', loader: { '.png': 'dataurl' } })
 const { MAPS, START, DIG_SPOTS, isWalkable, isPosition, edgeTransition } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
 const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]]
 assert(isPosition(START), 'Start must remain walkable')

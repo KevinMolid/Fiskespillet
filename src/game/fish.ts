@@ -1,4 +1,24 @@
 import type { BaitId } from './items'
+import mackerelImage from '../assets/fish/makrell.png'
+import saitheImage from '../assets/fish/sei.png'
+import codImage from '../assets/fish/torsk.png'
+import troutImage from '../assets/fish/orret.png'
+import perchIllustration from '../assets/fish/abbor.png'
+import pollackImage from '../assets/fish/lyr.png'
+import seaTroutImage from '../assets/fish/sjoorret.png'
+import pikeImage from '../assets/fish/gjedde.png'
+import charImage from '../assets/fish/roye.png'
+import herringImage from '../assets/fish/sild.png'
+import whitingImage from '../assets/fish/hvitting.png'
+import plaiceImage from '../assets/fish/rodspette.png'
+import graylingImage from '../assets/fish/harr.png'
+import whitefishImage from '../assets/fish/sik.png'
+import salmonImage from '../assets/fish/laks.png'
+import tuskImage from '../assets/fish/brosme.png'
+import lingImage from '../assets/fish/lange.png'
+import zanderImage from '../assets/fish/gjors.png'
+import halibutImage from '../assets/fish/kveite.png'
+import wolffishImage from '../assets/fish/steinbit.png'
 
 export type Habitat = 'kyst' | 'fjord' | 'hav' | 'bekk' | 'elv' | 'innsjø'
 export type Rarity = 'Svært vanlig' | 'Vanlig' | 'Mindre vanlig' | 'Sjelden/lokal' | 'Sjelden'
@@ -103,26 +123,26 @@ function species(id: string, name: string, minGrams: number, maxGrams: number, r
   return { id, name, minGrams, maxGrams, rarity, methods, habitats, reward, plus, icon: '🐟', ...FIELD_GUIDE[id] }
 }
 export const FISH: FishSpecies[] = [
-  species('makrell','Makrell',100,3500,'Svært vanlig',['sluk','hekle','dorging'],sea,8),
-  species('sei','Sei',100,20000,'Svært vanlig',['sluk','pilk','hekle'],sea,10,true),
-  species('torsk','Torsk',200,30000,'Svært vanlig',['pilk','jigg','agn'],sea,12,true),
-  species('orret','Ørret',50,20000,'Svært vanlig',['sluk','spinner','mark','flue'],['bekk','elv','innsjø'],12),
-  species('abbor','Abbor',50,3000,'Svært vanlig',['spinner','jigg','mark','isfiske'],fresh,10),
-  species('lyr','Lyr',200,13000,'Vanlig',['sluk','jigg','flue'],sea,16),
-  species('sjoorret','Sjøørret',200,12000,'Vanlig',['sluk','flue','wobbler'],['kyst','fjord','elv'],20),
-  species('gjedde','Gjedde',200,17000,'Vanlig',['wobbler','jerkbait','jigg'],fresh,22,true),
-  species('roye','Røye',50,10000,'Vanlig',['isfiske','mark','flue','sluk'],fresh,18,true),
-  species('sild','Sild',50,700,'Vanlig',['hekle','små sluker'],sea,8),
-  species('hvitting','Hvitting',100,3000,'Vanlig',['agn','pilk'],sea,14),
-  species('rodspette','Rødspette',200,5000,'Vanlig',['bunnmeite'],['kyst','fjord'],18),
-  species('harr','Harr',100,3000,'Vanlig',['flue','mark','spinner'],['elv','innsjø'],16),
-  species('sik','Sik',100,4000,'Vanlig',['mark','maggot','flue'],fresh,16),
-  species('laks','Laks',1000,30000,'Mindre vanlig',['flue','sluk','mark'],['elv','fjord','kyst','hav'],35,true),
-  species('brosme','Brosme',500,20000,'Mindre vanlig',['dypt agnfiske'],['fjord','hav'],30),
-  species('lange','Lange',500,30000,'Mindre vanlig',['dypt agnfiske'],['fjord','hav'],32,true),
-  species('gjors','Gjørs',200,12000,'Sjelden/lokal',['jigg','vertikalfiske','agnfisk'],fresh,40),
-  species('kveite','Kveite',1000,200000,'Sjelden',['jigg','agnfisk'],sea,80,true),
-  species('steinbit','Steinbit',500,20000,'Sjelden',['agn','jigg'],sea,55,true),
+  { ...species('makrell','Makrell',100,3500,'Svært vanlig',['sluk','hekle','dorging'],sea,8), image: mackerelImage },
+  { ...species('sei','Sei',100,20000,'Svært vanlig',['sluk','pilk','hekle'],sea,10,true), image: saitheImage },
+  { ...species('torsk','Torsk',200,30000,'Svært vanlig',['pilk','jigg','agn'],sea,12,true), image: codImage },
+  { ...species('orret','Ørret',50,20000,'Svært vanlig',['sluk','spinner','mark','flue'],['bekk','elv','innsjø'],12), image: troutImage },
+  { ...species('abbor','Abbor',50,3000,'Svært vanlig',['spinner','jigg','mark','isfiske'],fresh,10), image: perchIllustration },
+  { ...species('lyr','Lyr',200,13000,'Vanlig',['sluk','jigg','flue'],sea,16), image: pollackImage },
+  { ...species('sjoorret','Sjøørret',200,12000,'Vanlig',['sluk','flue','wobbler'],['kyst','fjord','elv'],20), image: seaTroutImage },
+  { ...species('gjedde','Gjedde',200,17000,'Vanlig',['wobbler','jerkbait','jigg'],fresh,22,true), image: pikeImage },
+  { ...species('roye','Røye',50,10000,'Vanlig',['isfiske','mark','flue','sluk'],fresh,18,true), image: charImage },
+  { ...species('sild','Sild',50,700,'Vanlig',['hekle','små sluker'],sea,8), image: herringImage },
+  { ...species('hvitting','Hvitting',100,3000,'Vanlig',['agn','pilk'],sea,14), image: whitingImage },
+  { ...species('rodspette','Rødspette',200,5000,'Vanlig',['bunnmeite'],['kyst','fjord'],18), image: plaiceImage },
+  { ...species('harr','Harr',100,3000,'Vanlig',['flue','mark','spinner'],['elv','innsjø'],16), image: graylingImage },
+  { ...species('sik','Sik',100,4000,'Vanlig',['mark','maggot','flue'],fresh,16), image: whitefishImage },
+  { ...species('laks','Laks',1000,30000,'Mindre vanlig',['flue','sluk','mark'],['elv','fjord','kyst','hav'],35,true), image: salmonImage },
+  { ...species('brosme','Brosme',500,20000,'Mindre vanlig',['dypt agnfiske'],['fjord','hav'],30), image: tuskImage },
+  { ...species('lange','Lange',500,30000,'Mindre vanlig',['dypt agnfiske'],['fjord','hav'],32,true), image: lingImage },
+  { ...species('gjors','Gjørs',200,12000,'Sjelden/lokal',['jigg','vertikalfiske','agnfisk'],fresh,40), image: zanderImage },
+  { ...species('kveite','Kveite',1000,200000,'Sjelden',['jigg','agnfisk'],sea,80,true), image: halibutImage },
+  { ...species('steinbit','Steinbit',500,20000,'Sjelden',['agn','jigg'],sea,55,true), image: wolffishImage },
   { ...species('mort','Mort',80,650,'Svært vanlig',['mark','brød','mais'],fresh,6) },
   { ...species('gullorret','Gullørret',300,2800,'Sjelden',['mark','sluk'],['innsjø'],65), icon: '✨' },
 ]

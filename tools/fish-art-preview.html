@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fiskebokillustrasjoner</title>
+<style>body{margin:0;padding:24px;background:#e9e5ce;color:#293e3e;font:14px system-ui}h1{font: bold 25px Georgia;margin:0 0 8px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;max-width:1100px}.grid figure{margin:0;background:#f7f2de;border:1px solid #a8b095;padding:8px;text-align:center}.grid img{width:192px;height:128px;object-fit:contain;image-rendering:pixelated}.grid figcaption{font-weight:700}.master img{outline:1px dashed #a8b095}@media(max-width:440px){body{padding:8px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.grid figure{padding:4px}.grid img{width:100%;height:auto;aspect-ratio:3/2}}</style>
+</head><body><h1>Fiskebok · artsillustrasjoner</h1><p>96×64 piksler · transparent · sideprofil</p><main class="grid"></main>
+<script type="module">
+const fish=[['Abbor','abbor'],['Makrell','makrell'],['Sei','sei'],['Torsk','torsk'],['Ørret','orret'],['Lyr','lyr'],['Sjøørret','sjoorret'],['Gjedde','gjedde'],['Røye','roye'],['Sild','sild'],['Hvitting','hvitting'],['Rødspette','rodspette'],['Harr','harr'],['Sik','sik'],['Laks','laks'],['Brosme','brosme'],['Lange','lange'],['Gjørs','gjors'],['Kveite','kveite'],['Steinbit','steinbit']];
+document.querySelector('.grid').innerHTML=fish.map(([name,id])=>`<figure class="${id==='abbor'?'master':''}"><img src="/src/assets/fish/${id}.png" alt="${name}"><figcaption>${name}</figcaption></figure>`).join('')
+</script></body></html>

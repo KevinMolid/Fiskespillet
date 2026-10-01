@@ -1,7 +1,7 @@
 import { build } from 'esbuild'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-const bundle=await build({stdin:{contents:"export * from './src/game/fish'; export { ITEMS } from './src/game/items'",resolveDir:process.cwd()},bundle:true,write:false,platform:'node',format:'esm'})
+const bundle=await build({stdin:{contents:"export * from './src/game/fish'; export { ITEMS } from './src/game/items'",resolveDir:process.cwd()},bundle:true,write:false,platform:'node',format:'esm',loader:{'.png':'dataurl'}})
 const {FISH,FISH_BY_ID,FISH_REWARDS,FISHING_ZONES,BAIT_METHODS,ITEMS,fishingOptions,compatibleBaits,livesInZone,rollFish,weightCeiling}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'))
 assert.equal(FISH.length,22)
 assert.equal(new Set(FISH.map(f=>f.id)).size,22)
@@ -16,6 +16,7 @@ for(const fish of FISH){
  assert(weightCeiling(fish)<=240000)
 }
 assert.equal(FISH_BY_ID.abbor.minGrams,50)
+assert.match(FISH_BY_ID.abbor.image,/^data:image\/png;base64,/)
 assert.equal(FISH_BY_ID.gjedde.maxGrams,17000)
 assert.equal(weightCeiling(FISH_BY_ID.kveite),240000)
 assert.equal(rollFish('havn','bread'),null)

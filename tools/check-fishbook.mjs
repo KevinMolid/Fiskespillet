@@ -32,7 +32,7 @@ globalThis.__fishBookTestDb = {
 }
 const bundle = await build({
   stdin: { contents: "export * from './src/game/persistence'; export * from './src/game/fishBook'; export * from './src/game/fish'; export * from './src/game/FishBookDialog'", resolveDir: process.cwd() },
-  bundle: true, write: false, platform: 'node', format: 'esm', jsx: 'automatic',
+  bundle: true, write: false, platform: 'node', format: 'esm', jsx: 'automatic', loader: { '.png': 'dataurl' },
   plugins: [{ name: 'offline-firestore', setup(b) {
     b.onResolve({ filter: /^react(?:\/.*)?$/ }, args => ({ path: import.meta.resolve(args.path), external: true }))
     b.onResolve({ filter: /^firebase\/firestore$|\/lib\/firebase$/ }, args => ({ path: args.path, namespace: 'fake' }))
@@ -54,6 +54,7 @@ assert.deepEqual(result.entry.discoveredLocationIds, [])
 assert.equal(result.entry.smallestGrams, null)
 assert.equal(result.inventory.coins, 60)
 assert.equal(renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.laks, entry: result.entry })), '<h3>Laks</h3>')
+assert.equal(renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.abbor })), '<h3>Abbor</h3>', 'unrecorded species stays hidden')
 result = await catchFish(5000)
 assert.equal(result.entry.caughtCount, 1)
 assert.equal(result.entry.hasCaught, true)
@@ -110,5 +111,8 @@ for (const fish of FISH) {
 }
 assert(!html.includes('Illustrasjon kommer') && !html.includes('<img') && !html.includes('Bryggehavn'))
 assert(html.includes('0 / 22 arter fanget'))
-console.log('Fish book: statistics, failures, atomic writes, per-player persistence, legacy upgrade, locations and locked UI passed.')
+const perchEntry = { fishId: 'abbor', caughtCount: 1, seenCount: 1, smallestGrams: 120, largestGrams: 120, discoveredLocationIds: ['skogstjern'] }
+html = renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.abbor, entry: perchEntry }))
+assert(html.includes('alt="Abbor"') && html.includes('data:image/png;base64,') && html.includes('Perca fluviatilis'))
+console.log('Fish book: statistics, failures, atomic writes, per-player persistence, legacy upgrade, locations, image import and locked UI passed.')
 delete globalThis.__fishBookTestDb

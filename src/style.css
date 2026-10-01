@@ -148,6 +148,7 @@ button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: no
 .fish-details h3 { margin: 0; font: bold 24px Georgia, serif; }
 .fish-scientific { font-style: italic; }
 .fish-image, .fish-image-placeholder { width: 96px; height: 64px; object-fit: contain; flex: 0 0 auto; }
+.fish-image { image-rendering: pixelated; image-rendering: crisp-edges; }
 .fish-image-placeholder { display: flex; align-items: center; justify-content: center; border: 1px dashed #8b9984; color: #536b5a; text-align: center; font-size: 11px; padding: 6px; }
 .fish-image.compact, .fish-image-placeholder.compact { width: 26px; height: 26px; padding: 0; }
 .fish-facts { display: grid; gap: 6px; }
