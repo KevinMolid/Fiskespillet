@@ -157,7 +157,7 @@ function App() {
         : user && page === 'profile' ? <div className="flex-1">
           {profileIssue && <p role="alert" className="mt-6 rounded-lg bg-rose-400/10 p-3 text-sm text-rose-200">{profileIssue}</p>}
           <ProfilePage user={user} profile={profile} onBack={() => setPage('home')} />
-        </div> : user ? <div className="flex-1"><Suspense fallback={<p className="py-16 text-slate-300">Laster spillet …</p>}><GamePage user={user} /></Suspense></div>
+        </div> : user ? <div className="flex-1"><Suspense fallback={<p className="py-16 text-slate-300">Laster spillet …</p>}><GamePage key={user.uid} user={user} /></Suspense></div>
         : <section className="grid flex-1 items-center gap-12 py-16 md:grid-cols-2">
           <div>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">Et nytt online fiskespill</p>

@@ -30,6 +30,12 @@ export function useGameInput(options: Options) {
   function direction(value: Direction) {
     if (latest.current.locked) return
     if (!latest.current.modal) { latest.current.move(value); return }
+    const scroller = document.activeElement instanceof HTMLElement && document.activeElement.hasAttribute('data-nav-scroll') ? document.activeElement : null
+    if (scroller) {
+      if (value === 'up' || value === 'down') scroller.scrollBy({ top: value === 'down' ? 64 : -64 })
+      else select(selected.current ?? undefined)
+      return
+    }
     const list = selected.current?.closest('[data-nav-list]')
     if (list && (value === 'up' || value === 'down')) {
       const entries = Array.from(list.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))

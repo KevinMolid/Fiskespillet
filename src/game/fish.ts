@@ -4,13 +4,103 @@ export type Habitat = 'kyst' | 'fjord' | 'hav' | 'bekk' | 'elv' | 'innsjø'
 export type Rarity = 'Svært vanlig' | 'Vanlig' | 'Mindre vanlig' | 'Sjelden/lokal' | 'Sjelden'
 export type Method = 'sluk' | 'små sluker' | 'spinner' | 'hekle' | 'dorging' | 'pilk' | 'jigg' | 'agn' | 'mark' | 'flue' | 'isfiske' | 'wobbler' | 'jerkbait' | 'bunnmeite' | 'maggot' | 'dypt agnfiske' | 'vertikalfiske' | 'agnfisk' | 'brød' | 'mais'
 export type FishSpecies = {
-  id: string; name: string; icon: string; description: string
+  id: string; name: string; icon: string; scientificName: string | null; description: string; image?: string
   minGrams: number; maxGrams: number; plus: boolean
   rarity: Rarity; habitats: Habitat[]; methods: Method[]; reward: number
 }
+const FIELD_GUIDE: Record<string, { scientificName: string | null; description: string }> = {
+  "makrell": {
+    "scientificName": "Scomber scombrus",
+    "description": "Makrellen mangler svømmeblære og må holde seg i bevegelse for ikke å synke."
+  },
+  "sei": {
+    "scientificName": "Pollachius virens",
+    "description": "Ung sei samler seg ofte i stimer. Seien kan vandre langt på jakt etter mat."
+  },
+  "torsk": {
+    "scientificName": "Gadus morhua",
+    "description": "Skrei er torsk som vandrer langt mellom oppvekstområder og gyteområder. Kysttorsk er vanligvis mer stedbunden."
+  },
+  "orret": {
+    "scientificName": "Salmo trutta",
+    "description": "Ørret hører til laksefamilien. Aure er et annet norsk navn på samme art."
+  },
+  "abbor": {
+    "scientificName": "Perca fluviatilis",
+    "description": "Abboren svømmer gjerne i stim, mens store individer ofte går alene eller i små grupper."
+  },
+  "lyr": {
+    "scientificName": "Pollachius pollachius",
+    "description": "Lyren ligner sei, men har tydelig underbitt og en mørk sidelinje som buer nedover."
+  },
+  "sjoorret": {
+    "scientificName": "Salmo trutta",
+    "description": "Sjøørret er samme art som ørret. Den vandrer ut i sjøen for å spise, men gyter i ferskvann."
+  },
+  "gjedde": {
+    "scientificName": "Esox lucius",
+    "description": "Voksne gjedder spiser først og fremst andre fisk. De kan også spise mindre gjedder."
+  },
+  "roye": {
+    "scientificName": "Salvelinus alpinus",
+    "description": "Røya er godt tilpasset kaldt vann og kan klare seg der det er lite næring."
+  },
+  "sild": {
+    "scientificName": "Clupea harengus",
+    "description": "Silda svømmer i stimer ute i vannmassene."
+  },
+  "hvitting": {
+    "scientificName": "Merlangius merlangus",
+    "description": "Unge hvittinger kan gjemme seg mellom trådene til brennmaneter. Voksne hvittinger mangler skjeggtråd."
+  },
+  "rodspette": {
+    "scientificName": "Pleuronectes platessa",
+    "description": "Rødspetta er en flatfisk med karakteristiske røde eller oransje flekker på oversiden."
+  },
+  "harr": {
+    "scientificName": "Thymallus thymallus",
+    "description": "Harren kjennes igjen på den store ryggfinnen. Den snapper gjerne opp mat som kommer drivende med strømmen."
+  },
+  "sik": {
+    "scientificName": "Coregonus lavaretus",
+    "description": "Siken er en sølvblank laksefisk med liten munn. Den har en liten fettfinne mellom ryggfinnen og halen."
+  },
+  "laks": {
+    "scientificName": "Salmo salar",
+    "description": "Laksen vokser opp i ferskvann før den vandrer ut i havet. Vanligvis vender den tilbake til elva der den ble født for å gyte."
+  },
+  "brosme": {
+    "scientificName": "Brosme brosme",
+    "description": "Brosma kan bli over 20 år gammel. Den spiser både fisk og krepsdyr."
+  },
+  "lange": {
+    "scientificName": "Molva molva",
+    "description": "Langen er en torskefisk med en uvanlig langstrakt kropp."
+  },
+  "gjors": {
+    "scientificName": "Sander lucioperca",
+    "description": "Gjørsen er en rovfisk som blant annet spiser småfisk som krøkle og mort."
+  },
+  "kveite": {
+    "scientificName": "Hippoglossus hippoglossus",
+    "description": "Kveita er en flatfisk med mørk overside og lys underside. Den er den største beinfisken i norske farvann."
+  },
+  "steinbit": {
+    "scientificName": "Anarhichas lupus",
+    "description": "Denne steinbiten kalles også gråsteinbit. Den kan leve i omtrent 20–25 år."
+  },
+  "mort": {
+    "scientificName": "Rutilus rutilus",
+    "description": "Unge mort spiser mye dyreplankton. Eldre mort spiser også bunndyr og plantedeler."
+  },
+  "gullorret": {
+    "scientificName": null,
+    "description": "Gullørreten er en oppdiktet fisk som bare finnes i Fiskespillet. Den har derfor ikke noe vitenskapelig artsnavn."
+  }
+}
 const sea: Habitat[] = ['kyst','fjord','hav'], fresh: Habitat[] = ['innsjø','elv']
 function species(id: string, name: string, minGrams: number, maxGrams: number, rarity: Rarity, methods: Method[], habitats: Habitat[], reward: number, plus = false): FishSpecies {
-  return { id, name, minGrams, maxGrams, rarity, methods, habitats, reward, plus, icon: '🐟', description: name + ' finnes i ' + habitats.join(', ') + '.' }
+  return { id, name, minGrams, maxGrams, rarity, methods, habitats, reward, plus, icon: '🐟', ...FIELD_GUIDE[id] }
 }
 export const FISH: FishSpecies[] = [
   species('makrell','Makrell',100,3500,'Svært vanlig',['sluk','hekle','dorging'],sea,8),
@@ -33,8 +123,8 @@ export const FISH: FishSpecies[] = [
   species('gjors','Gjørs',200,12000,'Sjelden/lokal',['jigg','vertikalfiske','agnfisk'],fresh,40),
   species('kveite','Kveite',1000,200000,'Sjelden',['jigg','agnfisk'],sea,80,true),
   species('steinbit','Steinbit',500,20000,'Sjelden',['agn','jigg'],sea,55,true),
-  { ...species('mort','Mort',80,650,'Svært vanlig',['mark','brød','mais'],fresh,6), description: 'En liten, sølvblank stimfisk som trives ved bredden.' },
-  { ...species('gullorret','Gullørret',300,2800,'Sjelden',['mark','sluk'],['innsjø'],65), icon: '✨', description: 'Spillets sjeldne fantasifisk, bevart fra Skogstjernet.' },
+  { ...species('mort','Mort',80,650,'Svært vanlig',['mark','brød','mais'],fresh,6) },
+  { ...species('gullorret','Gullørret',300,2800,'Sjelden',['mark','sluk'],['innsjø'],65), icon: '✨' },
 ]
 export const FISH_BY_ID = Object.fromEntries(FISH.map(fish => [fish.id,fish])) as Record<string,FishSpecies>
 export const FISH_REWARDS = Object.fromEntries(FISH.map(fish => [fish.id,fish.reward])) as Record<string,number>

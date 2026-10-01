@@ -3,17 +3,9 @@ import { db } from '../lib/firebase'
 import { FISH_REWARDS, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemId } from './items'
 import { DIG_SPOTS, DEFAULT_APPEARANCE, FISH_BY_ID, isAppearance, isPosition, START, type Appearance, type Position } from './world'
 
-export type FishBookEntry = {
-  speciesId: string
-  seenCount: number
-  caughtCount: number
-  smallestGrams: number | null
-  largestGrams: number | null
-  lastGrams: number | null
-  firstSeenAt: Timestamp
-  firstCaughtAt: Timestamp | null
-  updatedAt: Timestamp
-}
+import { normalizeFishBookEntry, updateFishBookEntry, type FishBookEntry, type LegacyFishBookEntry } from './fishBook'
+import { fishingOptions } from './fish'
+export type { FishBookEntry } from './fishBook'
 
 function database() {
   if (!db) throw new Error('Firestore er ikke konfigurert.')
@@ -35,7 +27,7 @@ export async function savePosition(uid: string, position: Position) {
 
 export async function loadFishBook(uid: string): Promise<FishBookEntry[]> {
   const snapshot = await getDocs(collection(database(), 'fishBooks', uid, 'entries'))
-  return snapshot.docs.map(entry => entry.data() as FishBookEntry)
+  return snapshot.docs.filter(entry => Object.hasOwn(FISH_BY_ID, entry.id)).map(entry => normalizeFishBookEntry(entry.data() as LegacyFishBookEntry))
 }
 
 export type ItemCounts = Partial<Record<ItemId, number>>
@@ -122,8 +114,8 @@ export async function digForWorms(uid: string, spotId: string): Promise<{ invent
   })
 }
 
-export async function recordEncounter(uid: string, speciesId: string, grams: number, caught: boolean, bait: BaitId) {
-  if (!FISH_BY_ID[speciesId]) throw new Error('Ukjent fisk.')
+export async function recordEncounter(uid: string, speciesId: string, grams: number, caught: boolean, bait: BaitId, locationId: string) {
+  if (!fishingOptions(locationId, bait).some(option => option.species.id === speciesId)) throw new Error('Fisken passer ikke til fangststedet og agnet.')
   const ref = doc(database(), 'fishBooks', uid, 'entries', speciesId)
   const bagRef = inventoryRef(uid)
   return runTransaction(database(), async transaction => {
@@ -142,19 +134,14 @@ export async function recordEncounter(uid: string, speciesId: string, grams: num
     if (caught) inventory.coins += FISH_REWARDS[speciesId] ?? 0
     transaction.set(bagRef, { ...inventory, updatedAt: serverTimestamp() })
     const previous = snapshot.exists() ? snapshot.data() as FishBookEntry : null
-    const caughtCount = (previous?.caughtCount ?? 0) + (caught ? 1 : 0)
+    const entry = updateFishBookEntry(previous, speciesId, grams, caught, locationId, Timestamp.now())
     transaction.set(ref, {
-      speciesId,
-      seenCount: (previous?.seenCount ?? 0) + 1,
-      caughtCount,
-      smallestGrams: caught ? Math.min(previous?.smallestGrams ?? grams, grams) : previous?.smallestGrams ?? null,
-      largestGrams: caught ? Math.max(previous?.largestGrams ?? grams, grams) : previous?.largestGrams ?? null,
-      lastGrams: caught ? grams : previous?.lastGrams ?? null,
+      ...entry,
       firstSeenAt: previous?.firstSeenAt ?? serverTimestamp(),
       firstCaughtAt: previous?.firstCaughtAt ?? (caught ? serverTimestamp() : null),
       updatedAt: serverTimestamp(),
     })
-    return inventory
+    return { inventory, entry }
   })
 }
 

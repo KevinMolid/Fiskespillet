@@ -1,3 +1,4 @@
+import { FishBookDialog } from './FishBookDialog'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { type User } from 'firebase/auth'
 import { createWorld, type WorldScene } from './WorldScene'
@@ -5,7 +6,7 @@ import * as persistence from './persistence'
 import { type FishBookEntry, type Inventory } from './persistence'
 import { GameMenu } from './GameMenu'
 import { PlaceNotice } from './PlaceNotice'
-import { InventoryDialog, ShopDialog, WardrobeDialog, FishBookDialog } from './GameDialogs'
+import { InventoryDialog, ShopDialog, WardrobeDialog } from './GameDialogs'
 import { MobileControls } from './MobileControls'
 import { useGameInput } from './useGameInput'
 import { FISH_REWARDS } from './items'
@@ -124,7 +125,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
         }
         const zone = worldPosition.current && MAPS[worldPosition.current.mapId].fishingZone
         if (!zone || !fishingOptions(zone, activeBait).length) {
-          setError('Dette agnet passer ikke til fiskene her. Se «Finn fisken» i fiskeboken. Agnet er ikke brukt.')
+          setError('Dette agnet passer ikke til fiskene her. Prøv et annet agn. Agnet er ikke brukt.')
           world.finishFishing()
           return
         }
@@ -150,13 +151,11 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
             setError('Ingen fisk passer til valgt agn her. Agnet er ikke brukt.')
             return
           }
-          void recordEncounter(user.uid, fish.species.id, fish.grams, fish.caught, activeBait)
-            .then(nextInventory => {
+          void recordEncounter(user.uid, fish.species.id, fish.grams, fish.caught, activeBait, zoneId)
+            .then(({ inventory: nextInventory, entry }) => {
               setInventory(nextInventory)
               setResult({ name: fish.species.name, icon: fish.species.icon, grams: fish.grams, caught: fish.caught, coins: fish.caught ? FISH_REWARDS[fish.species.id] ?? 0 : 0 })
-              return loadFishBook(user.uid).then(setBook).catch(() => {
-                setError('Fangsten er lagret, men fiskeboken kunne ikke lastes på nytt.')
-              })
+              setBook(current => [...current.filter(item => item.speciesId !== entry.speciesId), entry])
             })
             .catch(cause => setError(cause instanceof Error ? cause.message : 'Fisketuren kunne ikke lagres. Prøv igjen.'))
             .finally(() => {

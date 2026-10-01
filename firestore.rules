@@ -161,12 +161,19 @@ service cloud.firestore {
         return speciesId in ['makrell', 'sei', 'torsk', 'orret', 'abbor', 'lyr', 'sjoorret', 'gjedde', 'roye', 'sild', 'hvitting', 'rodspette', 'harr', 'sik', 'laks', 'brosme', 'lange', 'gjors', 'kveite', 'steinbit', 'mort', 'gullorret']
           && request.resource.data.keys().hasAll([
             'speciesId', 'seenCount', 'caughtCount', 'smallestGrams',
-            'largestGrams', 'lastGrams', 'firstSeenAt', 'firstCaughtAt', 'updatedAt'
+            'largestGrams', 'lastGrams', 'firstSeenAt', 'firstCaughtAt', 'updatedAt',
+            'hasCaught', 'discoveredLocationIds'
           ])
           && request.resource.data.keys().hasOnly([
             'speciesId', 'seenCount', 'caughtCount', 'smallestGrams',
-            'largestGrams', 'lastGrams', 'firstSeenAt', 'firstCaughtAt', 'updatedAt'
+            'largestGrams', 'lastGrams', 'firstSeenAt', 'firstCaughtAt', 'updatedAt',
+            'hasCaught', 'discoveredLocationIds'
           ])
+          && request.resource.data.hasCaught == (request.resource.data.caughtCount > 0)
+          && request.resource.data.discoveredLocationIds is list
+          && request.resource.data.discoveredLocationIds.hasOnly(['havn', 'skogstjern'])
+          && request.resource.data.discoveredLocationIds.size() == request.resource.data.discoveredLocationIds.toSet().size()
+          && (request.resource.data.hasCaught || request.resource.data.discoveredLocationIds.size() == 0)
           && request.resource.data.speciesId == speciesId
           && request.resource.data.seenCount is int
           && request.resource.data.seenCount >= 1
@@ -193,13 +200,34 @@ service cloud.firestore {
           );
       }
 
+      // Existing documents have no locations: preserve records and upgrade lazily.
+      function validProgress() {
+        let old = resource.data;
+        let next = request.resource.data;
+        let locations = old.get('discoveredLocationIds', []);
+        let caught = next.caughtCount == old.caughtCount + 1;
+        return next.discoveredLocationIds.hasAll(locations)
+          && (caught
+            ? (next.discoveredLocationIds.size() >= 1
+              && next.discoveredLocationIds.size() <= locations.size() + 1
+              && next.smallestGrams == (old.caughtCount == 0 || next.lastGrams < old.smallestGrams ? next.lastGrams : old.smallestGrams)
+              && next.largestGrams == (old.caughtCount == 0 || next.lastGrams > old.largestGrams ? next.lastGrams : old.largestGrams))
+            : (next.discoveredLocationIds == locations
+              && next.smallestGrams == old.smallestGrams
+              && next.largestGrams == old.largestGrams
+              && next.lastGrams == old.lastGrams));
+      }
+
       allow get, list: if signedIn();
       allow create: if owner() && validEntry()
         && request.resource.data.seenCount == 1
         && request.resource.data.caughtCount <= 1
+        && request.resource.data.discoveredLocationIds.size() == request.resource.data.caughtCount
+        && request.resource.data.smallestGrams == request.resource.data.lastGrams
+        && request.resource.data.largestGrams == request.resource.data.lastGrams
         && request.resource.data.firstSeenAt == request.time
         && (request.resource.data.firstCaughtAt == null || request.resource.data.firstCaughtAt == request.time);
-      allow update: if owner() && validEntry()
+      allow update: if owner() && validEntry() && validProgress()
         && request.resource.data.seenCount == resource.data.seenCount + 1
         && request.resource.data.caughtCount >= resource.data.caughtCount
         && request.resource.data.caughtCount <= resource.data.caughtCount + 1

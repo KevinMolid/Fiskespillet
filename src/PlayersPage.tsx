@@ -71,8 +71,8 @@ export default function PlayersPage({ onBack }: { onBack: () => void }) {
         {FISH.map(species => {
           const entry = entries.find(item => item.speciesId === species.id)
           return <div key={species.id} className="rounded-lg border border-white/10 p-3">
-            <p className="font-medium">{entry ? `${species.icon} ${species.name}` : '❔ Ukjent art'}</p>
-            {entry && <p className="mt-1 text-sm text-slate-300">Sett {entry.seenCount} · Fanget {entry.caughtCount}
+            <p className="font-medium">{species.name}</p>
+            {entry && entry.caughtCount > 0 && <p className="mt-1 text-sm text-slate-300">Sett {entry.seenCount} · Fanget {entry.caughtCount}
               {entry.largestGrams && ` · Rekord ${formatWeight(entry.largestGrams)}`}</p>}
           </div>
         })}

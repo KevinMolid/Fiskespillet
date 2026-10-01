@@ -1,3 +1,4 @@
+import { normalizeFishBookEntry, updateFishBookEntry } from '../src/game/fishBook'
 import { NPCS } from '../src/game/npcs'
 import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -8,13 +9,15 @@ import { Timestamp } from 'firebase/firestore'
 import { FISH_REWARDS, SHOP_PRICES } from '../src/game/items'
 import '../src/style.css'
 
-// This entry is served only by the dev server and uses in-memory services.
+// Dev-only services. Fish book fixtures persist locally, never to a real account.
 // The actual GamePage, dialogs and Phaser scene are exercised without account writes.
 let savedPosition = { ...START }
 let savedAppearance = { ...DEFAULT_APPEARANCE }
 let inventory: Inventory = { bag: { rod: 1, shovel: 1, bread: 3, worm: 5, corn: 2, spinner: 1 }, storage: { rod: 1, bread: 5, worm: 5 }, equippedBait: 'bread', coins: 60 }
 const snapshot = () => structuredClone(inventory)
-let fishBook: FishBookEntry[] = [{ speciesId: 'gullorret', seenCount: 12, caughtCount: 4, smallestGrams: 450, largestGrams: 2700, lastGrams: 1100, firstSeenAt: Timestamp.fromMillis(0), firstCaughtAt: Timestamp.fromMillis(0), updatedAt: Timestamp.fromMillis(0) }]
+let fishBook: FishBookEntry[] = [normalizeFishBookEntry({ speciesId: 'gullorret', seenCount: 12, caughtCount: 4, smallestGrams: 450, largestGrams: 2700, lastGrams: 1100, firstSeenAt: Timestamp.fromMillis(0), firstCaughtAt: Timestamp.fromMillis(0), updatedAt: Timestamp.fromMillis(0) })]
+const storedBook = localStorage.getItem('fiskespillet-preview-fishbook-v1')
+if (storedBook) fishBook = JSON.parse(storedBook).map(normalizeFishBookEntry)
 const services: GameServices = {
   loadPosition: async () => ({ ...savedPosition }),
   loadAppearance: async () => ({ ...savedAppearance }),
@@ -39,22 +42,17 @@ const services: GameServices = {
     return snapshot()
   },
   digForWorms: async () => ({ inventory: snapshot(), amount: 2 }),
-  recordEncounter: async (_uid, speciesId, grams, caught, bait) => {
+  recordEncounter: async (_uid, speciesId, grams, caught, bait, locationId) => {
     if (!(inventory.bag[bait] ?? 0)) throw new Error('Tomt for agn.')
     inventory.bag[bait] = (inventory.bag[bait] ?? 0) - 1
     if (!inventory.bag[bait]) inventory.equippedBait = null
     if (caught) inventory.coins += FISH_REWARDS[speciesId]
     const previous = fishBook.find(entry => entry.speciesId === speciesId)
     const now = Timestamp.now()
-    const entry: FishBookEntry = {
-      speciesId, seenCount: (previous?.seenCount ?? 0)+1, caughtCount: (previous?.caughtCount ?? 0)+(caught?1:0),
-      smallestGrams: caught ? Math.min(previous?.smallestGrams ?? grams,grams) : previous?.smallestGrams ?? null,
-      largestGrams: caught ? Math.max(previous?.largestGrams ?? grams,grams) : previous?.largestGrams ?? null,
-      lastGrams: caught ? grams : previous?.lastGrams ?? null,
-      firstSeenAt: previous?.firstSeenAt ?? now, firstCaughtAt: previous?.firstCaughtAt ?? (caught?now:null), updatedAt:now,
-    }
+    const entry = updateFishBookEntry(previous ?? null, speciesId, grams, caught, locationId, now)
     fishBook = [...fishBook.filter(entry=>entry.speciesId!==speciesId),entry]
-    return snapshot()
+    localStorage.setItem('fiskespillet-preview-fishbook-v1', JSON.stringify(fishBook))
+    return { inventory: snapshot(), entry }
   },
 }
 

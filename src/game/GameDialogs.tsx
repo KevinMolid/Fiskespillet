@@ -1,11 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { FisherPortrait } from './FisherPortrait'
 import { CATEGORIES, ITEMS, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemCategory, type ItemId } from './items'
-import type { FishBookEntry, Inventory } from './persistence'
-import { availableZones, compatibleBaits, weightRange } from './fish'
-import { FISH, formatWeight, HAIR_COLORS, SHIRT_COLORS, SKIN_COLORS, type Appearance } from './world'
+import type { Inventory } from './persistence'
+import { HAIR_COLORS, SHIRT_COLORS, SKIN_COLORS, type Appearance } from './world'
 
-function Panel({ title, subtitle, onClose, disabled, children, className = '' }: { title: string; subtitle?: string; onClose: () => void; disabled?: boolean; children: ReactNode; className?: string }) {
+export function Panel({ title, subtitle, onClose, disabled, children, className = '' }: { title: string; subtitle?: string; onClose: () => void; disabled?: boolean; children: ReactNode; className?: string }) {
   return <section role="dialog" aria-label={title} aria-modal="true" className={`pocket-dialog ${className}`}>
     <header className="dialog-heading"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button disabled={disabled} onClick={onClose}>Tilbake</button></header>
     {children}
@@ -81,34 +80,5 @@ export function WardrobeDialog({ appearance, pending, onPreview, onSave, onClose
       </div>
     </div>
     <footer className="dialog-footer wardrobe-footer"><button disabled={pending} onClick={onClose}>Avbryt</button><button disabled={pending} onClick={onSave}>{pending ? 'Lagrer …' : 'Lagre utseende'}</button></footer>
-  </Panel>
-}
-
-export function FishBookDialog({ book, onClose }: { book: FishBookEntry[]; onClose: () => void }) {
-  const [page, setPage] = useState(0)
-  const species = FISH[page]
-  const entry = book.find(e => e.speciesId === species.id)
-  const zones = availableZones(species)
-  const baits = compatibleBaits(species)
-  return <Panel className="fish-book-dialog" title="Fiskeboken" subtitle={'Oppdaget '+book.length+' av '+FISH.length+' arter'} onClose={onClose}>
-    <div className="fish-book-layout">
-      <article className="fish-details" aria-label={species.name}>
-        <header className="fish-details-heading"><span className="fish-picture" role="img" aria-label={species.name}>{species.icon}</span><div><h3>{species.name}</h3><p>{species.rarity}</p><p>{weightRange(species)}</p></div></header>
-        <dl className="fish-facts">
-          <div><dt>Levested</dt><dd>{species.habitats.join(', ')}</dd></div>
-          <div><dt>Metoder</dt><dd>{species.methods.join(', ')}</dd></div>
-          <div><dt>I spillet</dt><dd>{zones.length ? zones.join(', ') : 'Ingen av dagens områder'}</dd></div>
-          <div><dt>Bruk nå</dt><dd>{!zones.length ? 'Ikke tilgjengelig her ennå.' : baits.length ? baits.map(id => ITEM_BY_ID[id].name).join(', ') : 'Krever fremtidig utstyr.'}</dd></div>
-        </dl>
-        <div className="fish-records">{entry ? <><p>Sett {entry.seenCount} · Fanget {entry.caughtCount}</p>{entry.caughtCount > 0 && <p>Minst {formatWeight(entry.smallestGrams!)} · Størst {formatWeight(entry.largestGrams!)}</p>}</> : <p>Ikke oppdaget ennå</p>}</div>
-      </article>
-      <div className="fish-list" role="listbox" aria-label="Fiskearter" data-nav-list>
-        {FISH.map((fish,index) => <button key={fish.id} role="option" aria-selected={index === page} tabIndex={index === page ? 0 : -1} data-autofocus={index === page ? '' : undefined}
-          onFocus={event => { setPage(index); event.currentTarget.scrollIntoView({ block: 'nearest' }) }} onClick={() => setPage(index)}>
-          <span>{fish.name}</span><small>{book.some(e => e.speciesId === fish.id) ? '●' : '○'}</small>
-        </button>)}
-      </div>
-    </div>
-    <footer className="fish-book-footer">↑ ↓ Velg fisk <span>{page+1} / {FISH.length}</span></footer>
   </Panel>
 }
