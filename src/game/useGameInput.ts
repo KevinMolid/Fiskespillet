@@ -10,6 +10,8 @@ type Options = {
   move: (direction: Direction) => void
   action: () => void
   menu: () => void
+  holdStart?: () => boolean
+  holdEnd?: () => void
 }
 
 export function useGameInput(options: Options) {
@@ -104,8 +106,13 @@ export function useGameInput(options: Options) {
         const index = controls.indexOf(selected.current!)
         select(controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length])
       } else if (event.key === 'Escape' || (event.key === 'Enter' && !current.modal)) current.menu()
+      else if (['e', 'E', ' '].includes(event.key) && current.holdStart?.()) return
       else action()
     }
+    function keyup(event: KeyboardEvent) {
+      if (['e', 'E', ' '].includes(event.key)) latest.current.holdEnd?.()
+    }
+    function stopHold() { latest.current.holdEnd?.() }
     function focus(event: FocusEvent) {
       const target = event.target
       if (target instanceof HTMLButtonElement && latest.current.frame.current?.contains(target) && target.closest('[role="dialog"]')) {
@@ -113,8 +120,10 @@ export function useGameInput(options: Options) {
       }
     }
     window.addEventListener('keydown', keydown, true)
+    window.addEventListener('keyup', keyup, true)
+    window.addEventListener('blur', stopHold)
     window.addEventListener('focusin', focus)
-    return () => { window.removeEventListener('keydown', keydown, true); window.removeEventListener('focusin', focus) }
+    return () => { window.removeEventListener('keydown', keydown, true); window.removeEventListener('keyup', keyup, true); window.removeEventListener('blur', stopHold); window.removeEventListener('focusin', focus) }
   }, [])
   return { direction, action, menu: () => { if (!latest.current.locked) latest.current.menu() } }
 }

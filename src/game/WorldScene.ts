@@ -23,6 +23,8 @@ export class WorldScene extends Phaser.Scene {
   private callbacks: Callbacks
   private player?: Phaser.GameObjects.Container
   private terrain?: Phaser.GameObjects.Graphics
+  private waterSigns?: Phaser.GameObjects.Group
+  private nextWaterSignAt = 0
   private keys?: Record<string, Phaser.Input.Keyboard.Key>
   private moving = false
   private fishing = false
@@ -62,6 +64,7 @@ export class WorldScene extends Phaser.Scene {
     this.player?.setDepth(this.player.y)
     for (const n of this.residents) n.sprite.setDepth(n.sprite.y)
     this.updateResidents(time)
+    this.updateWaterSigns(time)
     if (!this.keys || this.moving || this.fishing || this.uiBlocked || time < this.nextMove) return
     const key = this.keys
     const direction: Direction | null =
@@ -177,6 +180,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private drawMap() {
+    this.waterSigns?.clear(true, true)
+    this.waterSigns?.destroy(true)
+    this.waterSigns = undefined
     for (const resident of this.residents) {
       this.tweens.killTweensOf(resident.sprite)
       resident.sprite.destroy()
@@ -186,6 +192,8 @@ export class WorldScene extends Phaser.Scene {
     const graphics = this.add.graphics()
     this.terrain = graphics
     const map = MAPS[this.position.mapId]
+    this.waterSigns = this.add.group()
+    this.nextWaterSignAt = this.time.now + 2500 + Math.random() * 3500
     for (let y = 0; y < map.tiles.length; y++) {
       for (let x = 0; x < map.tiles[y].length; x++) {
         const tile = map.tiles[y][x]
@@ -206,6 +214,27 @@ export class WorldScene extends Phaser.Scene {
       this.residents.push(resident)
       this.drawResident(resident)
     }
+  }
+
+  /** Occasional small rings hint that fish are active without cluttering the water. */
+  private updateWaterSigns(time: number) {
+    if (time < this.nextWaterSignAt || this.fishing || this.uiBlocked) return
+    const map = MAPS[this.position.mapId]
+    if (!map.fishingZone || !this.waterSigns) return
+    const visible = map.tiles.flatMap((row, y) => row.flatMap((tile, x) => {
+      const px = x * TILE_SIZE + TILE_SIZE / 2
+      const py = y * TILE_SIZE + TILE_SIZE / 2
+      return tile === 'water' && this.cameras.main.worldView.contains(px, py) ? [{ x: px, y: py }] : []
+    }))
+    this.nextWaterSignAt = time + 7000 + Math.random() * 9000
+    if (!visible.length) return
+    const { x, y } = visible[Math.floor(Math.random() * visible.length)]
+    const ring = this.add.ellipse(x, y, 9, 4, 0x53a6b6, 0).setStrokeStyle(1, 0xa9dbe0, 0.85).setDepth(y - 2)
+    this.waterSigns.add(ring)
+    this.tweens.add({ targets: ring, scaleX: 2.4, scaleY: 2.2, alpha: 0, duration: 850, ease: 'Sine.easeOut', onComplete: () => {
+      this.waterSigns?.remove(ring)
+      ring.destroy()
+    } })
   }
 
   private drawTile(g: Phaser.GameObjects.Graphics, tile: Tile, x: number, y: number, col: number, row: number, indoor: boolean) {

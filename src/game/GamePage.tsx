@@ -8,23 +8,26 @@ import { GameMenu } from './GameMenu'
 import { PlaceNotice } from './PlaceNotice'
 import { InventoryDialog, ShopDialog, WardrobeDialog } from './GameDialogs'
 import { MobileControls } from './MobileControls'
+import { FishingDialog, type FishingFinish } from './FishingDialog'
 import { useGameInput } from './useGameInput'
-import { FISH_REWARDS } from './items'
+import { FISH_REWARDS, type BaitId } from './items'
 import { fishingOptions } from './fish'
-import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, interactionAhead, MAPS, rollFish, type Appearance, type Position } from './world'
+import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, interactionAhead, MAPS, type Appearance, type Position } from './world'
 
 type Result = { name: string; icon: string; grams: number; caught: boolean; coins: number }
 
-export type GameServices = Pick<typeof persistence, 'buyBait' | 'digForWorms' | 'loadAppearance' | 'loadFishBook' | 'loadInventory' | 'loadPosition' | 'recordEncounter' | 'saveAppearance' | 'savePosition' | 'setEquippedBait' | 'transferItem'>
+export type GameServices = Pick<typeof persistence, 'buyBait' | 'consumeBait' | 'digForWorms' | 'loadAppearance' | 'loadFishBook' | 'loadInventory' | 'loadPosition' | 'recordEncounter' | 'saveAppearance' | 'savePosition' | 'setEquippedBait' | 'transferItem'>
 
 export default function GamePage({ user, services = persistence }: { user: Pick<User, 'uid'>; services?: GameServices }) {
-  const { buyBait, digForWorms, loadAppearance, loadFishBook, loadInventory, loadPosition, recordEncounter, saveAppearance, savePosition, setEquippedBait, transferItem } = services
+  const { buyBait, consumeBait, digForWorms, loadAppearance, loadFishBook, loadInventory, loadPosition, recordEncounter, saveAppearance, savePosition, setEquippedBait, transferItem } = services
   const canvasParent = useRef<HTMLDivElement>(null)
   const gameFrame = useRef<HTMLDivElement>(null)
   const scene = useRef<WorldScene | null>(null)
   const saveTimer = useRef<number | null>(null)
-  const castTimer = useRef<number | null>(null)
   const casting = useRef(false)
+  const fishingCommitted = useRef(false)
+  const reelControl = useRef<{ start: () => boolean; stop: () => void } | null>(null)
+  const registerReelControl = useCallback((control: { start: () => boolean; stop: () => void } | null) => { reelControl.current = control }, [])
   const interacting = useRef(false)
   const [, refreshInteraction] = useState(0)
   const [position, setPosition] = useState<Position | null>(null)
@@ -32,6 +35,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const [inventory, setInventory] = useState<Inventory | null>(null)
   const [inventoryView, setInventoryView] = useState<'bag' | 'chest' | null>(null)
   const [showShop, setShowShop] = useState(false)
+  const [fishingSession, setFishingSession] = useState<{ position: Position; zoneId: string; bait: BaitId } | null>(null)
   const [inventoryPending, setInventoryPending] = useState(false)
   const [inventoryError, setInventoryError] = useState('')
   const [appearance, setAppearance] = useState<Appearance | null>(null)
@@ -52,7 +56,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
     window.requestAnimationFrame(() => gameFrame.current?.focus({ preventScroll: true }))
   }, [])
   const [signMessage, setSignMessage] = useState<{ title: string; text: string } | null>(null)
-  const uiBlocked = showMenu || showBook || showWardrobe || Boolean(inventoryView) || showShop || inventoryPending || savingLook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy
+  const uiBlocked = showMenu || showBook || showWardrobe || Boolean(inventoryView) || showShop || Boolean(fishingSession) || inventoryPending || savingLook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy
 
   useEffect(() => {
     scene.current?.setUiBlocked(uiBlocked)
@@ -132,41 +136,18 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
           world.finishFishing()
           return
         }
+        const currentPosition = worldPosition.current
+        if (!zone || !currentPosition) {
+          setError('Du kan ikke fiske her.')
+          world.finishFishing()
+          return
+        }
         casting.current = true
-        setBusyText('Du kastet ut snøret … Vent på napp!')
-        setBusy(true)
+        fishingCommitted.current = false
         setResult(null)
         setError('')
-        castTimer.current = window.setTimeout(() => {
-          const nextZone = worldPosition.current?.mapId
-          const zoneId = nextZone && MAPS[nextZone].fishingZone
-          if (!zoneId) {
-            casting.current = false
-            setBusy(false)
-            world.finishFishing()
-            return
-          }
-          const fish = rollFish(zoneId, activeBait)
-          if (!fish) {
-            casting.current = false
-            setBusy(false)
-            world.finishFishing()
-            setError('Ingen fisk passer til valgt agn her. Agnet er ikke brukt.')
-            return
-          }
-          void recordEncounter(user.uid, fish.species.id, fish.grams, fish.caught, activeBait, zoneId)
-            .then(({ inventory: nextInventory, entry }) => {
-              setInventory(nextInventory)
-              setResult({ name: fish.species.name, icon: fish.species.icon, grams: fish.grams, caught: fish.caught, coins: fish.caught ? FISH_REWARDS[fish.species.id] ?? 0 : 0 })
-              setBook(current => [...current.filter(item => item.speciesId !== entry.speciesId), entry])
-            })
-            .catch(cause => setError(cause instanceof Error ? cause.message : 'Fisketuren kunne ikke lagres. Prøv igjen.'))
-            .finally(() => {
-              casting.current = false
-              setBusy(false)
-              world.finishFishing()
-            })
-        }, 850)
+        setSignMessage(null)
+        setFishingSession({ position: { ...currentPosition }, zoneId: zone, bait: activeBait })
       },
     })
     scene.current = world
@@ -175,7 +156,6 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
         window.clearTimeout(saveTimer.current)
         if (worldPosition.current) void savePosition(user.uid, worldPosition.current).catch(() => {})
       }
-      if (castTimer.current !== null) window.clearTimeout(castTimer.current)
       casting.current = false
       interacting.current = false
       scene.current = null
@@ -230,6 +210,43 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const worldPosition = useRef(position)
   worldPosition.current = position
   const map = position ? MAPS[position.mapId] : null
+  function closeFishingSession() {
+    reelControl.current?.stop()
+    fishingCommitted.current = false
+    casting.current = false
+    setFishingSession(null)
+    scene.current?.finishFishing()
+  }
+  async function finishFishingSession(outcome: FishingFinish) {
+    setBusyText(outcome.type === 'landed' ? 'Du landet fisken …' : 'Du sveiver inn snøret …')
+    setBusy(true)
+    setError('')
+    try {
+      if (outcome.type === 'landed') {
+        if (!fishingSession) throw new Error('Fisketuren ble avbrutt før fangsten kunne lagres.')
+        const { inventory: nextInventory, entry } = await recordEncounter(
+          user.uid, outcome.species.id, outcome.grams, true, outcome.bait, fishingSession.zoneId,
+        )
+        setInventory(nextInventory)
+        setResult({ name: outcome.species.name, icon: outcome.species.icon, grams: outcome.grams, caught: true, coins: FISH_REWARDS[outcome.species.id] ?? 0 })
+        setBook(current => [...current.filter(item => item.speciesId !== entry.speciesId), entry])
+      } else {
+        const nextInventory = await consumeBait(user.uid, outcome.bait)
+        setInventory(nextInventory)
+        const text = outcome.reason === 'no-bite'
+          ? 'Ingen napp denne gangen. Agnet er brukt.'
+          : outcome.reason === 'missed-hook'
+            ? 'Du reagerte litt for sent. Fisken slapp unna, og agnet er brukt.'
+            : 'Snøret røk. Fisken slapp unna, og agnet er brukt.'
+        setSignMessage({ title: outcome.reason === 'no-bite' ? 'Ingen napp' : 'Fisken slapp unna', text })
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Fisketuren kunne ikke lagres. Prøv igjen.')
+    } finally {
+      setBusy(false)
+      closeFishingSession()
+    }
+  }
   const canFishNow = Boolean(inventory?.bag.rod && inventory.equippedBait && inventory.bag[inventory.equippedBait])
   const target = position ? interactionAhead(position) : null
   const actionLabel = !position || uiBlocked ? null
@@ -242,12 +259,15 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
                 : canFish(position) && canFishNow ? 'Fisk' : null
   const caughtSpecies = book.filter(entry => entry.caughtCount > 0).length
 
-  const modal = Boolean(showMenu || showBook || showWardrobe || inventoryView || showShop)
-  const inputContext = showWardrobe ? 'wardrobe' : inventoryView ?? (showBook ? 'book' : showShop ? 'shop' : showMenu ? 'menu' : error || result || signMessage ? 'message' : 'world')
+  const modal = Boolean(showMenu || showBook || showWardrobe || inventoryView || showShop || fishingSession)
+  const inputContext = fishingSession ? 'fishing' : showWardrobe ? 'wardrobe' : inventoryView ?? (showBook ? 'book' : showShop ? 'shop' : showMenu ? 'menu' : error || result || signMessage ? 'message' : 'world')
   function dismissMessage() { setError(''); setResult(null); setSignMessage(null) }
   function menuControl() {
     if (inventoryPending || savingLook || busy) return
-    if (showWardrobe) closeWardrobe()
+    if (fishingSession) {
+      if (!fishingCommitted.current) closeFishingSession()
+    }
+    else if (showWardrobe) closeWardrobe()
     else if (inventoryView) setInventoryView(null)
     else if (showBook) { if (fishBookBack.current) fishBookBack.current(); else closeBook() }
     else if (showShop) setShowShop(false)
@@ -258,6 +278,8 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const input = useGameInput({ frame: gameFrame, context: inputContext, modal, locked: busy || inventoryPending || savingLook,
     move: direction => { if (!uiBlocked) scene.current?.move(direction) },
     action: () => { if (error || result || signMessage) dismissMessage(); else scene.current?.action() }, menu: menuControl,
+    holdStart: () => fishingSession ? (reelControl.current?.start() ?? false) : false,
+    holdEnd: () => reelControl.current?.stop(),
   })
 
   return <div className="game-shell">
@@ -294,9 +316,13 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       {showShop && inventory && <ShopDialog inventory={inventory} pending={inventoryPending} error={inventoryError} onClose={() => setShowShop(false)} onBuy={(bait, amount) => void updateInventory(() => buyBait(user.uid, bait, amount))} />}
       {showWardrobe && <WardrobeDialog appearance={draftLook} pending={savingLook} onPreview={previewLook} onSave={() => void confirmLook()} onClose={closeWardrobe} />}
       {showBook && <FishBookDialog book={book} onClose={closeBook} registerMenuBack={registerFishBookMenuBack} />}
+      {fishingSession && <FishingDialog position={fishingSession.position} zoneId={fishingSession.zoneId} bait={fishingSession.bait}
+        onCommit={() => { fishingCommitted.current = true }} onFinish={outcome => void finishFishingSession(outcome)}
+        onCancel={closeFishingSession} registerReelControl={registerReelControl} />}
     </div>
 
-    <MobileControls context={inputContext} onDirection={input.direction} onAction={input.action} onMenu={input.menu}
+    <MobileControls context={inputContext} onDirection={input.direction} onAction={input.action}
+      onActionStart={() => fishingSession ? (reelControl.current?.start() ?? false) : false} onActionEnd={() => reelControl.current?.stop()} onMenu={input.menu}
       actionLabel={modal ? 'Velg' : (error || result || signMessage) ? 'Videre' : actionLabel ?? ''}
       disabled={!position || !inventory || busy || inventoryPending || savingLook}
       actionDisabled={!position || busy || inventoryPending || savingLook || (!modal && !actionLabel && !error && !result && !signMessage)} />

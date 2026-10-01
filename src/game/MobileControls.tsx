@@ -6,6 +6,8 @@ type Props = {
   context: string
   onDirection: (direction: Direction) => void
   onAction: () => void
+  onActionStart?: () => boolean
+  onActionEnd?: () => void
   onMenu: () => void
   actionLabel: string
   disabled: boolean
@@ -17,11 +19,26 @@ export function MobileControls(props: Props) {
   latest.current = props
   const repeater = useRef(new HoldRepeater())
   const pointer = useRef<number | null>(null)
+  const actionPointer = useRef<number | null>(null)
   const [held, setHeld] = useState<Direction | null>(null)
   function stop() {
     pointer.current = null
     repeater.current.stop()
     setHeld(null)
+    actionPointer.current = null
+    latest.current.onActionEnd?.()
+  }
+  function startAction(event: PointerEvent<HTMLButtonElement>) {
+    if (event.button !== 0 || actionPointer.current !== null || props.actionDisabled) return
+    event.preventDefault()
+    actionPointer.current = event.pointerId
+    event.currentTarget.setPointerCapture(event.pointerId)
+    if (!latest.current.onActionStart?.()) latest.current.onActionEnd?.()
+  }
+  function stopAction(event?: PointerEvent<HTMLButtonElement>) {
+    if (event && actionPointer.current !== event.pointerId) return
+    actionPointer.current = null
+    latest.current.onActionEnd?.()
   }
   useEffect(() => {
     stop()
@@ -54,7 +71,7 @@ export function MobileControls(props: Props) {
       <div className="handheld-key"><button className="pocket-menu" aria-label="Meny eller tilbake" disabled={props.disabled}
         onPointerDown={e => e.preventDefault()} onClick={props.onMenu}>≡</button><span>MENY / TILBAKE</span></div>
       <div className="handheld-key"><button className="pocket-action" aria-label={props.actionLabel || 'A'} disabled={props.actionDisabled}
-        onPointerDown={e => e.preventDefault()} onClick={props.onAction}>A</button><span>{props.actionLabel}</span></div>
+        onPointerDown={startAction} onPointerUp={stopAction} onPointerCancel={stopAction} onLostPointerCapture={stopAction} onClick={props.onAction}>A</button><span>{props.actionLabel}</span></div>
     </div>
     <div className="speaker-grille" aria-hidden="true"><i /><i /><i /><i /><i /></div>
   </div>

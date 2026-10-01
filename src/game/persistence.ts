@@ -100,6 +100,24 @@ export async function setEquippedBait(uid: string, bait: BaitId | null): Promise
   })
 }
 
+/** Consume the used bait after an unlanded cast without revealing the species in the fish book. */
+export async function consumeBait(uid: string, bait: BaitId): Promise<Inventory> {
+  const ref = inventoryRef(uid)
+  return runTransaction(database(), async transaction => {
+    const snapshot = await transaction.get(ref)
+    if (!snapshot.exists()) throw new Error('Inventaret mangler.')
+    const inventory = inventoryData(snapshot)
+    if (inventory.equippedBait !== bait || !(inventory.bag[bait] ?? 0)) throw new Error('Du har ikke lenger valgt agn i sekken.')
+    inventory.bag[bait] = (inventory.bag[bait] ?? 0) - 1
+    if (!inventory.bag[bait]) {
+      delete inventory.bag[bait]
+      inventory.equippedBait = null
+    }
+    transaction.set(ref, { ...inventory, updatedAt: serverTimestamp() })
+    return inventory
+  })
+}
+
 export async function transferItem(uid: string, itemId: ItemId, toStorage: boolean): Promise<Inventory> {
   if (!ITEM_BY_ID[itemId]) throw new Error('Ukjent gjenstand.')
   const ref = inventoryRef(uid)

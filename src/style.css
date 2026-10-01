@@ -133,6 +133,47 @@ button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: no
   .fish-entry { padding: 5px 14px; }.fish-entry p { margin: 3px 0; font-size: 11px; }.fish-entry h3 { font-size: 18px; }
 }
 
+/* Compact fishing loop dialog fits both the desktop scene and the handheld display. */
+.fishing-dialog { position: absolute; z-index: 8; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 28px)); max-height: calc(100% - 28px); overflow-y: auto; padding: clamp(14px, 3vw, 24px); border: 4px solid #476454; background: #eae4cf; color: #263e38; box-shadow: inset 0 0 0 2px #f7f0d9, 7px 7px 0 #102b2988; }
+.fishing-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 2px solid #9aa68a; padding-bottom: 9px; }
+.fishing-heading span { color: #667b62; font-size: 9px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.fishing-heading h2 { margin: 2px 0 0; font: bold clamp(20px, 4vw, 27px) Georgia, serif; }
+.fishing-dialog button { min-height: 38px; border: 2px solid #91a184; border-radius: 3px; background: #f9f3df; color: #263e38; font-size: 12px; font-weight: 750; cursor: pointer; }
+.fishing-dialog button:disabled { opacity: .45; }
+.fishing-back { padding: 5px 9px; }
+.fishing-prompt { margin: 12px 0; font-size: 13px; }
+.cast-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cast-options button, .fishing-choice-list button { display: grid; gap: 3px; justify-items: start; padding: 9px; text-align: left; }
+.cast-options button[aria-pressed="true"] { border-color: #315b51; background: #d2dec4; box-shadow: inset 0 0 0 1px #315b51; }
+.cast-options span, .fishing-choice-list span { color: #667b62; font-size: 10px; }
+.cast-options small { color: #8a7042; font-size: 9px; }
+.fishing-tip { margin: 10px 0; color: #667b62; font-size: 11px; }
+.fishing-primary { min-width: 118px; padding: 7px 12px; background: #315b51 !important; border-color: #24483f !important; color: #fff7dd !important; }
+.fishing-primary kbd, .fishing-reel kbd { margin-left: 8px; font-size: 9px; opacity: .8; }
+.fishing-choice-list { display: grid; gap: 7px; }
+.fishing-choice-list button { grid-template-columns: 1fr; width: 100%; }
+.fishing-choice-list strong { font-size: 13px; }
+.fishing-wait, .fishing-hook, .fishing-fight { padding-top: 16px; text-align: center; }
+.fishing-wait strong { display: block; margin: 10px 0; font-size: 14px; }
+.fishing-wait p { color: #667b62; font-size: 11px; }
+.fishing-lure { display: block; color: #4d8290; font-size: 34px; animation: lure-bob .8s ease-in-out infinite alternate; }
+@keyframes lure-bob { to { transform: translateY(7px) rotate(12deg); } }
+.fishing-meter { height: 13px; overflow: hidden; border: 2px solid #83937b; background: #d2d7c2; }
+.fishing-meter i { display: block; height: 100%; width: 0; background: #4e9178; transition: width .1s linear; }
+.fishing-meter .fishing-sink-meter { width: 100%; background: #4e8291; transform-origin: left; animation: sink-progress linear forwards; }
+@keyframes sink-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.fishing-hook p { font-size: 17px; font-weight: 800; }
+.fishing-bite-mark { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #c35f45; color: #fff5dd; font-size: 27px; animation: bite-flash .45s steps(2) infinite; }
+@keyframes bite-flash { 50% { transform: scale(1.15); } }
+.fishing-hook small, .fishing-fight small { display: block; margin-top: 10px; color: #667b62; font-size: 10px; }
+.fishing-gauge-label { display: flex; justify-content: space-between; margin: 10px 0 4px; font-size: 11px; }
+.tension-meter i { background: #d7a342; }
+.fishing-reel { width: 100%; margin-top: 13px; background: #d2dec4 !important; }
+.fishing-reel.is-reeling { background: #b2c8a2 !important; }
+.fishing-saving { padding: 22px 0; text-align: center; }
+@media (max-width: 767px) { .fishing-dialog { width: min(520px, calc(100% - 20px)); max-height: calc(100% - 20px); border-width: 3px; padding: 13px; }.fishing-prompt { font-size: 12px; }.cast-options { gap: 5px; }.cast-options button { padding: 7px 5px; }.cast-options span { font-size: 9px; } }
+@media (prefers-reduced-motion: reduce) { .fishing-lure, .fishing-bite-mark { animation: none; } }
+
 /* Field guide / collection journal. Desktop keeps a master-detail view; phones use one full-width page at a time. */
 .fish-book-dialog { inset: 0; gap: 10px; }
 .fish-book-progress { flex: 0 0 auto; display: grid; gap: 5px; }
