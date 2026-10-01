@@ -70,6 +70,31 @@ button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: no
 .fish-entry { display: flex; align-items: center; gap: 24px; flex: 1; min-height: 0; padding: 16px; background: #f7f2de; border: 1px solid #a8b095; }.fish-illustration { font-size: 64px; min-width: 96px; text-align: center; color: #869975; }.fish-number { font-size: 11px; letter-spacing: 2px; color: #798368; }.fish-entry h3 { font: bold 24px Georgia, serif; }.fish-entry p { font-size: 13px; margin: 8px 0; }.fish-entry dl { display: flex; gap: 24px; font-size: 12px; }.fish-entry dd { font-weight: 800; }
 .handheld-controls { display: none; }
 
+.start-screen { min-height: 0; flex: 1; display: grid; place-items: center; padding: clamp(20px, 6vw, 64px) 12px; }
+.start-card { position: relative; width: min(100%, 520px); padding: clamp(24px, 6vw, 46px); text-align: center; color: #263e38; background: #eae4cfee; border: 6px solid #476454; box-shadow: inset 0 0 0 2px #f7f0d9, 8px 8px 0 #020d16aa; }
+.start-emblem { display: grid; place-items: center; width: 60px; height: 60px; margin: 0 auto 14px; border: 2px solid #96a486; background: #f9f3df; box-shadow: 3px 3px 0 #b4baa2; font-size: 30px; }
+.start-kicker { color: #667b62; font-size: 10px; font-weight: 800; letter-spacing: .2em; }
+.start-card h1 { margin: 3px 0 0; font: bold clamp(34px, 8vw, 48px) Georgia, serif; letter-spacing: .02em; }
+.start-copy { margin: 8px auto 0; color: #667b62; font-size: 14px; }
+.start-actions { display: grid; gap: 10px; margin-top: 28px; }
+.start-button { min-height: 50px; padding: 10px 14px; border: 2px solid #89977d; border-radius: 3px; background: #f9f3df; box-shadow: 0 3px 0 #b4baa2; color: #263e38; font-size: 15px; font-weight: 800; cursor: pointer; }
+.start-button:hover:not(:disabled), .start-button:focus-visible { outline: 3px solid #bb9349; outline-offset: 2px; background: #fff8df; }
+.start-button:disabled { cursor: default; opacity: .48; }
+.start-button-primary { border-color: #315b51; background: #315b51; color: #fff7dd; }
+.start-button-primary:hover:not(:disabled), .start-button-primary:focus-visible { background: #24483f; }
+.start-button span { display: block; margin-top: 2px; font-size: 10px; font-weight: 500; opacity: .8; }
+.start-status, .start-footnote { margin-top: 20px; color: #667b62; font-size: 11px; }
+.start-error { margin-top: 14px; padding: 9px 11px; border: 1px solid #b97d6d; background: #f3d9ce; color: #762f28; font-size: 12px; text-align: left; }
+.start-retry { margin-top: 10px; color: #315b51; font-size: 12px; font-weight: 700; text-decoration: underline; }
+.start-confirm-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 18px; background: #061c2bd9; }
+.start-confirm { width: min(100%, 430px); padding: clamp(20px, 5vw, 30px); border: 4px solid #476454; background: #eae4cf; color: #263e38; box-shadow: inset 0 0 0 2px #f7f0d9, 8px 8px 0 #020d1680; }
+.start-confirm h2 { margin: 5px 0 10px; font: bold 24px Georgia, serif; }
+.start-confirm > p:not(.start-kicker):not(.start-error) { color: #566a58; font-size: 13px; line-height: 1.5; }
+.start-confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 22px; }
+.start-button-danger { border-color: #8a3c32; background: #8a3c32; color: #fff4e5; }
+.start-button-danger:hover:not(:disabled), .start-button-danger:focus-visible { background: #702d27; }
+@media (max-width: 520px) { .start-screen { padding: 18px 12px; }.start-card { border-width: 4px; }.start-confirm-actions { grid-template-columns: 1fr; }.start-confirm h2 { font-size: 21px; } }
+
 @media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
   .app-shell.game-active { padding: 0; }.game-active .app-header { height: 56px; padding: 6px 12px; gap: 8px; flex: 0 0 auto; }
   .game-active .app-header > button { font-size: 14px; }.game-active .app-header > div { gap: 8px; }.game-active .app-header > div > button:first-child { display: none; }

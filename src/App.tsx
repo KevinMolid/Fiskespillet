@@ -7,6 +7,8 @@ import { auth } from './lib/firebase'
 import { ensureProfile, profileError, watchProfile, type Profile } from './lib/profile'
 import ProfilePage from './ProfilePage'
 import PlayersPage from './PlayersPage'
+import { hasExistingGame, resetGameData } from './game/persistence'
+import { StartMenu } from './game/StartMenu'
 
 const GamePage = lazy(() => import('./game/GamePage'))
 
@@ -41,6 +43,10 @@ function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [profileIssue, setProfileIssue] = useState('')
   const [page, setPage] = useState<'home' | 'profile' | 'players'>('home')
+  const [gameStart, setGameStart] = useState<'checking' | 'menu' | 'error' | 'playing'>('checking')
+  const [hasSave, setHasSave] = useState(false)
+  const [startPending, setStartPending] = useState(false)
+  const [startError, setStartError] = useState('')
 
   useEffect(() => {
     if (!auth) return
@@ -69,9 +75,23 @@ function App() {
       setProfile(null)
       setProfileIssue('')
       setPage('home')
+      setGameStart('checking')
+      setHasSave(false)
       return
     }
     let cancelled = false
+    setPage('home')
+    setGameStart('checking')
+    setStartError('')
+    hasExistingGame(user.uid).then(saved => {
+      if (cancelled) return
+      setHasSave(saved)
+      setGameStart('menu')
+    }).catch(() => {
+      if (cancelled) return
+      setStartError('Kunne ikke sjekke lagringen. Kontroller tilkoblingen og prøv igjen.')
+      setGameStart('error')
+    })
     let unsubscribe = () => {}
     ensureProfile(user).then(() => {
       if (cancelled) return
@@ -85,6 +105,34 @@ function App() {
       unsubscribe()
     }
   }, [user])
+
+  async function startNewGame() {
+    if (!user || startPending) return
+    setStartPending(true)
+    setStartError('')
+    try {
+      if (hasSave) await resetGameData(user.uid)
+      setHasSave(false)
+      setGameStart('playing')
+    } catch {
+      setStartError('Kunne ikke slette spillagringen. Ingen nytt spill er startet. Prøv igjen.')
+    } finally {
+      setStartPending(false)
+    }
+  }
+
+  async function retryGameCheck() {
+    if (!user || gameStart === 'checking') return
+    setGameStart('checking')
+    setStartError('')
+    try {
+      setHasSave(await hasExistingGame(user.uid))
+      setGameStart('menu')
+    } catch {
+      setStartError('Kunne ikke sjekke lagringen. Kontroller tilkoblingen og prøv igjen.')
+      setGameStart('error')
+    }
+  }
 
   function changeMode(next: Mode) {
     setMode(next)
@@ -138,7 +186,7 @@ function App() {
 
   return (
     <main className="min-h-screen bg-[#061c2b] text-slate-100">
-      <div className={`app-shell ${user && page === 'home' ? 'game-active' : ''} mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-8 sm:px-10`}>
+      <div className={`app-shell ${user && page === 'home' && gameStart === 'playing' ? 'game-active' : ''} mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-8 sm:px-10`}>
         <header className="app-header flex items-center justify-between gap-4 border-b border-white/10 pb-5">
           <button onClick={() => setPage('home')} className="text-lg font-semibold tracking-wide">🎣 Fiskespill</button>
           {user && <div className="flex items-center gap-3">
@@ -157,7 +205,8 @@ function App() {
         : user && page === 'profile' ? <div className="flex-1">
           {profileIssue && <p role="alert" className="mt-6 rounded-lg bg-rose-400/10 p-3 text-sm text-rose-200">{profileIssue}</p>}
           <ProfilePage user={user} profile={profile} onBack={() => setPage('home')} />
-        </div> : user ? <div className="flex-1"><Suspense fallback={<p className="py-16 text-slate-300">Laster spillet …</p>}><GamePage key={user.uid} user={user} /></Suspense></div>
+        </div> : user && gameStart !== 'playing' ? <div className="flex-1"><StartMenu hasSave={hasSave} ready={gameStart === 'menu'} pending={gameStart === 'checking' || startPending} error={startError} onContinue={() => setGameStart('playing')} onNewGame={() => void startNewGame()} onRetry={() => void retryGameCheck()} /></div>
+        : user ? <div className="flex-1"><Suspense fallback={<p className="py-16 text-slate-300">Laster spillet …</p>}><GamePage key={user.uid} user={user} /></Suspense></div>
         : <section className="grid flex-1 items-center gap-12 py-16 md:grid-cols-2">
           <div>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">Et nytt online fiskespill</p>

@@ -16,10 +16,15 @@ globalThis.__fishBookTestDb = {
   Timestamp: { now: () => ({ seconds: 100, nanoseconds: 0 }) },
   getDocs: async path => {
     lists++
-    return { docs: [...documents].filter(([key]) => key.startsWith(path + '/')).map(([key, value]) => ({ id: key.split('/').at(-1), data: () => clone(value) })) }
+    const docs = [...documents].filter(([key]) => key.startsWith(path + '/')).map(([key, value]) => ({ id: key.split('/').at(-1), ref: key, data: () => clone(value) }))
+    return { docs, empty: docs.length === 0 }
   },
-  getDoc: async path => ({ exists: () => documents.has(path), data: () => clone(documents.get(path)) }),
+  getDoc: async path => ({ ref: path, exists: () => documents.has(path), data: () => clone(documents.get(path)) }),
   setDoc: async (path, value) => documents.set(path, clone(value)),
+  writeBatch: () => {
+    const deletes = []
+    return { delete: path => deletes.push(path), commit: async () => deletes.forEach(path => documents.delete(path)) }
+  },
   runTransaction: async (_db, run) => {
     const writes = new Map()
     const result = await run({
@@ -37,11 +42,11 @@ const bundle = await build({
     b.onResolve({ filter: /^react(?:\/.*)?$/ }, args => ({ path: import.meta.resolve(args.path), external: true }))
     b.onResolve({ filter: /^firebase\/firestore$|\/lib\/firebase$/ }, args => ({ path: args.path, namespace: 'fake' }))
     b.onLoad({ filter: /.*/, namespace: 'fake' }, args => ({ contents: args.path === 'firebase/firestore'
-      ? 'export const {doc,collection,serverTimestamp,Timestamp,getDocs,getDoc,setDoc,runTransaction}=globalThis.__fishBookTestDb'
+      ? 'export const {doc,collection,serverTimestamp,Timestamp,getDocs,getDoc,setDoc,writeBatch,runTransaction}=globalThis.__fishBookTestDb'
       : 'export const db = {}' }))
   } }],
 })
-const { FISH, FISH_BY_ID, weightRange, normalizeFishBookEntry, recordEncounter, loadFishBook, FishDetails, FishBookDialog } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'))
+const { FISH, FISH_BY_ID, weightRange, normalizeFishBookEntry, recordEncounter, loadFishBook, hasExistingGame, resetGameData, FishDetails, FishBookDialog } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'))
 // Fixture only: exercise the future multi-location case without changing game habitats.
 FISH_BY_ID.laks.habitats = [...FISH_BY_ID.laks.habitats, 'innsjø']
 const inventory = () => ({ bag: { rod: 1, worm: 30 }, storage: {}, coins: 60, equippedBait: 'worm' })
@@ -136,5 +141,13 @@ const roachEntry = { fishId: 'mort', caughtCount: 1, seenCount: 1, smallestGrams
 html = renderToStaticMarkup(createElement(FishDetails, { fish: FISH_BY_ID.mort, entry: roachEntry }))
 assert(html.includes('alt="Mort"') && html.includes('data:image/png;base64,') && html.includes('Rutilus rutilus'))
 assert.equal(FISH_BY_ID.gullorret, undefined, 'gold trout is absent from fish data')
-console.log('Fish book: statistics, failures, atomic writes, per-player persistence, legacy upgrade, locations, image import and locked UI passed.')
+documents.set('profiles/' + uid, { username: 'Bevares' })
+documents.set('gameSaves/' + uid, { mapId: 'havn', x: 12, y: 16, facing: 'down' })
+documents.set('characterLooks/' + uid, { shirt: 0, hair: 0, skin: 0 })
+documents.set('digSpots/' + uid + '/entries/havn_3_17', { lastDugAt: { seconds: 100 } })
+assert.equal(await hasExistingGame(uid), true, 'the start screen detects saved game data')
+await resetGameData(uid)
+assert.equal(await hasExistingGame(uid), false, 'a reset removes all saved game progress')
+assert.equal(documents.get('profiles/' + uid).username, 'Bevares', 'a reset preserves the player profile')
+console.log('Fish book: statistics, failures, atomic writes, per-player persistence, legacy upgrade, locations, image import, locked UI, save detection and game reset passed.')
 delete globalThis.__fishBookTestDb

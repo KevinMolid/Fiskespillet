@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, runTransaction, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, writeBatch, runTransaction, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { FISH_REWARDS, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemId } from './items'
 import { DIG_SPOTS, DEFAULT_APPEARANCE, FISH_BY_ID, isAppearance, isPosition, START, type Appearance, type Position } from './world'
@@ -6,6 +6,35 @@ import { DIG_SPOTS, DEFAULT_APPEARANCE, FISH_BY_ID, isAppearance, isPosition, ST
 import { normalizeFishBookEntry, updateFishBookEntry, type FishBookEntry, type LegacyFishBookEntry } from './fishBook'
 import { fishingOptions } from './fish'
 export type { FishBookEntry } from './fishBook'
+
+/** Read-only check used by the opening screen; unlike loadPosition/loadInventory it creates nothing. */
+export async function hasExistingGame(uid: string): Promise<boolean> {
+  const databaseRef = database()
+  const [save, inventory, look, fishBook, digSites] = await Promise.all([
+    getDoc(doc(databaseRef, 'gameSaves', uid)),
+    getDoc(doc(databaseRef, 'playerInventories', uid)),
+    getDoc(doc(databaseRef, 'characterLooks', uid)),
+    getDocs(collection(databaseRef, 'fishBooks', uid, 'entries')),
+    Promise.all(Object.keys(DIG_SPOTS).map(spotId => getDoc(doc(databaseRef, 'digSpots', uid, 'entries', spotId)))),
+  ])
+  return save.exists() || inventory.exists() || look.exists() || !fishBook.empty || digSites.some(site => site.exists())
+}
+
+/** Delete all game progress in one Firestore batch while leaving the account and profile intact. */
+export async function resetGameData(uid: string): Promise<void> {
+  const databaseRef = database()
+  const [fishBook, digSites] = await Promise.all([
+    getDocs(collection(databaseRef, 'fishBooks', uid, 'entries')),
+    Promise.all(Object.keys(DIG_SPOTS).map(spotId => getDoc(doc(databaseRef, 'digSpots', uid, 'entries', spotId)))),
+  ])
+  const batch = writeBatch(databaseRef)
+  batch.delete(doc(databaseRef, 'gameSaves', uid))
+  batch.delete(doc(databaseRef, 'playerInventories', uid))
+  batch.delete(doc(databaseRef, 'characterLooks', uid))
+  fishBook.docs.forEach(entry => batch.delete(entry.ref))
+  digSites.forEach(site => { if (site.exists()) batch.delete(site.ref) })
+  await batch.commit()
+}
 
 function database() {
   if (!db) throw new Error('Firestore er ikke konfigurert.')
