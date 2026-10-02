@@ -1,40 +1,67 @@
-import { DEFAULT_APPEARANCE, isAppearance, type Appearance } from './world'
+import pixelPlayerStandard from './pixel-player-standard.json'
+import playerDown from '../assets/characters/player/down.png'
+import playerUp from '../assets/characters/player/up.png'
+import playerLeft from '../assets/characters/player/left.png'
+import playerRight from '../assets/characters/player/right.png'
+import npcStandard from './pixel-npc-standard.json'
 import type { NpcId } from './npcs'
-import { CHARACTER_STANDARD, type CharacterAppearance } from './characterStandard'
-export { CHARACTER_DIRECTIONS, CHARACTER_GROUND_OFFSET_Y, CHARACTER_STANDARD } from './characterStandard'
-export type { CharacterSprites, CharacterAppearance, CharacterPose } from './characterStandard'
+import type { Direction } from './world'
 
-export type StandardCharacter = { id: string; appearance: CharacterAppearance; format: typeof CHARACTER_STANDARD }
-const adult: CharacterAppearance = {
-  body: 'standardAdult', skinPalette: 'light', hair: 'shortHair', hairPalette: 'brown',
-  top: 'tshirt', topPalette: 'green', bottom: 'jeans', bottomPalette: 'charcoal', shoes: 'boots', shoesPalette: 'brown',
+export type CharacterSprites = { down: string; up: string; left: string; right: string }
+// Formats carry shared canvas/anchor/scale rules, never per-direction offsets.
+export type CharacterFormat = {
+  canvas: { width: number; height: number }
+  groundAnchor: { x: number; y: number }
+  renderScale: number
+  filter: 'nearest' | 'linear'
 }
-export function playerCharacter(saved: Appearance = DEFAULT_APPEARANCE): StandardCharacter {
-  const look = isAppearance(saved) ? saved : DEFAULT_APPEARANCE
-  const outfit = look.outfit ?? 'fisher'
-  return { id: 'player', format: CHARACTER_STANDARD, appearance: {
-    ...adult, skinPalette: ['light','medium','dark','deepSkin'][look.skin],
-    hair: look.hairstyle ?? 'playerHair', hairPalette: ['darkBrown','black','brown','blond','red'][look.hair],
-    top: outfit === 'casual' ? 'tshirt' : outfit === 'sport' ? 'sport' : 'shirt',
-    topPalette: ['blue','green','rust','purple','gold'][look.shirt],
-    bottom: outfit === 'fisher' ? 'cargo' : 'jeans', bottomPalette: outfit === 'fisher' ? 'olive' : 'charcoal',
-    shoes: outfit === 'fisher' ? 'boots' : 'sneakers', shoesPalette: outfit === 'fisher' ? 'brown' : 'white',
-    ...(outfit === 'fisher' ? { outerwear: 'fishingVest', headwear: 'strawHat', accessories: ['fishingSatchel'] as const } : {}),
-  } }
+export type StandardCharacter = {
+  id: string
+  sprites: CharacterSprites
+  walk?: Record<Direction, readonly [string, string]>
+  format: CharacterFormat
 }
-export const PLAYER_CHARACTER = playerCharacter()
-function npc(id: NpcId, appearance: Partial<CharacterAppearance>): StandardCharacter {
-  return { id, appearance: { ...adult, ...appearance }, format: CHARACTER_STANDARD }
+// Existing tile-center to ground-line conversion; shared by every character.
+export const CHARACTER_GROUND_OFFSET_Y = 14
+export const PIXEL_PLAYER_STANDARD = pixelPlayerStandard
+export const CHARACTER_DIRECTIONS: readonly Direction[] = ['down', 'up', 'left', 'right']
+// Eager URL imports keep Vite's hashed production asset handling.
+const idleAssets = import.meta.glob<string>('../assets/characters/*/{down,up,left,right}.png', { eager: true, query: '?url', import: 'default' })
+const walkAssets = import.meta.glob<string>('../assets/characters/*/*-walk-*.png', { eager: true, query: '?url', import: 'default' })
+
+function asset(character: string, file: string, walking = false) {
+  const url = (walking ? walkAssets : idleAssets)[`../assets/characters/${character}/${file}.png`]
+  if (!url) throw new Error(`Missing character asset: ${character}/${file}`)
+  return url
 }
-export const NPC_CHARACTERS: Record<NpcId,StandardCharacter> = {
-  kevin: npc('kevin',{ hairPalette:'darkBlond', faceDetails:['glasses','stubble'], shoes:'sneakers', shoesPalette:'white' }),
-  mor: npc('mor',{ hair:'longHair', hairPalette:'blond', top:'shirt', topPalette:'rose', faceDetails:['glasses'] }),
-  far: npc('far',{ hairPalette:'grey', top:'shirt', topPalette:'olive' }),
-  oda: npc('oda',{ hair:'longHair', hairPalette:'black', top:'shirt', topPalette:'purple' }),
-  magnus: npc('magnus',{ body:'stockyAdult', hair:'bald', hairPalette:'darkBrown', top:'hawaiian', topPalette:'rust', faceDetails:['beard'] }),
-  bendik: npc('bendik',{ body:'tallAdult', hairPalette:'darkBlond', faceDetails:['glasses','beard'] }),
-  nils: npc('nils',{ hairPalette:'blond', top:'sport', topPalette:'blue', shoes:'sneakers', shoesPalette:'white' }),
-  morten: npc('morten',{ hairPalette:'darkBrown', top:'shirt' }),
+
+function directionalWalk(id: string): NonNullable<StandardCharacter['walk']> {
+  const frames = (direction: Direction): readonly [string, string] =>
+    [asset(id, `${direction}-walk-1`, true), asset(id, `${direction}-walk-2`, true)]
+  return { down: frames('down'), up: frames('up'), left: frames('left'), right: frames('right') }
+}
+
+export const PLAYER_CHARACTER: StandardCharacter = {
+  id: 'player', sprites: { down: playerDown, up: playerUp, left: playerLeft, right: playerRight },
+  format: { ...pixelPlayerStandard, filter: 'nearest' },
+  walk: directionalWalk('player'),
+}
+
+function npcCharacter(id: NpcId): StandardCharacter {
+  return {
+    id,
+    sprites: Object.fromEntries(CHARACTER_DIRECTIONS.map(direction => [direction, asset(id, direction)])) as CharacterSprites,
+    walk: directionalWalk(id),
+    format: { ...npcStandard, filter: 'nearest' },
+  }
+}
+export const NPC_CHARACTERS: Record<NpcId, StandardCharacter> = {
+  mor: npcCharacter('mor'), far: npcCharacter('far'), kevin: npcCharacter('kevin'),
+  oda: npcCharacter('oda'), magnus: npcCharacter('magnus'), bendik: npcCharacter('bendik'),
+  nils: npcCharacter('nils'), morten: npcCharacter('morten'),
 }
 export const KEVIN_CHARACTER = NPC_CHARACTERS.kevin
-export const STANDARD_CHARACTERS = [PLAYER_CHARACTER,...Object.values(NPC_CHARACTERS)]
+export const STANDARD_CHARACTERS = [PLAYER_CHARACTER, ...Object.values(NPC_CHARACTERS)]
+export function characterTextureKey(character: StandardCharacter, direction: Direction, step = 0) {
+  return `${character.id}-${direction}${step ? `-walk-${step}` : ''}`
+}

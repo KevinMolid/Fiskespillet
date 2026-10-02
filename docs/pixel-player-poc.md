@@ -1,10 +1,7 @@
-# Pixel player proof of concept (historical)
+# Pixel player proof of concept
 
-Superseded by the native modular 48×48 standard in `pixel-character-system.md`.
-The large reference canvases and their preparation scripts are no longer used.
-
-The following describes the former reference-image implementation, not the
-active sprites or states. See
+Historical idle implementation notes. The approved idle PNGs remain unchanged;
+player and all NPCs now have walking frames. See
 [the current pixel character system](pixel-character-system.md).
 
 The approved PNGs replace only the high-resolution player. Kevin retains his

@@ -1,7 +1,7 @@
 import { NPCS, type NpcDefinition } from './npcs'
-import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, playerCharacter, type StandardCharacter } from './characters'
-import { createCharacterImage, setCharacterPose, updateCharacterAppearance } from './characterRendering'
-import { characterPose } from './characterAnimation'
+import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTER, STANDARD_CHARACTERS } from './characters'
+import { createCharacterImage, preloadCharacter, setCharacterDirection } from './characterRendering'
+import { characterWalkStep } from './characterAnimation'
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorTile } from './outdoorTiles'
 import { isWalkable } from './world'
@@ -20,7 +20,6 @@ type Callbacks = {
 
 export class WorldScene extends Phaser.Scene {
   private position: Position
-  private character: StandardCharacter
   private callbacks: Callbacks
   private player?: Phaser.GameObjects.Container
   private playerImage?: Phaser.GameObjects.Image
@@ -37,11 +36,14 @@ export class WorldScene extends Phaser.Scene {
   private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container; image?: Phaser.GameObjects.Image; walkStarted?: number }[] = []
   private conversations = new Map<string, number>()
 
-  constructor(position: Position, appearance: Appearance, callbacks: Callbacks) {
+  constructor(position: Position, _appearance: Appearance, callbacks: Callbacks) {
     super('world')
     this.position = { ...position }
-    this.character = playerCharacter(appearance)
     this.callbacks = callbacks
+  }
+
+  preload() {
+    for (const character of STANDARD_CHARACTERS) preloadCharacter(this, character)
   }
 
   create() {
@@ -54,7 +56,7 @@ export class WorldScene extends Phaser.Scene {
     const shadow = this.add.graphics()
     shadow.fillStyle(0x213e39, 0.24).fillEllipse(0, CHARACTER_GROUND_OFFSET_Y, 21, 5)
     this.player.add(shadow)
-    this.playerImage = createCharacterImage(this, this.character, this.position.facing)
+    this.playerImage = createCharacterImage(this, PLAYER_CHARACTER, this.position.facing)
     this.player.add(this.playerImage)
     this.drawPlayer()
     this.setCameraBounds()
@@ -160,9 +162,8 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  setAppearance(appearance: Appearance) {
-    this.character = playerCharacter(appearance)
-    if (this.playerImage) updateCharacterAppearance(this.playerImage,this.character,this.position.facing)
+  setAppearance(_appearance: Appearance) {
+    // Preserve the wardrobe API/saved appearance; the POC uses the fixed reference art.
     this.drawPlayer()
   }
 
@@ -383,7 +384,7 @@ export class WorldScene extends Phaser.Scene {
       n.sprite.add([shadow, n.image])
     }
     const progress = (this.time.now - (n.walkStarted ?? this.time.now)) / 300
-    setCharacterPose(n.image, characterPose(n.facing,n.moving,progress))
+    setCharacterDirection(n.image, character, n.facing, characterWalkStep(n.moving, progress))
   }
 
   private updateResidents(time: number) {
@@ -421,7 +422,8 @@ export class WorldScene extends Phaser.Scene {
     // Every direction within the character format shares origin/scale.
     if (!this.playerImage) return
     const progress = (this.time.now - this.playerWalkStarted) / 115
-    setCharacterPose(this.playerImage, characterPose(this.position.facing,this.moving,progress))
+    setCharacterDirection(this.playerImage, PLAYER_CHARACTER, this.position.facing,
+      characterWalkStep(this.moving, progress))
   }
 }
 

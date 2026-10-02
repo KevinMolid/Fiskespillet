@@ -1,44 +1,48 @@
-import { STANDARD_CHARACTERS, playerCharacter } from '../src/game/characters'
-import { CHARACTER_DIRECTIONS, CHARACTER_STATES, type CharacterAppearance, type HairStyle, type CharacterState } from '../src/game/characterStandard'
-import { composedCharacter } from '../src/game/characterCompositor'
-import { CHARACTER_PALETTES } from '../src/game/characterPalettes'
-const names: Record<string,string>={player:'Spiller',kevin:'Kevin',mor:'Mor',far:'Far',oda:'Oda',magnus:'Magnus – kraftig og skallet',bendik:'Bendik',nils:'Nils',morten:'Morten'}
-const grid=document.querySelector<HTMLDivElement>('#grid')!, controls=document.querySelector('#controls')!
-let look: CharacterAppearance={...playerCharacter().appearance}
-let state: CharacterState='idle'
-function select(label: string, choices: string[], current: string, change: (value:string)=>void) {
-  const element=document.createElement('label');element.textContent=label
-  const input=document.createElement('select');input.setAttribute('aria-label',label)
-  for(const value of choices) { const option=document.createElement('option');option.value=value;option.textContent=value;option.selected=value===current;input.append(option) }
-  input.addEventListener('change',()=>{change(input.value);draw()});element.append(input);controls.append(element)
+import { STANDARD_CHARACTERS, type StandardCharacter } from '../src/game/characters'
+import type { Direction } from '../src/game/world'
+const names: Record<string, string> = { player: 'Spiller', kevin: 'Kevin', mor: 'Mor', far: 'Far', oda: 'Oda', magnus: 'Magnus – kraftig og helt skallet', bendik: 'Bendik', nils: 'Nils', morten: 'Morten' }
+const grid = document.querySelector<HTMLDivElement>('#grid')!
+const direction = document.querySelector<HTMLSelectElement>('#direction')!
+const play = document.querySelector<HTMLButtonElement>('#play')!
+let playing = true
+let phase = 0
+function image(character: StandardCharacter, source: string) {
+  const frame = document.createElement('div'); frame.className = 'frame'
+  const img = document.createElement('img'); img.src = source; img.alt = names[character.id]
+  const { canvas, groundAnchor, renderScale } = character.format
+  const factor = renderScale * 2
+  img.style.width = `${canvas.width * factor}px`
+  img.style.height = `${canvas.height * factor}px`
+  img.style.left = `calc(50% - ${groundAnchor.x * factor}px)`
+  img.style.top = `${144 - groundAnchor.y * factor}px`
+  frame.append(img); return frame
 }
-select('Hud',['light','medium','dark','deepSkin'],look.skinPalette,v=>look={...look,skinPalette:v})
-select('Hår',['playerHair','shortHair','longHair','bald'],look.hair!,v=>look={...look,hair:v as HairStyle})
-select('Hårfarge',['blond','darkBlond','brown','darkBrown','black','red'],look.hairPalette,v=>look={...look,hairPalette:v})
-select('Overdel',['shirt','tshirt','sport','hawaiian'],look.top,v=>look={...look,top:v as CharacterAppearance['top']})
-select('Klesfarge',Object.keys(CHARACTER_PALETTES),look.topPalette,v=>look={...look,topPalette:v})
-select('Vest',['fishingVest','none'],look.outerwear!,v=>look={...look,outerwear:v==='none'?undefined:'fishingVest'})
-select('Bukser',['cargo','jeans'],look.bottom,v=>look={...look,bottom:v as CharacterAppearance['bottom']})
-select('Sko',['boots','sneakers'],look.shoes,v=>look={...look,shoes:v as CharacterAppearance['shoes'],shoesPalette:v==='sneakers'?'white':'brown'})
-select('Hatt',['strawHat','none'],look.headwear!,v=>look={...look,headwear:v==='none'?undefined:'strawHat'})
-select('Veske',['fishingSatchel','none'],'fishingSatchel',v=>look={...look,accessories:v==='none'?undefined:['fishingSatchel']})
-select('State', [...CHARACTER_STATES],'idle',v=>state=v as CharacterState)
 function draw() {
   grid.replaceChildren()
-  for(const definition of STANDARD_CHARACTERS) {
-    const character=definition.id==='player'?{...definition,appearance:look}:definition
-    const card=document.createElement('article');card.className='card';card.dataset.character=character.id
-    const title=document.createElement('h2');title.textContent=names[character.id];card.append(title)
-    const views=document.createElement('div');views.className='views'
-    const sprites=composedCharacter(character.appearance,state)
-    for(const direction of CHARACTER_DIRECTIONS) {
-      const column=document.createElement('div'),frame=document.createElement('div'),canvas=document.createElement('canvas')
-      frame.className='frame';canvas.width=48;canvas.height=48;canvas.dataset.direction=direction
-      const ctx=canvas.getContext('2d')!;ctx.imageSmoothingEnabled=false;ctx.putImageData(new ImageData(sprites[direction],48,48),0,0)
-      frame.append(canvas);column.append(frame)
-      const caption=document.createElement('small');caption.textContent=direction;column.append(caption);views.append(column)
-    }
-    card.append(views);grid.append(card)
+  const facing = direction.value as Direction
+  for (const character of STANDARD_CHARACTERS) {
+    const card = document.createElement('article'); card.className = 'card'
+    const title = document.createElement('h2'); title.textContent = names[character.id]; card.append(title)
+    const poses = document.createElement('div'); poses.className = 'poses'
+    const sources = [character.sprites[facing], ...character.walk![facing]]
+    sources.forEach((source, index) => {
+      const column = document.createElement('div'); column.append(image(character, source))
+      const label = document.createElement('div'); label.className = 'label'; label.textContent = ['Idle', 'Steg A', 'Steg B'][index]
+      column.append(label); poses.append(column)
+    })
+    card.append(poses)
+    const live = image(character, sources[phase + 1]); live.classList.add('live'); live.dataset.character = character.id
+    card.append(live); grid.append(card)
   }
 }
+direction.addEventListener('change', draw)
+play.addEventListener('click', () => { playing = !playing; play.textContent = playing ? 'Pause' : 'Spill av' })
+setInterval(() => {
+  if (!playing) return
+  phase = 1 - phase
+  for (const frame of document.querySelectorAll<HTMLElement>('.live')) {
+    const character = STANDARD_CHARACTERS.find(c => c.id === frame.dataset.character)!
+    frame.querySelector('img')!.src = character.walk![direction.value as Direction][phase]
+  }
+}, 220)
 draw()
