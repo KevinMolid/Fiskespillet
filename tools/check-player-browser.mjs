@@ -28,7 +28,7 @@ try {
       await route.fulfill({ response, body })
     })
     await page.goto('http://127.0.0.1:5173/tools/game-preview.html')
-    await page.waitForFunction(() => window.__playerTest?.scene.playerImage?.texture.key === 'player-down')
+    await page.waitForFunction(() => window.__playerTest?.scene.playerImage?.texture.key.endsWith('-down'))
     const state = () => page.evaluate(() => {
       const { scene, game } = window.__playerTest
       const p = scene.player, i = scene.playerImage, c = scene.cameras.main
@@ -65,11 +65,11 @@ try {
       return offsets[0]
     })
     assert(start.height > 32)
-    assert.equal(start.height, 59.2)
-    assert.equal(start.scaleX, .05); assert.equal(start.scaleY, .05)
-    assert.equal(start.width / start.height, 768 / 1184)
+    assert.equal(start.height, 48)
+    assert.equal(start.scaleX, 1); assert.equal(start.scaleY, 1)
+    assert.equal(start.width / start.height, 1)
     assert.equal(start.originX, .5)
-    assert.equal(start.originY, start.soleY / 1184)
+    assert.equal(start.originY, start.soleY / 48)
     assert.equal(start.localX, 0); assert.equal(start.localY, npcGroundOffset)
     assert.equal(start.feetY, start.y + npcGroundOffset, 'Player and NPC soles align at identical world Y')
     assert.equal(start.x, start.position.x * 32 + 16)
@@ -97,9 +97,9 @@ try {
       }
       await page.waitForTimeout(250)
       const stopped = await state()
-      assert.equal(stopped.texture, `player-${direction}`)
+      assert(stopped.texture.endsWith(`-${direction}`))
       assert.equal(stopped.position.facing, direction)
-      assert.equal(stopped.originY, stopped.soleY / 1184, `${direction}: origin excludes PNG bottom padding`)
+      assert.equal(stopped.originY, stopped.soleY / 48, `${direction}: origin excludes PNG bottom padding`)
       assert.equal(stopped.feetY, stopped.y + npcGroundOffset, `${direction}: measured player/NPC foot baseline matches`)
       assert.notDeepEqual([stopped.x, stopped.y], [before.x, before.y])
       assert.equal(stopped.x, stopped.position.x * 32 + 16)
@@ -126,7 +126,7 @@ try {
         s.drawResident(kevin)
       }, direction)
       const aligned = await state()
-      assert.equal(aligned.soleY, 1172)
+      assert.equal(aligned.soleY, 42)
       assert.equal(aligned.scaleX, start.scaleX); assert.equal(aligned.scaleY, start.scaleY)
       assert.equal(aligned.height, start.height); assert.equal(aligned.width, start.width)
       assert.equal(aligned.filter, 1)
@@ -153,16 +153,16 @@ try {
           feetY: n.sprite.y + i.y + (soleY - i.originY * i.height) * i.scaleY,
           texture: i.texture.key, filter: i.texture.source[0].scaleMode,
           originY: i.originY, soleY, height: i.displayHeight, width: i.displayWidth,
-          otherNPCsRegistered: s.residents.filter(other => other !== n).every(other => other.sprite.list.some(child => child.type === 'Image' && child.texture.key.startsWith(other.definition.id+'-'))),
+          otherNPCsRegistered: s.residents.filter(other => other !== n).every(other => other.sprite.list.some(child => child.type === 'Image' && child.texture.key.startsWith('character-'))),
         }
       })
       const npcY = npc.y
       assert.equal(aligned.y, npcY, 'Same-row characters retain identical world Y')
       assert.equal(aligned.feetY, npcY + npcGroundOffset, `${direction}: actual same-row NPC and player align`)
       assert.equal(npc.feetY, aligned.feetY, `${direction}: real PNG soles align for player and new Kevin`)
-      assert.equal(npc.texture, `kevin-${direction}`)
+      assert(npc.texture.endsWith(`-${direction}`))
       assert.equal(npc.originY, npc.soleY / npc.sourceHeight)
-      assert.equal(npc.sourceWidth, 48); assert.equal(npc.sourceHeight, 64)
+      assert.equal(npc.sourceWidth, 48); assert.equal(npc.sourceHeight, 48)
       assert.equal(npc.scaleX, 1); assert.equal(npc.scaleY, 1)
       assert.equal(npc.originX, aligned.originX); assert.equal(npc.localY, aligned.localY)
       assert(Math.abs(npc.visibleHeight - aligned.visibleHeight) < 5, 'Characters fit the same world scale')
@@ -190,7 +190,7 @@ try {
     await page.evaluate(() => window.__playerTest.scene.move('left'))
     await page.waitForTimeout(180)
     const blocked = await state()
-    assert.equal(blocked.position.x, 1); assert.equal(blocked.texture, 'player-left')
+    assert.equal(blocked.position.x, 1); assert(blocked.texture.endsWith('-left'))
     assert.equal(blocked.x, 48); assert.equal(blocked.y, 528)
     assert(blocked.width > 32, 'Visual overlap extends beyond the collision tile')
     await page.evaluate(() => window.__playerTest.scene.move('up'))
@@ -236,7 +236,7 @@ try {
     // Direction determines fishing eligibility; action still opens the existing dialog.
     await page.getByText('Teststeder og posisjon', { exact: true }).click()
     await page.getByRole('button', { name: 'Fiske ved bryggen', exact: true }).click()
-    await page.waitForFunction(() => window.__playerTest.scene.position.x === 24 && window.__playerTest.scene.playerImage?.texture.key === 'player-down')
+    await page.waitForFunction(() => window.__playerTest.scene.position.x === 24 && window.__playerTest.scene.playerImage?.texture.key.endsWith('-down'))
     const facing = await page.evaluate(async () => {
       const { canFish } = await import('/src/game/world.ts')
       const p=window.__playerTest.scene.position

@@ -1,5 +1,8 @@
 # Character pose contract
 
+Historical gait guidance for future 48×48 walk artwork. The active modular
+system currently provides idle only; see `pixel-character-system.md`.
+
 Left/right always mean the character's anatomical side, not the viewer's.
 
 | Pose | Forward leg | Back leg | Forward arm | Back arm |
@@ -28,7 +31,7 @@ bags or torso. Check the masks and both poses for each direction individually.
 
 | Character | Required features |
 |---|---|
-| Player | Approved hat, blue shirt, tan vest, bag/strap and brown boots; original idles unchanged |
+| Player | Straw hat, blue shirt, tan vest, bag/strap and brown boots in the common native 48×48 module standard |
 | Kevin | Sandy brown hair, glasses, stubble, olive T-shirt, charcoal jeans, white shoes |
 | Mor | Blonde long hair, glasses, dusty rose top |
 | Far | Grey hair, muted grey/olive shirt, reserved expression |

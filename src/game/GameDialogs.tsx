@@ -74,6 +74,8 @@ export function WardrobeDialog({ appearance, pending, onPreview, onSave, onClose
     <div className="wardrobe-content">
       <div className="wardrobe-preview"><FisherPortrait appearance={appearance} /><FisherPortrait appearance={appearance} direction="right" /><FisherPortrait appearance={appearance} direction="up" /></div>
       <div className="wardrobe-colors">
+        <fieldset><legend>Antrekk</legend><div className="item-actions">{([['fisher','Fisker'],['casual','Hverdagsklær'],['sport','Sport']] as const).map(([id,label]) => <button key={id} disabled={pending} aria-pressed={(appearance.outfit ?? 'fisher') === id} onClick={() => onPreview({ ...appearance, outfit:id })}>{label}</button>)}</div></fieldset>
+        <fieldset><legend>Frisyre</legend><div className="item-actions">{([['playerHair','Rufsete'],['shortHair','Kort'],['longHair','Langt'],['bald','Skallet']] as const).map(([id,label]) => <button key={id} disabled={pending} aria-pressed={(appearance.hairstyle ?? 'playerHair') === id} onClick={() => onPreview({ ...appearance, hairstyle:id })}>{label}</button>)}</div></fieldset>
         {([['Klær og hattebånd', 'shirt', SHIRT_COLORS], ['Hår', 'hair', HAIR_COLORS], ['Hudtone', 'skin', SKIN_COLORS]] as const).map(([label, key, colors]) => <fieldset key={key}>
           <legend>{label}</legend><div className="color-options">{colors.map((color, index) => <button key={index} disabled={pending} aria-label={`${label} ${index + 1}`} aria-pressed={appearance[key] === index} onClick={() => onPreview({ ...appearance, [key]: index })} style={{ backgroundColor: `#${color.toString(16).padStart(6, '0')}` }}>{appearance[key] === index && <span aria-hidden="true">✓</span>}</button>)}</div>
         </fieldset>)}

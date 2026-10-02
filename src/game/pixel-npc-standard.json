@@ -1,7 +1,0 @@
-{
-  "version": 1,
-  "canvas": { "width": 48, "height": 64 },
-  "groundAnchor": { "x": 24, "y": 60 },
-  "renderScale": 1,
-  "filter": "nearest"
-}
