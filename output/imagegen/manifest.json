@@ -1,0 +1,95 @@
+{
+  "method": "built-in imagegen; idle designs only, generated walk poses discarded",
+  "characters": [
+    {
+      "id": "kevin",
+      "description": "Kevin, adult man, short tousled sandy brown hair, dark rounded glasses, subtle short beard/stubble, olive green T-shirt, charcoal jeans, white sneakers. Preserve identity and clothing of the second Kevin reference, translate it to the first reference's PIXEL style.",
+      "source": "output/imagegen/kevin-source.png",
+      "destination": "output/imagegen/kevin-source.png",
+      "prompt": "Use case: stylized-concept. Asset type: production RPG pixel-art directional animation spritesheet. Make exactly 12 full-body sprites of ONE character, laid out in a strict evenly spaced 3-column by 4-row grid on a genuinely transparent background. Each cell identical size and generous empty margins, no characters touching or overlapping cell boundaries. Row 1 faces DOWN/front, row 2 faces RIGHT/profile looking right, row 3 faces UP/back with NO face visible, row 4 faces LEFT/profile looking left. Columns: idle standing, walking left leg forward/right leg back with opposing arm swing, walking right leg forward/left leg back with opposing arm swing. Each row's walking frames must visibly differ in feet and hands, SAME outfit/head anatomy/colors. Fixed body scale in all 12 cells, consistent ground baselines. Match the straw-hat PLAYER reference's sharp warm detailed square-pixel fantasy/RPG shading and lightly top-down perspective; similar full-body proportions, readable mature expression, not baby proportions. Crisp stepped pixel contours, NO 3D rendering, smooth painting, antialiasing, blurred gradients, ground shadows, text, labels, borders, grids or props. Reference 1 is STYLE ONLY, do NOT copy its hat/clothes onto the NPC. Composition is a vertical 3:4 sheet with 12 equal square cells. Use a regular coarse square pixel lattice, roughly 56–64 logical pixels of character height, enlarged uniformly. Character description: Kevin, adult man, short tousled sandy brown hair, dark rounded glasses, subtle short beard/stubble, olive green T-shirt, charcoal jeans, white sneakers. Preserve identity and clothing of the second Kevin reference, translate it to the first reference's PIXEL style.",
+      "references": [
+        "src/assets/characters/player/down.png",
+        "Prior approved Kevin identity: sandy hair, glasses, stubble, olive shirt, charcoal jeans, white sneakers"
+      ]
+    },
+    {
+      "id": "mor",
+      "description": "Mor, mature adult woman, shoulder-length blonde hair, glasses, muted dusty rose sweater, dark navy trousers and brown practical shoes, warm calm expression. Adult body proportions.",
+      "source": "output/imagegen/mor-source.png",
+      "destination": "output/imagegen/mor-source.png",
+      "prompt": "Use case: stylized-concept. Asset type: production RPG pixel-art directional animation spritesheet. Make exactly 12 full-body sprites of ONE character, laid out in a strict evenly spaced 3-column by 4-row grid on a genuinely transparent background. Each cell identical size and generous empty margins, no characters touching or overlapping cell boundaries. Row 1 faces DOWN/front, row 2 faces RIGHT/profile looking right, row 3 faces UP/back with NO face visible, row 4 faces LEFT/profile looking left. Columns: idle standing, walking left leg forward/right leg back with opposing arm swing, walking right leg forward/left leg back with opposing arm swing. Each row's walking frames must visibly differ in feet and hands, SAME outfit/head anatomy/colors. Fixed body scale in all 12 cells, consistent ground baselines. Match the straw-hat PLAYER reference's sharp warm detailed square-pixel fantasy/RPG shading and lightly top-down perspective; similar full-body proportions, readable mature expression, not baby proportions. Crisp stepped pixel contours, NO 3D rendering, smooth painting, antialiasing, blurred gradients, ground shadows, text, labels, borders, grids or props. Reference 1 is STYLE ONLY, do NOT copy its hat/clothes onto the NPC. Composition is a vertical 3:4 sheet with 12 equal square cells. Use a regular coarse square pixel lattice, roughly 56–64 logical pixels of character height, enlarged uniformly. Character description: Mor, mature adult woman, shoulder-length blonde hair, glasses, muted dusty rose sweater, dark navy trousers and brown practical shoes, warm calm expression. Adult body proportions.",
+      "references": [
+        "src/assets/characters/player/down.png",
+        "Kevin pixel sheet style reference"
+      ]
+    },
+    {
+      "id": "far",
+      "description": "Far, mature older adult man, short grey hair, no glasses, no beard, muted grey/olive collared shirt, charcoal trousers and dark brown shoes, serious reserved expression.",
+      "source": "output/imagegen/far-source.png",
+      "destination": "output/imagegen/far-source.png",
+      "prompt": "Use case: stylized-concept. Asset type: production RPG pixel-art directional animation spritesheet. Make exactly 12 full-body sprites of ONE character, laid out in a strict evenly spaced 3-column by 4-row grid on a genuinely transparent background. Each cell identical size and generous empty margins, no characters touching or overlapping cell boundaries. Row 1 faces DOWN/front, row 2 faces RIGHT/profile looking right, row 3 faces UP/back with NO face visible, row 4 faces LEFT/profile looking left. Columns: idle standing, walking left leg forward/right leg back with opposing arm swing, walking right leg forward/left leg back with opposing arm swing. Each row's walking frames must visibly differ in feet and hands, SAME outfit/head anatomy/colors. Fixed body scale in all 12 cells, consistent ground baselines. Match the straw-hat PLAYER reference's sharp warm detailed square-pixel fantasy/RPG shading and lightly top-down perspective; similar full-body proportions, readable mature expression, not baby proportions. Crisp stepped pixel contours, NO 3D rendering, smooth painting, antialiasing, blurred gradients, ground shadows, text, labels, borders, grids or props. Reference 1 is STYLE ONLY, do NOT copy its hat/clothes onto the NPC. Composition is a vertical 3:4 sheet with 12 equal square cells. Use a regular coarse square pixel lattice, roughly 56–64 logical pixels of character height, enlarged uniformly. Character description: Far, mature older adult man, short grey hair, no glasses, no beard, muted grey/olive collared shirt, charcoal trousers and dark brown shoes, serious reserved expression.",
+      "references": [
+        "src/assets/characters/player/down.png",
+        "Kevin pixel sheet style reference"
+      ]
+    },
+    {
+      "id": "oda",
+      "description": "Oda, adult woman with long near-black/dark plum hair, muted dusty mauve top, navy trousers, brown boots, friendly readable smile and light eye highlights. Adult proportions.",
+      "source": "output/imagegen/oda-source.png",
+      "destination": "output/imagegen/oda-source.png",
+      "prompt": "Use case: stylized-concept. Asset type: production RPG pixel-art directional animation spritesheet. Make exactly 12 full-body sprites of ONE character, laid out in a strict evenly spaced 3-column by 4-row grid on a genuinely transparent background. Each cell identical size and generous empty margins, no characters touching or overlapping cell boundaries. Row 1 faces DOWN/front, row 2 faces RIGHT/profile looking right, row 3 faces UP/back with NO face visible, row 4 faces LEFT/profile looking left. Columns: idle standing, walking left leg forward/right leg back with opposing arm swing, walking right leg forward/left leg back with opposing arm swing. Each row's walking frames must visibly differ in feet and hands, SAME outfit/head anatomy/colors. Fixed body scale in all 12 cells, consistent ground baselines. Match the straw-hat PLAYER reference's sharp warm detailed square-pixel fantasy/RPG shading and lightly top-down perspective; similar full-body proportions, readable mature expression, not baby proportions. Crisp stepped pixel contours, NO 3D rendering, smooth painting, antialiasing, blurred gradients, ground shadows, text, labels, borders, grids or props. Reference 1 is STYLE ONLY, do NOT copy its hat/clothes onto the NPC. Composition is a vertical 3:4 sheet with 12 equal square cells. Use a regular coarse square pixel lattice, roughly 56–64 logical pixels of character height, enlarged uniformly. Character description: Oda, adult woman with long near-black/dark plum hair, muted dusty mauve top, navy trousers, brown boots, friendly readable smile and light eye highlights. Adult proportions.",
+      "references": [
+        "src/assets/characters/player/down.png",
+        "Kevin pixel sheet style reference"
+      ]
+    },
+    {
+      "id": "magnus",
+      "description": "Completely bald, no scalp or side hair, stocky/overweight, round belly, beard, orange cream-floral Hawaiian shirt",
+      "source": "output/imagegen/magnus-source.png",
+      "destination": "output/imagegen/magnus-source.png",
+      "prompt": "Use case: precise-object-edit. Create a corrected IDLE TURNAROUND from this Magnus reference. Output EXACTLY FOUR full-body standing idle sprites, in ONE HORIZONTAL ROW, four evenly spaced identical cells: front facing down, profile facing right, back facing up, profile facing left. NO WALKING POSES. Keep Magnus's FAT STOCKY body with broad ROUND BELLY, orange cream-floral Hawaiian shirt, dark trousers, brown shoes and brown facial BEARD. Critical correction: Magnus is COMPLETELY BALD. Entire scalp from forehead, temples, crown and sides to nape is BARE SKIN in ALL FOUR views. Absolutely NO HAIR on top or sides, no brown hair rim, no tufts, no ponytail. Eyebrows and facial beard stay, but scalp is fully bare. Do not confuse beard with scalp hair. Same recognizable face/body mass and mature proportions, detailed sharp square PIXEL ART matching reference, top-down/slightly angled RPG perspective. Genuine transparent background, plenty of empty padding between figures and around every head/foot, equal character height/ground baselines, no shadow, labels, borders, grids or text. The back view clearly shows a large uninterrupted bare bald scalp above the shirt collar.",
+      "layout": "idle-strip",
+      "references": [
+        "src/assets/characters/player/down.png",
+        "Kevin pixel sheet style reference"
+      ]
+    },
+    {
+      "id": "bendik",
+      "description": "Bendik, lean slightly tall adult man, short sandy blonde hair, glasses and a short blonde beard, moss-green shirt, dark trousers and practical brown boots. Subtle tall variation only, same shared character family.",
+      "source": "output/imagegen/bendik-source.png",
+      "destination": "output/imagegen/bendik-source.png",
+      "prompt": "Use case: stylized-concept. Asset type: production RPG pixel-art directional animation spritesheet. Make exactly 12 full-body sprites of ONE character, laid out in a strict evenly spaced 3-column by 4-row grid on a genuinely transparent background. Each cell identical size and generous empty margins, no characters touching or overlapping cell boundaries. Row 1 faces DOWN/front, row 2 faces RIGHT/profile looking right, row 3 faces UP/back with NO face visible, row 4 faces LEFT/profile looking left. Columns: idle standing, walking left leg forward/right leg back with opposing arm swing, walking right leg forward/left leg back with opposing arm swing. Each row's walking frames must visibly differ in feet and hands, SAME outfit/head anatomy/colors. Fixed body scale in all 12 cells, consistent ground baselines. Match the straw-hat PLAYER reference's sharp warm detailed square-pixel fantasy/RPG shading and lightly top-down perspective; similar full-body proportions, readable mature expression, not baby proportions. Crisp stepped pixel contours, NO 3D rendering, smooth painting, antialiasing, blurred gradients, ground shadows, text, labels, borders, grids or props. Reference 1 is STYLE ONLY, do NOT copy its hat/clothes onto the NPC. Composition is a vertical 3:4 sheet with 12 equal square cells. Use a regular coarse square pixel lattice, roughly 56–64 logical pixels of character height, enlarged uniformly. Character description: Bendik, lean slightly tall adult man, short sandy blonde hair, glasses and a short blonde beard, moss-green shirt, dark trousers and practical brown boots. Subtle tall variation only, same shared character family.",
+      "references": [
+        "src/assets/characters/player/down.png",
+        "Kevin pixel sheet style reference"
+      ]
+    },
+    {
+      "id": "nils",
+      "description": "Nils, athletic adult man, short blonde hair, blue sports jersey with cream sleeve trim, navy athletic trousers, light cream trainers, upbeat expression.",
+      "source": "output/imagegen/nils-source.png",
+      "destination": "output/imagegen/nils-source.png",
+      "prompt": "Use case: stylized-concept. Asset type: production RPG pixel-art directional animation spritesheet. Make exactly 12 full-body sprites of ONE character, laid out in a strict evenly spaced 3-column by 4-row grid on a genuinely transparent background. Each cell identical size and generous empty margins, no characters touching or overlapping cell boundaries. Row 1 faces DOWN/front, row 2 faces RIGHT/profile looking right, row 3 faces UP/back with NO face visible, row 4 faces LEFT/profile looking left. Columns: idle standing, walking left leg forward/right leg back with opposing arm swing, walking right leg forward/left leg back with opposing arm swing. Each row's walking frames must visibly differ in feet and hands, SAME outfit/head anatomy/colors. Fixed body scale in all 12 cells, consistent ground baselines. Match the straw-hat PLAYER reference's sharp warm detailed square-pixel fantasy/RPG shading and lightly top-down perspective; similar full-body proportions, readable mature expression, not baby proportions. Crisp stepped pixel contours, NO 3D rendering, smooth painting, antialiasing, blurred gradients, ground shadows, text, labels, borders, grids or props. Reference 1 is STYLE ONLY, do NOT copy its hat/clothes onto the NPC. Composition is a vertical 3:4 sheet with 12 equal square cells. Use a regular coarse square pixel lattice, roughly 56–64 logical pixels of character height, enlarged uniformly. Character description: Nils, athletic adult man, short blonde hair, blue sports jersey with cream sleeve trim, navy athletic trousers, light cream trainers, upbeat expression.",
+      "references": [
+        "src/assets/characters/player/down.png",
+        "Kevin pixel sheet style reference"
+      ]
+    },
+    {
+      "id": "morten",
+      "description": "Morten, adult shopkeeper man, short dark brown hair, green collared work shirt, charcoal trousers, practical brown shoes, welcoming expression. No hat, no glasses, no apron or additional props.",
+      "source": "output/imagegen/morten-source.png",
+      "destination": "output/imagegen/morten-source.png",
+      "prompt": "Use case: stylized-concept. Asset type: production RPG pixel-art directional animation spritesheet. Make exactly 12 full-body sprites of ONE character, laid out in a strict evenly spaced 3-column by 4-row grid on a genuinely transparent background. Each cell identical size and generous empty margins, no characters touching or overlapping cell boundaries. Row 1 faces DOWN/front, row 2 faces RIGHT/profile looking right, row 3 faces UP/back with NO face visible, row 4 faces LEFT/profile looking left. Columns: idle standing, walking left leg forward/right leg back with opposing arm swing, walking right leg forward/left leg back with opposing arm swing. Each row's walking frames must visibly differ in feet and hands, SAME outfit/head anatomy/colors. Fixed body scale in all 12 cells, consistent ground baselines. Match the straw-hat PLAYER reference's sharp warm detailed square-pixel fantasy/RPG shading and lightly top-down perspective; similar full-body proportions, readable mature expression, not baby proportions. Crisp stepped pixel contours, NO 3D rendering, smooth painting, antialiasing, blurred gradients, ground shadows, text, labels, borders, grids or props. Reference 1 is STYLE ONLY, do NOT copy its hat/clothes onto the NPC. Composition is a vertical 3:4 sheet with 12 equal square cells. Use a regular coarse square pixel lattice, roughly 56–64 logical pixels of character height, enlarged uniformly. Character description: Morten, adult shopkeeper man, short dark brown hair, green collared work shirt, charcoal trousers, practical brown shoes, welcoming expression. No hat, no glasses, no apron or additional props.",
+      "references": [
+        "src/assets/characters/player/down.png",
+        "Kevin pixel sheet style reference"
+      ]
+    }
+  ],
+  "walkMethod": "User-approved deterministic pixel rig from idles; generated walking columns are unused."
+}

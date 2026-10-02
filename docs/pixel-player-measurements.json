@@ -1,0 +1,102 @@
+{
+  "down": {
+    "source": "Pikseleventyrer med stråhatt.png",
+    "sourceCanvas": [
+      1122,
+      1402
+    ],
+    "sourceBounds": [
+      232,
+      165,
+      888,
+      1313
+    ],
+    "sourceFootAnchor": [
+      561,
+      1313
+    ],
+    "productionBounds": [
+      55,
+      24,
+      711,
+      1172
+    ],
+    "visibleDisplayHeight": 57.400000000000006,
+    "resized": false
+  },
+  "right": {
+    "source": "ChatGPT-bilde 2. okt. 2026, 15_57_31-1.png",
+    "sourceCanvas": [
+      1122,
+      1402
+    ],
+    "sourceBounds": [
+      253,
+      154,
+      901,
+      1296
+    ],
+    "sourceFootAnchor": [
+      608,
+      1296
+    ],
+    "productionBounds": [
+      29,
+      30,
+      677,
+      1172
+    ],
+    "visibleDisplayHeight": 57.1,
+    "resized": false
+  },
+  "up": {
+    "source": "ChatGPT-bilde 2. okt. 2026, 15_57_32-2.png",
+    "sourceCanvas": [
+      1122,
+      1402
+    ],
+    "sourceBounds": [
+      244,
+      168,
+      878,
+      1282
+    ],
+    "sourceFootAnchor": [
+      561,
+      1282
+    ],
+    "productionBounds": [
+      67,
+      58,
+      701,
+      1172
+    ],
+    "visibleDisplayHeight": 55.7,
+    "resized": false
+  },
+  "left": {
+    "source": "ChatGPT-bilde 2. okt. 2026, 15_57_33-3.png",
+    "sourceCanvas": [
+      1122,
+      1402
+    ],
+    "sourceBounds": [
+      225,
+      160,
+      864,
+      1289
+    ],
+    "sourceFootAnchor": [
+      555,
+      1289
+    ],
+    "productionBounds": [
+      54,
+      43,
+      693,
+      1172
+    ],
+    "visibleDisplayHeight": 56.45,
+    "resized": false
+  }
+}

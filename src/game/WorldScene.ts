@@ -1,9 +1,10 @@
 import { NPCS, type NpcDefinition } from './npcs'
-import { npcPixels } from './npcSprite'
+import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTER, STANDARD_CHARACTERS } from './characters'
+import { createCharacterImage, preloadCharacter, setCharacterDirection } from './characterRendering'
+import { characterWalkStep } from './characterAnimation'
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorTile } from './outdoorTiles'
 import { isWalkable } from './world'
-import { fisherPixels } from './fisherSprite'
 import { canFish, digSpotAhead, edgeTransition, interactionAhead, MAPS, stepTransition, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, type Appearance, type Direction, type Position, type Tile } from './world'
 
 type Callbacks = {
@@ -19,34 +20,44 @@ type Callbacks = {
 
 export class WorldScene extends Phaser.Scene {
   private position: Position
-  private appearance: Appearance
   private callbacks: Callbacks
   private player?: Phaser.GameObjects.Container
+  private playerImage?: Phaser.GameObjects.Image
+  private viewportZoom = 1
   private terrain?: Phaser.GameObjects.Graphics
   private waterSigns?: Phaser.GameObjects.Group
   private nextWaterSignAt = 0
   private keys?: Record<string, Phaser.Input.Keyboard.Key>
   private moving = false
+  private playerWalkStarted = 0
   private fishing = false
   private uiBlocked = false
   private nextMove = 0
-  private stride = 0
-  private nextStride = 1
-  private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container }[] = []
+  private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container; image?: Phaser.GameObjects.Image; walkStarted?: number }[] = []
   private conversations = new Map<string, number>()
 
-  constructor(position: Position, appearance: Appearance, callbacks: Callbacks) {
+  constructor(position: Position, _appearance: Appearance, callbacks: Callbacks) {
     super('world')
     this.position = { ...position }
-    this.appearance = appearance
     this.callbacks = callbacks
   }
 
+  preload() {
+    for (const character of STANDARD_CHARACTERS) preloadCharacter(this, character)
+  }
+
   create() {
+    this.cameras.main.setZoom(this.viewportZoom)
+    this.game.canvas.style.imageRendering = 'pixelated'
     this.cameras.main.setBackgroundColor('#183a36')
     this.drawMap()
     this.player = this.add.container(this.position.x * TILE_SIZE + 16, this.position.y * TILE_SIZE + 16)
     this.player.setDepth(this.player.y)
+    const shadow = this.add.graphics()
+    shadow.fillStyle(0x213e39, 0.24).fillEllipse(0, CHARACTER_GROUND_OFFSET_Y, 21, 5)
+    this.player.add(shadow)
+    this.playerImage = createCharacterImage(this, PLAYER_CHARACTER, this.position.facing)
+    this.player.add(this.playerImage)
     this.drawPlayer()
     this.setCameraBounds()
     this.cameras.main.roundPixels = true
@@ -64,6 +75,8 @@ export class WorldScene extends Phaser.Scene {
     this.player?.setDepth(this.player.y)
     for (const n of this.residents) n.sprite.setDepth(n.sprite.y)
     this.updateResidents(time)
+    this.drawPlayer()
+    for (const n of this.residents) this.drawResident(n)
     this.updateWaterSigns(time)
     if (!this.keys || this.moving || this.fishing || this.uiBlocked || time < this.nextMove) return
     const key = this.keys
@@ -103,8 +116,7 @@ export class WorldScene extends Phaser.Scene {
       return
     }
     this.moving = true
-    this.stride = this.nextStride
-    this.nextStride = this.nextStride === 1 ? 2 : 1
+    this.playerWalkStarted = this.time.now
     this.drawPlayer()
     this.tweens.add({
       targets: this.player,
@@ -114,7 +126,6 @@ export class WorldScene extends Phaser.Scene {
       ease: 'Linear',
       onComplete: () => {
         this.moving = false
-        this.stride = 0
         this.position = { ...this.position, x, y }
         this.drawPlayer()
         const target = stepTransition(this.position) ?? edgeTransition(this.position)
@@ -151,9 +162,14 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  setAppearance(appearance: Appearance) {
-    this.appearance = appearance
+  setAppearance(_appearance: Appearance) {
+    // Preserve the wardrobe API/saved appearance; the POC uses the fixed reference art.
     this.drawPlayer()
+  }
+
+  setViewportZoom(zoom: number) {
+    this.viewportZoom = zoom
+    this.cameras?.main?.setZoom(zoom)
   }
 
   finishFishing() {
@@ -359,12 +375,16 @@ export class WorldScene extends Phaser.Scene {
     return this.residents.find(n => !n.moving && n.x === this.position.x+dx && n.y === this.position.y+dy)
   }
 
-  private drawResident(n: WorldScene['residents'][number], stride = 0) {
-    n.sprite.removeAll(true)
-    const g = this.add.graphics()
-    g.fillStyle(0x213e39, 0.3).fillRect(-12,10,24,4)
-    for (const p of npcPixels(n.definition,n.facing,stride)) g.fillStyle(p.color).fillRect(p.x*2-18,p.y*2-30,2,2)
-    n.sprite.add(g)
+  private drawResident(n: WorldScene['residents'][number]) {
+    const character = NPC_CHARACTERS[n.definition.id]
+    if (!n.image) {
+      const shadow = this.add.graphics()
+      shadow.fillStyle(0x213e39, 0.3).fillRect(-12,10,24,4)
+      n.image = createCharacterImage(this, character, n.facing)
+      n.sprite.add([shadow, n.image])
+    }
+    const progress = (this.time.now - (n.walkStarted ?? this.time.now)) / 300
+    setCharacterDirection(n.image, character, n.facing, characterWalkStep(n.moving, progress))
   }
 
   private updateResidents(time: number) {
@@ -387,7 +407,8 @@ export class WorldScene extends Phaser.Scene {
       if (!isWalkable(MAPS[this.position.mapId].tiles[y]?.[x]) || (x === this.position.x && y === this.position.y) || this.residents.some(other => other !== n && ((other.x === x && other.y === y) || (other.moving && other.fromX === x && other.fromY === y)))) continue
       n.facing = x > n.x ? 'right' : x < n.x ? 'left' : y > n.y ? 'down' : 'up'
       n.fromX=n.x; n.fromY=n.y; n.x=x; n.y=y; n.index=index; n.moving=true
-      this.drawResident(n,index%2+1)
+      n.walkStarted = this.time.now
+      this.drawResident(n)
       this.tweens.add({ targets:n.sprite, x:x*TILE_SIZE+16, y:y*TILE_SIZE+16, duration:300, onComplete:()=>{
         n.moving=false; n.next=this.time.now+1600; this.drawResident(n)
         this.callbacks.onInteractionChange?.()
@@ -397,14 +418,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private drawPlayer() {
-    if (!this.player) return
-    this.player.removeAll(true)
-    const g = this.add.graphics()
-    g.fillStyle(0x213e39, 0.3).fillRect(-12, 10, 24, 4)
-    for (const pixel of fisherPixels(this.appearance, this.position.facing, this.stride)) {
-      g.fillStyle(pixel.color).fillRect(pixel.x * 2 - 18, pixel.y * 2 - 30, 2, 2)
-    }
-    this.player.add(g)
+    // Facing persists in Position, even after stopping or a blocked move.
+    // Every direction within the character format shares origin/scale.
+    if (!this.playerImage) return
+    const progress = (this.time.now - this.playerWalkStarted) / 115
+    setCharacterDirection(this.playerImage, PLAYER_CHARACTER, this.position.facing,
+      characterWalkStep(this.moving, progress))
   }
 }
 
@@ -413,12 +432,19 @@ export function createWorld(parent: HTMLElement, position: Position, appearance:
   const dimensions = () => {
     const mobile = window.matchMedia('(max-width: 767px), (max-width: 1023px) and (max-height: 500px)').matches
     const width = mobile ? 12 * TILE_SIZE : VIEW_WIDTH * TILE_SIZE
-    return { width, height: mobile ? Math.round(width * parent.clientHeight / Math.max(1, parent.clientWidth)) : VIEW_HEIGHT * TILE_SIZE }
+    const height = mobile ? Math.round(width * parent.clientHeight / Math.max(1, parent.clientWidth)) : VIEW_HEIGHT * TILE_SIZE
+    // Render at display density, then compensate with camera zoom. The visible world
+    // and all world coordinates stay unchanged; the sprite retains high-DPI detail.
+    const zoom = Math.max(1, parent.clientWidth * window.devicePixelRatio / width)
+    return { width: Math.round(width * zoom), height: Math.round(height * zoom), zoom }
   }
+  const initial = dimensions()
+  scene.setViewportZoom(initial.zoom)
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
-    ...dimensions(),
+    width: initial.width,
+    height: initial.height,
     backgroundColor: '#183a36',
     pixelArt: true,
     render: { antialias: false },
@@ -428,6 +454,7 @@ export function createWorld(parent: HTMLElement, position: Position, appearance:
   const observer = new ResizeObserver(() => {
     const size = dimensions()
     if (game.scale.width !== size.width || game.scale.height !== size.height) game.scale.resize(size.width, size.height)
+    scene.setViewportZoom(size.zoom)
   })
   observer.observe(parent)
   game.events.once('destroy', () => observer.disconnect())
