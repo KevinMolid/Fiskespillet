@@ -142,11 +142,23 @@ button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: no
 .fishing-dialog button:disabled { opacity: .45; }
 .fishing-back { padding: 5px 9px; }
 .fishing-prompt { margin: 12px 0; font-size: 13px; }
-.cast-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.cast-options button, .fishing-choice-list button { display: grid; gap: 3px; justify-items: start; padding: 9px; text-align: left; }
-.cast-options button[aria-pressed="true"] { border-color: #315b51; background: #d2dec4; box-shadow: inset 0 0 0 1px #315b51; }
-.cast-options span, .fishing-choice-list span { color: #667b62; font-size: 10px; }
-.cast-options small { color: #8a7042; font-size: 9px; }
+.cast-aim-layout { display: flex; align-items: center; gap: 18px; min-height: 170px; padding: 8px 14px; background: #dce2c9; border: 2px solid #a2ae91; }
+.cast-meter { display: flex; flex: 0 0 88px; flex-direction: column; align-items: center; justify-content: space-between; gap: 4px; height: 150px; padding: 4px !important; border: 0 !important; background: transparent !important; }
+.cast-meter-caption { color: #657761; font-size: 8px; font-weight: 900; letter-spacing: .08em; }
+.cast-meter-track { position: relative; width: 32px; height: 112px; border: 3px solid #526d5d; border-radius: 5px; background: linear-gradient(90deg, #abc0a1, #e7e4c9 50%, #abc0a1); box-shadow: inset 0 0 0 2px #eae4cf; }
+.cast-meter-tick { position: absolute; left: -5px; right: -5px; display: flex; align-items: center; height: 14px; transform: translateY(-50%); border-top: 1px solid #70816d; }
+.cast-meter-tick b { position: absolute; left: -20px; color: #7a8770; font-size: 8px; font-weight: 700; }
+.cast-meter-tick.is-unavailable { opacity: .2; }
+.cast-meter-tick.is-current { border-color: #be9143; }
+.cast-meter-tick.is-current b { color: #795b27; font-size: 10px; font-weight: 900; }
+.cast-meter-pointer { position: absolute; z-index: 1; left: -9px; right: -9px; height: 5px; transform: translateY(-50%); transition: top .1s linear; background: #bd5944; box-shadow: 0 1px 0 #fff0ce; }
+.cast-meter-pointer b { position: absolute; right: -12px; top: -5px; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-right: 9px solid #bd5944; }
+.cast-meter-readout { display: grid; gap: 5px; }
+.cast-meter-readout span { color: #71806d; font-size: 8px; font-weight: 900; letter-spacing: .14em; }
+.cast-meter-readout strong { font: bold 20px Georgia, serif; color: #315b51; }
+.cast-meter-readout small { color: #667b62; font-size: 11px; }
+.fishing-choice-list button { display: grid; gap: 3px; justify-items: start; padding: 9px; text-align: left; }
+.fishing-choice-list span { color: #667b62; font-size: 10px; }
 .fishing-tip { margin: 10px 0; color: #667b62; font-size: 11px; }
 .fishing-primary { min-width: 118px; padding: 7px 12px; background: #315b51 !important; border-color: #24483f !important; color: #fff7dd !important; }
 .fishing-primary kbd, .fishing-reel kbd { margin-left: 8px; font-size: 9px; opacity: .8; }
@@ -154,6 +166,22 @@ button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: no
 .fishing-choice-list button { grid-template-columns: 1fr; width: 100%; }
 .fishing-choice-list strong { font-size: 13px; }
 .fishing-wait, .fishing-hook, .fishing-fight { padding-top: 16px; text-align: center; }
+.cast-animation { padding-top: 5px; }
+.cast-scene { position: relative; height: 160px; overflow: hidden; border: 2px solid #a2ae91; background: linear-gradient(#c4d3bc 0 59%, #9fc0ae 59% 63%, #628f8b 63% 100%); image-rendering: pixelated; }
+.cast-water-lane { position: absolute; left: 25%; right: 3%; top: 62%; height: 42px; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 2px solid #bedbd0; }
+.cast-water-lane i { position: relative; border-right: 1px dashed #b5d0bf77; background: repeating-linear-gradient(0deg, transparent 0 7px, #b2d0c055 7px 9px); }
+.cast-water-lane i.is-landing { background: repeating-linear-gradient(0deg, #a8d7ce88 0 3px, #76aaa488 3px 7px); }
+.cast-fisher { position: absolute; z-index: 1; left: 8%; bottom: 22%; width: 19px; height: 35px; }
+.cast-fisher::before { content: ''; position: absolute; left: 4px; top: 0; width: 12px; height: 12px; background: #e2b68c; box-shadow: 0 -4px 0 #805238, 0 2px 0 #573a30; }
+.cast-fisher::after { content: ''; position: absolute; left: 5px; top: 13px; width: 11px; height: 15px; background: #477464; box-shadow: -4px 14px 0 -2px #514b3d, 5px 14px 0 -2px #514b3d; }
+.cast-fisher i { position: absolute; z-index: 2; left: 14px; top: 10px; width: 37px; height: 2px; transform: rotate(-23deg); transform-origin: left; background: #76583c; }
+.cast-fisher b { position: absolute; z-index: 2; left: 48px; top: -3px; width: 1px; height: 64px; transform: rotate(-7deg); transform-origin: top; background: #f3e8b9; }
+.cast-flying-lure { position: absolute; z-index: 3; left: 25%; top: 46%; width: 7px; height: 7px; background: #d54b37; border: 2px solid #f0dcaa; image-rendering: pixelated; }
+.cast-animation .cast-flying-lure { animation: cast-arc .85s cubic-bezier(.2,.65,.45,1) both; }
+@keyframes cast-arc { 0% { left: 25%; top: 46%; transform: rotate(0deg); } 55% { left: var(--cast-mid); top: 14%; transform: rotate(100deg); } 100% { left: var(--cast-end); top: 63%; transform: rotate(190deg); } }
+.cast-splash { position: absolute; z-index: 2; left: var(--cast-end); top: 66%; width: 6px; height: 4px; opacity: 0; border: 2px solid #def3d8; border-radius: 50%; transform: translate(-50%, -50%); }
+.cast-animation .cast-splash { animation: cast-splash .5s .7s ease-out both; }
+@keyframes cast-splash { 0% { opacity: 1; width: 5px; height: 3px; } 100% { opacity: 0; width: 38px; height: 18px; } }
 .fishing-wait strong { display: block; margin: 10px 0; font-size: 14px; }
 .fishing-wait p { color: #667b62; font-size: 11px; }
 .fishing-lure { display: block; color: #4d8290; font-size: 34px; animation: lure-bob .8s ease-in-out infinite alternate; }
@@ -171,7 +199,7 @@ button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: no
 .fishing-reel { width: 100%; margin-top: 13px; background: #d2dec4 !important; }
 .fishing-reel.is-reeling { background: #b2c8a2 !important; }
 .fishing-saving { padding: 22px 0; text-align: center; }
-@media (max-width: 767px) { .fishing-dialog { width: min(520px, calc(100% - 20px)); max-height: calc(100% - 20px); border-width: 3px; padding: 13px; }.fishing-prompt { font-size: 12px; }.cast-options { gap: 5px; }.cast-options button { padding: 7px 5px; }.cast-options span { font-size: 9px; } }
+@media (max-width: 767px) { .fishing-dialog { width: min(520px, calc(100% - 20px)); max-height: calc(100% - 20px); border-width: 3px; padding: 13px; }.fishing-prompt { font-size: 12px; }.cast-aim-layout { min-height: 150px; gap: 14px; padding: 6px 10px; }.cast-meter { height: 138px; }.cast-meter-track { height: 102px; }.cast-meter-readout strong { font-size: 17px; }.cast-scene { height: 140px; } }
 @media (prefers-reduced-motion: reduce) { .fishing-lure, .fishing-bite-mark { animation: none; } }
 
 /* Field guide / collection journal. Desktop keeps a master-detail view; phones use one full-width page at a time. */

@@ -10,12 +10,15 @@ const { MAPS, castTargets, advanceFight, fishingConditions, FISHING_ZONE_NAMES }
 assert.equal(FISHING_ZONE_NAMES.havn, 'Bryggehavn')
 assert.equal(FISHING_ZONE_NAMES.skogstjern, 'Skogstjernet')
 let totalTargets = 0
+let fullLengthSpots = 0
 for (const map of Object.values(MAPS)) {
   for (let y = 0; y < map.tiles.length; y++) for (let x = 0; x < map.tiles[y].length; x++) {
     for (const facing of ['up', 'down', 'left', 'right']) {
       const targets = castTargets({ mapId: map.id, x, y, facing })
       const steps = targets.map(target => target.steps)
       assert.equal(new Set(steps).size, steps.length)
+      assert(targets.every(target => target.id === target.steps))
+      if (steps.length === 5) { assert.deepEqual(steps, [1, 2, 3, 4, 5]); fullLengthSpots++ }
       assert(targets.every(target => target.feature && target.description))
       for (const target of targets) {
         const dx = facing === 'left' ? -1 : facing === 'right' ? 1 : 0
@@ -27,7 +30,8 @@ for (const map of Object.values(MAPS)) {
   }
 }
 assert(totalTargets > 10, 'both fishing maps should offer castable water tiles')
-const sample = { id: 'short', label: 'Kort', steps: 1, feature: 'reeds', featureName: 'sivkant', description: 'Ved sivet' }
+assert(fullLengthSpots > 0, 'some shore positions should support all five cast lengths')
+const sample = { id: 1, castLength: 'short', label: 'Kort', steps: 1, feature: 'reeds', featureName: 'sivkant', description: 'Ved sivet' }
 assert.deepEqual(fishingConditions('worm', sample, 'bottom', 'slow'), {
   bait: 'worm', castLength: 'short', feature: 'reeds', depth: 'bottom', retrieve: 'slow',
 })

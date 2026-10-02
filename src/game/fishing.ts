@@ -2,7 +2,8 @@ import { FISHING_ZONES, type CastLength, type FishingConditions, type FishingFea
 import { MAPS, type Position } from './world'
 
 export type CastTarget = {
-  id: CastLength
+  id: number
+  castLength: CastLength
   label: string
   steps: number
   feature: FishingFeature
@@ -10,10 +11,12 @@ export type CastTarget = {
   description: string
 }
 
-const CAST_OPTIONS: { id: CastLength; label: string; steps: number }[] = [
-  { id: 'short', label: 'Kort', steps: 1 },
-  { id: 'medium', label: 'Middels', steps: 3 },
-  { id: 'long', label: 'Langt', steps: 5 },
+const CAST_OPTIONS: { castLength: CastLength; label: string; steps: number }[] = [
+  { castLength: 'short', label: 'Kort', steps: 1 },
+  { castLength: 'short', label: 'Kort', steps: 2 },
+  { castLength: 'medium', label: 'Middels', steps: 3 },
+  { castLength: 'long', label: 'Langt', steps: 4 },
+  { castLength: 'long', label: 'Langt', steps: 5 },
 ]
 
 const DELTA = {
@@ -30,7 +33,7 @@ function waterFeature(mapId: Position['mapId'], x: number, y: number): FishingFe
   return 'open'
 }
 
-/** Build the short, medium and long casts that stay within the water directly ahead. */
+/** Build every one-tile cast distance that stays within the water directly ahead. */
 export function castTargets(position: Position): CastTarget[] {
   const map = MAPS[position.mapId]
   if (!map.fishingZone) return []
@@ -48,6 +51,7 @@ export function castTargets(position: Position): CastTarget[] {
     const feature = waterFeature(position.mapId, x, y)
     return {
       ...option,
+      id: option.steps,
       feature,
       featureName: feature === 'reeds' ? 'sivkant' : feature === 'rocky' ? 'stein' : feature === 'dock' ? 'bryggekant' : 'åpent vann',
       description: `Ute ved ${feature === 'reeds' ? 'sivet' : feature === 'rocky' ? 'steinene' : feature === 'dock' ? 'brygga' : 'åpent vann'}`,
@@ -56,7 +60,7 @@ export function castTargets(position: Position): CastTarget[] {
 }
 
 export function fishingConditions(bait: FishingConditions['bait'], target: CastTarget, depth: FishingDepth, retrieve: RetrieveSpeed): FishingConditions {
-  return { bait, castLength: target.id, feature: target.feature, depth, retrieve }
+  return { bait, castLength: target.castLength, feature: target.feature, depth, retrieve }
 }
 
 export type FightState = { tension: number; progress: number; elapsedMs: number; pulling: boolean }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { rollFish, type FishingDepth, type FishSpecies, type RetrieveSpeed } from './fish'
 import { advanceFight, castTargets, fishingConditions, FISHING_ZONE_NAMES, type FightState } from './fishing'
 import type { BaitId } from './items'
@@ -17,7 +17,7 @@ type Props = {
   onCancel: () => void
   registerReelControl: (control: { start: () => boolean; stop: () => void } | null) => void
 }
-type Phase = 'aim' | 'depth' | 'sinking' | 'retrieve' | 'waiting' | 'hook' | 'fight' | 'resolving'
+type Phase = 'aim' | 'casting' | 'depth' | 'sinking' | 'retrieve' | 'waiting' | 'hook' | 'fight' | 'resolving'
 
 const DEPTHS: { id: FishingDepth; name: string; wait: number; help: string }[] = [
   { id: 'surface', name: 'Overflaten', wait: 0, help: 'Sveiv inn med en gang' },
@@ -32,8 +32,11 @@ const SPEEDS: { id: RetrieveSpeed; name: string; help: string }[] = [
 
 export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, onCancel, registerReelControl }: Props) {
   const targets = useMemo(() => castTargets(position), [position])
-  const [targetId, setTargetId] = useState(targets[0]?.id ?? 'short')
-  const target = targets.find(value => value.id === targetId) ?? targets[0]
+  const [targetStep, setTargetStep] = useState(targets[0]?.steps ?? 1)
+  const target = targets.find(value => value.steps === targetStep) ?? targets[0]
+  const [meterStep, setMeterStep] = useState(target?.steps ?? 1)
+  const meterStepRef = useRef(target?.steps ?? 1)
+  const meterDirection = useRef(1)
   const [phase, setPhase] = useState<Phase>('aim')
   const [depth, setDepth] = useState<FishingDepth>('surface')
   const [sinkMs, setSinkMs] = useState(0)
@@ -46,6 +49,19 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, onCa
 
   useEffect(() => { reelingRef.current = reeling }, [reeling])
   useEffect(() => { fightRef.current = fight }, [fight])
+  useEffect(() => {
+    if (phase !== 'aim' || targets.length < 2) return
+    const timer = window.setInterval(() => {
+      setMeterStep(current => {
+        let next = current + meterDirection.current
+        if (next >= targets[targets.length - 1].steps) { next = targets[targets.length - 1].steps; meterDirection.current = -1 }
+        else if (next <= targets[0].steps) { next = targets[0].steps; meterDirection.current = 1 }
+        meterStepRef.current = next
+        return next
+      })
+    }, 210)
+    return () => window.clearInterval(timer)
+  }, [phase, targets])
   useEffect(() => {
     const start = () => { if (phase !== 'fight') return false; reelingRef.current = true; setReeling(true); return true }
     const stop = () => { reelingRef.current = false; setReeling(false) }
@@ -67,9 +83,21 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, onCa
   }
 
   function cast() {
-    if (!target || phase !== 'aim') return
+    const selected = targets.find(value => value.steps === meterStepRef.current)
+    if (!selected || phase !== 'aim') return
+    setTargetStep(selected.steps)
     onCommit()
-    setPhase('depth')
+    setPhase('casting')
+  }
+
+  function aimAtPointer(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!targets.length) return
+    const rect = event.currentTarget.querySelector('.cast-meter-track')?.getBoundingClientRect() ?? event.currentTarget.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
+    const step = Math.round(targets[0].steps + (targets[targets.length - 1].steps - targets[0].steps) * (1 - ratio))
+    const nearest = targets.reduce((best, value) => Math.abs(value.steps - step) < Math.abs(best.steps - step) ? value : best, targets[0])
+    meterStepRef.current = nearest.steps
+    setMeterStep(nearest.steps)
   }
 
   function chooseDepth(value: typeof DEPTHS[number]) {
@@ -95,6 +123,10 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, onCa
   }
 
   useEffect(() => {
+    if (phase === 'casting') {
+      const timer = window.setTimeout(() => setPhase('depth'), 1300)
+      return () => window.clearTimeout(timer)
+    }
     if (phase === 'sinking') {
       const timer = window.setTimeout(() => setPhase('retrieve'), sinkMs)
       return () => window.clearTimeout(timer)
@@ -126,20 +158,37 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, onCa
 
   return <section className="fishing-dialog" role="dialog" aria-modal="true" aria-labelledby="fishing-title">
     <header className="fishing-heading">
-      <div><span>FISKE · {FISHING_ZONE_NAMES[zoneId] ?? 'VANNKANTEN'}</span><h2 id="fishing-title">{phase === 'aim' ? 'Finn kastestedet' : phase === 'hook' ? 'Napp!' : phase === 'fight' ? 'Kjør fisken' : phase === 'resolving' ? 'Fisketuren' : 'Fisking'}</h2></div>
+      <div><span>FISKE · {FISHING_ZONE_NAMES[zoneId] ?? 'VANNKANTEN'}</span><h2 id="fishing-title">{phase === 'aim' ? 'Sikt kastet' : phase === 'casting' ? 'Kastet flyr' : phase === 'hook' ? 'Napp!' : phase === 'fight' ? 'Kjør fisken' : phase === 'resolving' ? 'Fisketuren' : 'Fisking'}</h2></div>
       {phase === 'aim' && <button className="fishing-back" onClick={onCancel}>Avbryt</button>}
     </header>
 
     {phase === 'aim' && <>
-      <p className="fishing-prompt">Du står vendt mot vannet. Velg hvor langt du vil kaste.</p>
-      <div className="cast-options" role="group" aria-label="Kastelengde">
-        {targets.map(option => <button key={option.id} aria-pressed={targetId === option.id} onFocus={() => setTargetId(option.id)} onClick={() => setTargetId(option.id)}>
-          <strong>{option.label}</strong><span>{option.featureName}</span><small>{option.steps * 2}–{option.steps * 3} m</small>
-        </button>)}
+      <p className="fishing-prompt">Trykk når pekeren står på ønsket kastelengde. Kort er én rute, langt er fem.</p>
+      <div className="cast-aim-layout">
+        <button className="cast-meter" disabled={!target} aria-label={`Kast ${meterStep} rute${meterStep === 1 ? '' : 'r'} fram. Trykk for å kaste.`} onPointerDown={aimAtPointer} onClick={cast}>
+          <span className="cast-meter-caption">LANGT</span>
+          <span className="cast-meter-track">
+            {Array.from({ length: 5 }, (_, index) => 5 - index).map(step => <i key={step} className={`cast-meter-tick ${targets.some(value => value.steps === step) ? 'is-available' : 'is-unavailable'} ${meterStep === step ? 'is-current' : ''}`} style={{ top: `${(5 - step) * 25}%` }}><b>{step}</b></i>)}
+            <i className="cast-meter-pointer" style={{ top: `${(5 - meterStep) * 25}%` }} aria-hidden="true"><b /></i>
+          </span>
+          <span className="cast-meter-caption">KORT</span>
+        </button>
+        <div className="cast-meter-readout"><span>KASTELENGDE</span><strong>{target?.label ?? 'Kort'} · {meterStep} {meterStep === 1 ? 'rute' : 'ruter'}</strong><small>{target?.featureName ?? 'Vannkanten'}</small></div>
       </div>
-      <p className="fishing-tip">{target?.description ?? 'Vannet er for grunt til å kaste her.'}</p>
-      <button className="fishing-primary" data-autofocus onClick={cast} disabled={!target}>Kast ut <kbd>E</kbd></button>
+      <p className="fishing-tip">{target?.description ?? 'Vannet er for grunt til å kaste her.'} Pekeren beveger seg automatisk opp og ned.</p>
+      <button className="fishing-primary" data-autofocus onClick={cast} disabled={!target}>Kast <kbd>E / A</kbd></button>
     </>}
+
+    {phase === 'casting' && <div className="cast-animation" role="status" aria-label={`Agnet lander ${targetStep} ruter ut i vannet`}>
+      <p className="fishing-prompt">Du kaster {target?.label.toLowerCase()} · {targetStep} {targetStep === 1 ? 'rute' : 'ruter'} fram</p>
+      <div className="cast-scene" style={{ '--cast-end': `${25 + 72 * ((targetStep - .5) / 5)}%`, '--cast-mid': `${25 + 72 * ((targetStep - .5) / 5) * .55}%` } as CSSProperties}>
+        <div className="cast-fisher" aria-hidden="true"><i /><b /><span /></div>
+        <div className="cast-water-lane" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => <i key={index} className={index + 1 === targetStep ? 'is-landing' : ''} />)}</div>
+        <i className="cast-flying-lure" aria-hidden="true" />
+        <i className="cast-splash" aria-hidden="true" />
+      </div>
+      <p className="fishing-tip">Plask! Agnet landet ved {target?.featureName}.</p>
+    </div>}
 
     {phase === 'depth' && <>
       <p className="fishing-prompt">La sluken synke til riktig dybde før du sveiver inn.</p>
