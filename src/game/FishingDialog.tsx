@@ -14,7 +14,6 @@ type Props = {
   bait: BaitId
   onCommit: () => void
   onFinish: (result: FishingFinish) => void
-  onCancel: () => void
   registerReelControl: (control: { start: () => boolean; stop: () => void } | null) => void
 }
 type Phase = 'aim' | 'casting' | 'depth' | 'sinking' | 'retrieve' | 'waiting' | 'hook' | 'fight' | 'resolving'
@@ -30,7 +29,7 @@ const SPEEDS: { id: RetrieveSpeed; name: string; help: string }[] = [
   { id: 'fast', name: 'Raskt', help: 'Sveiv sluken raskt inn' },
 ]
 
-export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, onCancel, registerReelControl }: Props) {
+export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, registerReelControl }: Props) {
   const targets = useMemo(() => castTargets(position), [position])
   const [targetStep, setTargetStep] = useState(targets[0]?.steps ?? 1)
   const target = targets.find(value => value.steps === targetStep) ?? targets[0]
@@ -156,28 +155,26 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, onCa
 
   const progressWidth = phase === 'fight' ? `${Math.min(100, fight.progress)}%` : undefined
 
+  const castMeter = <div className="cast-aim-layout">
+    <button className="cast-meter" data-autofocus disabled={!target} aria-label={`Kast ${meterStep} rute${meterStep === 1 ? '' : 'r'} fram. Trykk for å kaste.`} onPointerDown={aimAtPointer} onClick={cast}>
+      <span className="cast-meter-caption">LANGT</span>
+      <span className="cast-meter-track">
+        {Array.from({ length: 5 }, (_, index) => 5 - index).map(step => <i key={step} className={`cast-meter-tick ${targets.some(value => value.steps === step) ? 'is-available' : 'is-unavailable'} ${meterStep === step ? 'is-current' : ''}`} style={{ top: `${(5 - step) * 25}%` }}><b>{step}</b></i>)}
+        <i className="cast-meter-pointer" style={{ top: `${(5 - meterStep) * 25}%` }} aria-hidden="true"><b /></i>
+      </span>
+      <span className="cast-meter-caption">KORT</span>
+    </button>
+    <div className="cast-meter-readout"><span>KASTELENGDE</span><strong>{target?.label ?? 'Kort'} · {meterStep} {meterStep === 1 ? 'rute' : 'ruter'}</strong><small>{target?.featureName ?? 'Vannkanten'}</small></div>
+  </div>
+
+  if (phase === 'aim') return <section className="fishing-dialog cast-meter-overlay" role="dialog" aria-modal="true" aria-label="Kastelengde">
+    {castMeter}
+  </section>
+
   return <section className="fishing-dialog" role="dialog" aria-modal="true" aria-labelledby="fishing-title">
     <header className="fishing-heading">
-      <div><span>FISKE · {FISHING_ZONE_NAMES[zoneId] ?? 'VANNKANTEN'}</span><h2 id="fishing-title">{phase === 'aim' ? 'Sikt kastet' : phase === 'casting' ? 'Kastet flyr' : phase === 'hook' ? 'Napp!' : phase === 'fight' ? 'Kjør fisken' : phase === 'resolving' ? 'Fisketuren' : 'Fisking'}</h2></div>
-      {phase === 'aim' && <button className="fishing-back" onClick={onCancel}>Avbryt</button>}
+      <div><span>FISKE · {FISHING_ZONE_NAMES[zoneId] ?? 'VANNKANTEN'}</span><h2 id="fishing-title">{phase === 'casting' ? 'Kastet flyr' : phase === 'hook' ? 'Napp!' : phase === 'fight' ? 'Kjør fisken' : phase === 'resolving' ? 'Fisketuren' : 'Fisking'}</h2></div>
     </header>
-
-    {phase === 'aim' && <>
-      <p className="fishing-prompt">Trykk når pekeren står på ønsket kastelengde. Kort er én rute, langt er fem.</p>
-      <div className="cast-aim-layout">
-        <button className="cast-meter" disabled={!target} aria-label={`Kast ${meterStep} rute${meterStep === 1 ? '' : 'r'} fram. Trykk for å kaste.`} onPointerDown={aimAtPointer} onClick={cast}>
-          <span className="cast-meter-caption">LANGT</span>
-          <span className="cast-meter-track">
-            {Array.from({ length: 5 }, (_, index) => 5 - index).map(step => <i key={step} className={`cast-meter-tick ${targets.some(value => value.steps === step) ? 'is-available' : 'is-unavailable'} ${meterStep === step ? 'is-current' : ''}`} style={{ top: `${(5 - step) * 25}%` }}><b>{step}</b></i>)}
-            <i className="cast-meter-pointer" style={{ top: `${(5 - meterStep) * 25}%` }} aria-hidden="true"><b /></i>
-          </span>
-          <span className="cast-meter-caption">KORT</span>
-        </button>
-        <div className="cast-meter-readout"><span>KASTELENGDE</span><strong>{target?.label ?? 'Kort'} · {meterStep} {meterStep === 1 ? 'rute' : 'ruter'}</strong><small>{target?.featureName ?? 'Vannkanten'}</small></div>
-      </div>
-      <p className="fishing-tip">{target?.description ?? 'Vannet er for grunt til å kaste her.'} Pekeren beveger seg automatisk opp og ned.</p>
-      <button className="fishing-primary" data-autofocus onClick={cast} disabled={!target}>Kast <kbd>E / A</kbd></button>
-    </>}
 
     {phase === 'casting' && <div className="cast-animation" role="status" aria-label={`Agnet lander ${targetStep} ruter ut i vannet`}>
       <p className="fishing-prompt">Du kaster {target?.label.toLowerCase()} · {targetStep} {targetStep === 1 ? 'rute' : 'ruter'} fram</p>

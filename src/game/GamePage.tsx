@@ -318,7 +318,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       {showBook && <FishBookDialog book={book} onClose={closeBook} registerMenuBack={registerFishBookMenuBack} />}
       {fishingSession && <FishingDialog position={fishingSession.position} zoneId={fishingSession.zoneId} bait={fishingSession.bait}
         onCommit={() => { fishingCommitted.current = true }} onFinish={outcome => void finishFishingSession(outcome)}
-        onCancel={closeFishingSession} registerReelControl={registerReelControl} />}
+        registerReelControl={registerReelControl} />}
     </div>
 
     <MobileControls context={inputContext} onDirection={input.direction} onAction={input.action}

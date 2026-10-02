@@ -135,6 +135,11 @@ button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: no
 
 /* Compact fishing loop dialog fits both the desktop scene and the handheld display. */
 .fishing-dialog { position: absolute; z-index: 8; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 28px)); max-height: calc(100% - 28px); overflow-y: auto; padding: clamp(14px, 3vw, 24px); border: 4px solid #476454; background: #eae4cf; color: #263e38; box-shadow: inset 0 0 0 2px #f7f0d9, 7px 7px 0 #102b2988; }
+.fishing-dialog.cast-meter-overlay { inset: auto 12px 12px auto; transform: none; width: min(255px, calc(100% - 24px)); max-height: none; overflow: visible; padding: 5px; border-width: 2px; box-shadow: 3px 3px 0 #102b2988; }
+.cast-meter-overlay .cast-aim-layout { min-height: 154px; gap: 5px; padding: 3px 7px; }
+.cast-meter-overlay .cast-meter { flex-basis: 78px; }
+.cast-meter-overlay .cast-meter-readout strong { font-size: 16px; }
+.cast-meter-overlay .cast-meter-readout small { font-size: 9px; }
 .fishing-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 2px solid #9aa68a; padding-bottom: 9px; }
 .fishing-heading span { color: #667b62; font-size: 9px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
 .fishing-heading h2 { margin: 2px 0 0; font: bold clamp(20px, 4vw, 27px) Georgia, serif; }
@@ -199,7 +204,7 @@ button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: no
 .fishing-reel { width: 100%; margin-top: 13px; background: #d2dec4 !important; }
 .fishing-reel.is-reeling { background: #b2c8a2 !important; }
 .fishing-saving { padding: 22px 0; text-align: center; }
-@media (max-width: 767px) { .fishing-dialog { width: min(520px, calc(100% - 20px)); max-height: calc(100% - 20px); border-width: 3px; padding: 13px; }.fishing-prompt { font-size: 12px; }.cast-aim-layout { min-height: 150px; gap: 14px; padding: 6px 10px; }.cast-meter { height: 138px; }.cast-meter-track { height: 102px; }.cast-meter-readout strong { font-size: 17px; }.cast-scene { height: 140px; } }
+@media (max-width: 767px) { .fishing-dialog { width: min(520px, calc(100% - 20px)); max-height: calc(100% - 20px); border-width: 3px; padding: 13px; }.fishing-dialog.cast-meter-overlay { inset: auto 10px 10px auto; width: min(245px, calc(100% - 20px)); padding: 4px; border-width: 2px; }.fishing-prompt { font-size: 12px; }.cast-aim-layout { min-height: 150px; gap: 14px; padding: 6px 10px; }.cast-meter { height: 138px; }.cast-meter-track { height: 102px; }.cast-meter-readout strong { font-size: 17px; }.cast-scene { height: 140px; } }
 @media (prefers-reduced-motion: reduce) { .fishing-lure, .fishing-bite-mark { animation: none; } }
 
 /* Field guide / collection journal. Desktop keeps a master-detail view; phones use one full-width page at a time. */
