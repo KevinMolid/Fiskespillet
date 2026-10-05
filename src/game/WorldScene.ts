@@ -5,6 +5,7 @@ import { characterWalkStep } from './characterAnimation'
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorGround, drawOutdoorObject, isOutdoorObject, isRaisedDecoration } from './outdoorTiles'
 import { drawIndoorGround, drawIndoorObject, isIndoorObject } from './indoorTiles'
+import { drawBuildingDoors } from './buildingOpenings'
 import { isWalkable } from './world'
 import { canFish, digSpotAhead, edgeTransition, interactionAhead, MAPS, stepTransition, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, type Appearance, type Direction, type Position } from './world'
 
@@ -229,6 +230,7 @@ export class WorldScene extends Phaser.Scene {
         }
       }
     }
+    drawBuildingDoors(graphics, map)
     for (const decoration of map.decorations ?? []) {
       if (isRaisedDecoration(decoration.kind)) {
         const object = this.add.graphics().setDepth(decoration.y * TILE_SIZE + 16)

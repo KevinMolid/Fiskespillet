@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { createWorld } from '../src/game/WorldScene'
 import { drawDecoration, drawOutdoorGround, drawOutdoorObject, isOutdoorObject, isRaisedDecoration } from '../src/game/outdoorTiles'
 import { drawIndoorGround, drawIndoorObject, isIndoorObject } from '../src/game/indoorTiles'
+import { drawBuildingDoors } from '../src/game/buildingOpenings'
 import { MAPS, DEFAULT_APPEARANCE, START, TILE_SIZE, type Direction, type MapId } from '../src/game/world'
 
 let overview: Phaser.Game | undefined
@@ -24,6 +25,7 @@ function show(mapId: MapId) {
           else drawIndoorObject(object,map,x,y)
         }
       }
+      drawBuildingDoors(ground,map)
       for (const d of map.decorations ?? []) {
         const layer=isRaisedDecoration(d.kind)?this.add.graphics().setDepth(d.y*TILE_SIZE+16):ground
         drawDecoration(layer,d)

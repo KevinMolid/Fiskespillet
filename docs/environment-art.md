@@ -87,3 +87,42 @@ still comes from the existing blocking `fence` tile, including the added corner.
 vertical envelope and board tips, rail continuity, both installed corners and
 the house entrance. The isolated typecheck/build, environment tests and browser
 checks for desktop, high-DPI mobile and Canvas fallback pass.
+
+## Larger doors and joined windows
+
+`src/game/buildingOpenings.ts` owns the shared opening artwork. `DOOR_STANDARD`
+defines a 30 px wide, 64 px high frame, close to the player's approximately
+59 px visible height. Its threshold remains at tile-local Y=30. The frame
+extends upward to Y=-34; the door's logical tile and transition stay unchanged.
+Outdoor doors have an upper glazed panel; indoor doors use a timber panel.
+
+`WorldScene.drawMap()` and the art overview call `drawBuildingDoors()` after
+all ground tiles have been painted. Doors remain background building artwork,
+so adjacent cells cannot cover their upper half and characters stay in front.
+The existing object sorting, collision and camera logic are unaffected.
+
+Adjacent `window` cells form a rectangular block. `windowRegion()` finds the
+block and `drawWindow()` clips one complete frame, glass, mullions and sill
+into the individual cells. Internal tile boundaries share mullions instead
+of repeating outer borders. Add a rectangular block of existing `window`
+tiles in map data to create larger windows; leave a facade cell between
+separate windows. Nonrectangular blocks fail explicitly rather than producing
+ambiguous frames.
+
+- Bryggehavn home: two 2×2 windows, four tiles each.
+- Bryggehavn shop: two 3×2 windows, six tiles each. The decorative shop sign
+  moves above the door to leave the glazing clear; its interaction is unchanged.
+- Interior walls: two adjoining 2×1 windows at home and upstairs, and 3×1
+  windows in the shop. The existing one-tile wall depth and floor remain intact.
+
+All enlarged windows replace already-blocking facade/wall cells. Comparison
+against published HEAD confirms identical walkability for every cell on all
+five maps, plus identical entrance destinations, signs, NPCs and fishing zones.
+
+`node tools/check-building-openings.mjs` checks seam pixels and tile order for
+1×1, 2×1, 3×1, 2×2 and 3×2 blocks, installed window sizes, all four doors and
+the original threshold/transition positions. Typecheck, production build,
+environment/world/NPC/controls/fishing checks and the desktop, mobile and Canvas
+browser checks pass in the isolated published-baseline copy described above.
+`node tools/export-tiles.mjs` also exports `docs/art/building-openings.svg`,
+showing complete four- and six-tile windows beside the taller doors.

@@ -3,6 +3,7 @@ import { TILE_SIZE, type Tile, type WorldMap } from './world'
 import { ENVIRONMENT_PALETTE as p, environmentVariant, pixelPainter, woodGrain, type PixelPainter } from './environmentPixels'
 
 import { drawFence, fenceConnections } from './fenceArt'
+import { drawDoor, drawWindow } from './buildingOpenings'
 
 export const OUTDOOR_PALETTE = p
 export type Decoration = { x: number; y: number; kind: 'flowers' | 'reeds' | 'bench' | 'barrel' | 'lamp' | 'shopSign' | 'chimney'; ground?: 'grass' | 'path' }
@@ -81,20 +82,7 @@ export function drawOutdoorGround(g: Phaser.GameObjects.Graphics, map: WorldMap,
     if (!facade(at(-1,0))) { r(0,0,3,32,p.timberDark); r(3,0,1,32,p.creamLight) }
     if (!facade(at(1,0))) { r(29,0,3,32,p.timberDark); r(29,0,1,32,p.timber) }
     if (!facade(at(0,1))) { r(0,28,32,4,p.stoneDark); r(0,28,32,1,p.stoneLight); r(0,30,32,1,p.stone) }
-    if (tile === 'window') {
-      r(3,4,26,23,p.creamDark); r(4,3,24,21,p.timberDark); r(5,4,22,19,p.creamLight)
-      r(7,6,18,15,p.glass); r(8,6,16,4,p.glassLight); r(8,11,5,6,0x6b9fab)
-      r(10,7,2,2,p.creamLight); r(11,10,2,2,p.glassLight)
-      r(15,5,2,17,p.creamLight); r(6,13,20,2,p.creamLight)
-      r(2,24,28,2,p.timberDark); r(2,23,28,1,p.creamLight)
-    }
-    if (tile === 'door') {
-      r(6,1,20,28,p.timberDark); r(7,2,18,27,p.timberLight); r(8,3,16,26,p.timber)
-      r(10,5,12,10,p.timberDark); r(11,6,10,8,p.glass); r(11,6,10,2,p.glassLight)
-      r(10,18,12,8,p.timberDark); r(11,19,10,6,p.timber); r(11,19,10,1,p.timberLight)
-      r(21,17,2,2,0xe6c57d); r(21,19,1,1,p.timberDark)
-      r(4,29,24,2,p.stoneLight); r(4,31,24,1,p.stoneDark)
-    }
+    if (tile === 'window') drawWindow(r, map, col, row)
   } else if (tile === 'dock') {
     r(0,0,32,32,p.timberDark)
     for (let y = 0; y < 32; y += 8) {
@@ -166,6 +154,7 @@ export function drawOutdoorObject(g: Phaser.GameObjects.Graphics, map: WorldMap,
 export function drawOutdoorTile(g: Phaser.GameObjects.Graphics, map: WorldMap, col: number, row: number) {
   drawOutdoorGround(g,map,col,row)
   drawOutdoorObject(g,map,col,row)
+  if (map.tiles[row][col] === 'door') drawDoor(pixelPainter(g,col*TILE_SIZE,row*TILE_SIZE))
 }
 
 export function drawDecoration(g: Phaser.GameObjects.Graphics, d: Decoration) {

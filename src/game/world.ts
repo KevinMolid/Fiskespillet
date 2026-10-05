@@ -126,7 +126,7 @@ grove(skogstjern, 43, 3, 4, 9)
 grove(skogstjern, 16, 27, 20, 4)
 
 const harborDecorations: Decoration[] = [
-  { x: 11, y: 5, kind: 'chimney' }, { x: 25, y: 8, kind: 'shopSign' },
+  { x: 11, y: 5, kind: 'chimney' }, { x: 23, y: 7, kind: 'shopSign' },
   { x: 18, y: 19, kind: 'bench' }, { x: 20, y: 19, kind: 'lamp' },
   { x: 27, y: 20, kind: 'barrel' }, { x: 28, y: 20, kind: 'barrel' },
   { x: 30, y: 10, kind: 'barrel' }, { x: 17, y: 14, kind: 'lamp' },
@@ -187,6 +187,19 @@ hjem2[4][20] = 'chest'
 hjem2[0][5] = 'window'
 hjem2[0][18] = 'window'
 hjem2[11][19] = 'stairs'
+
+// Joined window blocks replace only existing facade/wall cells. Door coordinates
+// and all walkable routes stay unchanged: 4-tile home windows, 6-tile shop windows.
+rect(havn, 6, 9, 7, 10, 'window')
+rect(havn, 11, 9, 12, 10, 'window')
+rect(havn, 19, 7, 21, 8, 'window')
+rect(havn, 25, 7, 27, 8, 'window')
+rect(hjem, 4, 0, 5, 0, 'window')
+rect(hjem, 16, 0, 17, 0, 'window')
+rect(hjem2, 4, 0, 5, 0, 'window')
+rect(hjem2, 17, 0, 18, 0, 'window')
+rect(butikk, 4, 0, 6, 0, 'window')
+rect(butikk, 17, 0, 19, 0, 'window')
 
 export const MAPS: Record<MapId, WorldMap> = {
   havn: {

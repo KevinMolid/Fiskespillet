@@ -1,7 +1,7 @@
 import { build } from 'esbuild'
 import { mkdir, writeFile } from 'node:fs/promises'
 
-const bundle = await build({ entryPoints: ['src/game/outdoorTiles.ts','src/game/indoorTiles.ts','src/game/fenceArt.ts'], outdir:'unused', bundle: true, write: false, platform: 'node', format: 'esm', loader:{'.png':'dataurl'} })
+const bundle = await build({ entryPoints: ['src/game/outdoorTiles.ts','src/game/indoorTiles.ts','src/game/fenceArt.ts','src/game/buildingOpenings.ts'], outdir:'unused', bundle: true, write: false, platform: 'node', format: 'esm', loader:{'.png':'dataurl'} })
 const modules=await Promise.all(bundle.outputFiles.map(file=>import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)))
 const {drawOutdoorTile,drawDecoration}=modules[0], {drawIndoorTile}=modules[1]
 const {drawFence}=modules[2]
@@ -30,3 +30,21 @@ for(let links=0;links<16;links++) {
 await mkdir('docs/art',{recursive:true})
 await writeFile('docs/art/fiskespillet-tiles.svg',`<svg xmlns="http://www.w3.org/2000/svg" width="${columns*slotW}" height="${Math.ceil(index/columns)*slotH}" viewBox="0 0 ${columns*slotW} ${Math.ceil(index/columns)*slotH}" shape-rendering="crispEdges"><title>Fiskespillet – native 32px environment artwork</title><rect width="100%" height="100%" fill="#203b36"/>${shapes}<g fill="#e4d5b0" font-family="sans-serif" font-size="8">${labels}</g></svg>`)
 console.log(`Exported ${index} environment designs, including unclipped tree crowns and all interior objects.`)
+
+// Multi-tile samples need wider slots than the ordinary single-tile catalogue.
+shapes=''; labels=''
+for (const [x,cols,rows] of [[16,1,1],[72,2,2],[152,3,2]]) {
+  const map={id:'havn',tiles:Array.from({length:rows},()=>Array(cols).fill('window'))}
+  for(let y=0;y<rows;y++)for(let col=0;col<cols;col++) {
+    offsetX=x+col*32; offsetY=108-rows*32+y*32
+    drawOutdoorTile(g,map,col,y)
+  }
+  labels+=`<text x="${x+cols*16}" y="128" text-anchor="middle">${cols}×${rows} / ${cols*rows} tiles</text>`
+}
+for(const [x,glazed] of [[280,true],[340,false]]) {
+  offsetX=x; offsetY=78
+  modules[3].drawDoor((x,y,w,h,c,a=1)=>g.fillStyle(c,a).fillRect(x,y,w,h),glazed)
+  labels+=`<text x="${x+16}" y="128" text-anchor="middle">${glazed?'Outside':'Inside'}</text>`
+}
+await writeFile('docs/art/building-openings.svg',`<svg xmlns="http://www.w3.org/2000/svg" width="392" height="144" viewBox="0 0 392 144" shape-rendering="crispEdges"><title>Joined windows and 64px doors</title><rect width="100%" height="100%" fill="#203b36"/>${shapes}<g fill="#e4d5b0" font-family="sans-serif" font-size="9"><text x="16" y="18">Joined window frames · 32px tiles · 64px doors</text>${labels}</g></svg>`)
+console.log('Exported joined 1-, 4- and 6-tile windows and full-height door samples.')

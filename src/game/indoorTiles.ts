@@ -1,5 +1,6 @@
 import type Phaser from 'phaser'
 import { TILE_SIZE, type Tile, type WorldMap } from './world'
+import { drawDoor, drawWindow } from './buildingOpenings'
 import { ENVIRONMENT_PALETTE as p, pixelPainter, woodGrain } from './environmentPixels'
 
 export function isIndoorObject(tile: Tile) {
@@ -19,12 +20,7 @@ export function drawIndoorGround(g: Phaser.GameObjects.Graphics, map: WorldMap, 
     r(0,0,32,32,p.cream)
     for (let y=1;y<27;y+=6) { r(0,y,32,1,p.creamLight); r(0,y+5,32,1,p.creamDark) }
     r(0,27,32,5,p.timberDark); r(0,27,32,1,p.timberLight)
-    if (tile === 'window') {
-      r(3,3,26,22,p.timberDark); r(4,4,24,20,p.creamLight); r(6,6,20,16,p.glass)
-      r(7,6,18,4,p.glassLight); r(8,12,6,7,0x709fab)
-      r(15,5,2,18,p.creamLight); r(5,13,22,2,p.creamLight)
-      r(2,24,28,2,p.timber); r(2,24,28,1,p.creamLight)
-    }
+    if (tile === 'window') drawWindow(r, map, col, row)
   } else if (tile === 'rug') {
     const same = (dx: number, dy: number) => at(dx,dy) === 'rug'
     r(0,0,32,32,0x9e6454)
@@ -40,11 +36,7 @@ export function drawIndoorGround(g: Phaser.GameObjects.Graphics, map: WorldMap, 
     r(2,1,1,30,p.timberLight); r(29,1,1,30,p.timber)
     // Small stair marker retains the existing affordance without changing transitions.
     r(15,3,2,1,p.creamLight); r(13,4,6,1,p.creamLight); r(11,5,10,1,p.creamLight)
-  } else if (tile === 'door') {
-    r(4,2,24,28,p.timberDark); woodGrain(r,6,3,20,25,col)
-    r(8,6,16,9,p.timberDark); r(9,7,14,7,p.timber); r(9,7,14,1,p.timberLight)
-    r(8,19,16,7,p.timberDark); r(9,20,14,5,p.timber)
-    r(22,17,2,2,0xe6c57d); r(3,30,26,2,p.stoneLight)
+
   }
 }
 
@@ -143,4 +135,5 @@ export function drawIndoorObject(g: Phaser.GameObjects.Graphics, map: WorldMap, 
 export function drawIndoorTile(g: Phaser.GameObjects.Graphics, map: WorldMap, col: number, row: number) {
   drawIndoorGround(g,map,col,row)
   drawIndoorObject(g,map,col,row)
+  if (map.tiles[row][col] === 'door') drawDoor(pixelPainter(g,col*TILE_SIZE,row*TILE_SIZE),false)
 }
