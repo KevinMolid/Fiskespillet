@@ -50,7 +50,7 @@ Buildings keep their previous background-layer behaviour.
 ## Preview and validation
 
 - `tools/art-preview.html`: full overview and playable view of all five maps.
-- `tools/check-environment.mjs`: all 4,224 tiles, 688 raised objects and 42
+- `tools/check-environment.mjs`: all 4,224 tiles, 622 raised objects and 42
   decorations; native integer geometry, ground bounds, larger visual envelopes,
   deterministic artwork and no map mutations.
 - `tools/check-environment-browser.mjs`: desktop, high-DPI mobile and Phaser
@@ -200,3 +200,25 @@ and sharp rendering on desktop, DPR-3 mobile and Canvas. Review screenshots
 are written to `output/kitchen-review/`. Typecheck, build, world/NPC/native-
 geometry and environment/indoor browser checks pass in the isolated published-
 baseline copy. The catalogue exporter now includes all six kitchen tile types.
+
+
+## Open harbor sea
+
+Bryggehavn's sea rectangle starts at row 22 and reaches columns 0–47 and
+rows 22–31. The 66 former boundary-tree cells along the west/east sea edges
+and the bottom edge are now water. Land-border trees stop at row 21, where
+the grass ends. The existing pier is painted over the same water rectangle
+and keeps its original position. Undefined neighbours at the map edge do not
+produce shoreline art, so the sea visually continues beyond the viewport.
+
+Only harbor map tiles change. Water remains blocking, just like the removed
+tree tiles; every walkable tile, map size, transition, sign and decoration is
+unchanged. Skogstjernet retains its enclosed lake, banks and forest, and all
+other maps are identical to the previously published version.
+
+`tools/check-open-sea.mjs` checks the complete sea footprint, pier/shore fishing,
+blocking water and final sea-edge pixels with no artificial grass/sand frame.
+A published-baseline comparison confirms exactly 66 wall-to-water changes
+and identical other maps and walkability. Typecheck/build, world/native-art/
+fishing checks and desktop, DPR-3 mobile and Canvas map/depth checks pass.
+Review images of the pier and both shore edges go to `output/sea-review/`.

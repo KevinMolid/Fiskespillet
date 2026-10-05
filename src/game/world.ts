@@ -42,7 +42,9 @@ function rect(tiles: Tile[][], x1: number, y1: number, x2: number, y2: number, t
 }
 
 const havn = grid()
-rect(havn, 1, 22, 46, 30, 'water')
+// Open sea reaches the map edges; the boundary forest ends with the grass.
+// Skogstjernet keeps its enclosed lake and surrounding woodland.
+rect(havn, 0, 22, WIDTH - 1, HEIGHT - 1, 'water')
 rect(havn, 22, 20, 26, 25, 'dock')
 rect(havn, 5, 7, 13, 11, 'houseWall')
 rect(havn, 5, 5, 13, 6, 'roof')
