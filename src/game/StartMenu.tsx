@@ -36,13 +36,11 @@ export function StartMenu({ hasSave, ready, pending = false, error = '', onConti
 
   return <section className="start-screen" aria-label="Oppstartsmeny">
     <section className="start-card" aria-labelledby="start-title">
-      <p className="start-kicker">VELKOMMEN TIL VANNKANTEN</p>
       <GameLogo className="start-logo" priority />
       <h1 id="start-title" className="sr-only">Godt Haill</h1>
-      <p className="start-copy">Kast snøret, utforsk bygda og fyll fiskeboken.</p>
       {pending ? <p role="status" className="start-status">Sjekker lagret spill …</p> : <div className="start-actions">
-        <button className="start-button start-button-primary" onClick={onContinue} disabled={!ready || !hasSave}>
-          <MenuIcon name="arrow" /><span className="start-button-copy"><strong>Fortsett spill</strong><small>{hasSave ? 'Fortsett der du slapp' : 'Ingen lagring ennå'}</small></span>
+        <button className="start-button start-button-primary" onClick={onContinue} disabled={!ready || !hasSave} title={!hasSave ? 'Ingen lagring ennå' : undefined}>
+          <MenuIcon name="arrow" /><span>Fortsett spill</span>
         </button>
         <button ref={newGameButton} className="start-button" onClick={startNewGame} disabled={!ready}><MenuIcon name="plus" /><span>Nytt spill</span></button>
       </div>}

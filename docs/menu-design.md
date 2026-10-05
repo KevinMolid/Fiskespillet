@@ -1,9 +1,16 @@
 # Godt Haill menu design
 
-The supplied logo is copied byte-for-byte to
-`src/assets/brand/godt-haill-logo.png` (1672 × 941 px). `GameLogo.tsx` provides
-one reusable, accessible image with explicit aspect ratio and high fetch
-priority on the opening screens. No artwork is generated or edited.
+The supplied transparent RGBA logos are copied byte-for-byte to
+`src/assets/brand/godt-haill-logo.png` (full logo, 1672 × 941 px) and
+`src/assets/brand/godt-haill-header.png` (simplified logo, 2172 × 724 px).
+`GameLogo.tsx` selects the full image by default or the simplified image with
+`variant="header"`, with accessible alt text and explicit aspect ratio. There
+is no separate title text in the header. No artwork is generated or edited.
+
+The login hero reads “Norges sykeste fiskespill”. The opening menu uses the
+full logo without the previous welcome/description paragraphs or continue
+subtitle. Its two single-line buttons are at most 300 px wide and 44 px high,
+retaining usable touch targets on phones.
 
 `src/style.css` imports Tailwind, the existing game layout in `game-base.css`,
 then `menu-theme.css`. The latter owns shared UI tokens: marine blue surfaces,
@@ -25,7 +32,8 @@ resets an account. The existing `/tools/game-preview.html` exercises the real
 game and input paths with its local services; `/` shows the actual auth forms.
 
 `tools/check-menu-browser.mjs` covers desktop, 390 px / DPR-3 mobile, 320 px
-phones and landscape: original logo/aspect ratio, local register validation,
+phones and landscape: both logo variants/aspect ratios, revised copy and compact
+buttons, local register validation,
 reset form, saved/unsaved opening states, reset cancellation and restored
 focus, real pause/inventory/fish-book navigation and bait selection, clipping
 and horizontal overflow. Screenshots go to `output/menu-review/`.

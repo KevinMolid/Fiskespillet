@@ -190,7 +190,7 @@ function App() {
     <main className="brand-app">
       <div className={`app-shell ${user && page === 'home' && gameStart === 'playing' ? 'game-active' : ''}`}>
         <header className="app-header">
-          <button onClick={() => setPage('home')} className="brand-home" aria-label="Godt Haill – hjem"><GameLogo className="header-logo" /><span>Godt Haill</span></button>
+          <button onClick={() => setPage('home')} className="brand-home" aria-label="Godt Haill – hjem"><GameLogo className="header-logo" variant="header" /></button>
           {user ? <nav className="app-nav" aria-label="Hovedmeny">
             <button onClick={() => setPage('home')} aria-current={page === 'home' ? 'page' : undefined}>Spill</button>
             <button onClick={() => setPage('profile')} className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-white/10" aria-label="Åpne min profil">
@@ -211,7 +211,7 @@ function App() {
         : user ? <div className="flex-1"><Suspense fallback={<p className="py-16 text-slate-300">Laster spillet …</p>}><GamePage key={user.uid} user={user} /></Suspense></div>
         : <section className="login-layout">
           <div className="login-hero">
-            <p className="start-kicker">ROEN. NAPPET. DET NESTE KASTET.</p>
+            <p className="start-kicker">Norges sykeste fiskespill</p>
             <GameLogo className="login-logo" priority />
             <h1 className="sr-only">Godt Haill – Bare ett kast til</h1>
             <p className="login-copy">En liten bygd. Store fiskehistorier.<br />Ditt neste eventyr begynner ved vannkanten.</p>
@@ -223,7 +223,7 @@ function App() {
               : <>
                   <p className="start-kicker">{mode === 'register' ? 'DITT EGET FISKEEVENTYR' : mode === 'reset' ? 'TILBAKE TIL VANNKANTEN' : 'KLAR FOR EN FISKETUR?'}</p>
                   <h2>{mode === 'register' ? 'Opprett konto' : mode === 'reset' ? 'Glemt passord?' : 'Velkommen tilbake'}</h2>
-                  <p className="login-description">{mode === 'reset' ? 'Vi sender deg en lenke for å velge nytt passord.' : mode === 'register' ? 'Opprett en konto og gjør ditt første kast.' : 'Logg inn og fortsett der du slapp.'}</p>
+                  <p className="login-description">{mode === 'reset' ? 'Vi sender deg en lenke for å velge nytt passord.' : mode === 'register' ? 'Opprett en konto og gjør ditt første kast.' : 'Logg inn for å spille.'}</p>
                   <form onSubmit={submit} className="mt-7 space-y-4">
                     <label className="block text-sm font-medium">E-post
                       <input className={inputClass} type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} />

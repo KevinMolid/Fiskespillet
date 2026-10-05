@@ -20,7 +20,7 @@ button:disabled { cursor: default; }
 .app-shell { display: flex; flex-direction: column; min-height: 100svh; max-width: 1180px; margin: auto; padding: 0 36px; }
 .app-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 88px; border-bottom: 1px solid #b0c3cd20; }
 .brand-home { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 750; letter-spacing: -.03em; border-radius: 8px; }
-.header-logo { width: 100px; border-radius: 8px; }
+.header-logo { width: 180px; }
 .header-note { display: flex; align-items: center; gap: 10px; color: var(--brand-muted); font-size: 12px; }
 .header-note .menu-icon { width: 18px; color: var(--brand-sea); }
 .app-nav { display: flex; align-items: center; gap: 8px; }
@@ -50,13 +50,10 @@ button:disabled { cursor: default; }
 .start-screen { padding: 32px 0 40px; }
 .start-card { width: min(100%, 760px); padding: 0; border: 0; background: transparent; color: var(--brand-text); box-shadow: none; }
 .start-logo { width: min(100%, 660px); margin: 10px auto 12px; border-radius: 20px; }
-.start-copy { color: var(--brand-muted); line-height: 1.6; }
-.start-actions { max-width: 420px; margin: 26px auto 0; gap: 12px; }
-.start-button { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 56px; border: 1px solid var(--brand-border); border-radius: 12px; background: var(--brand-panel); color: var(--brand-text); box-shadow: none; font-size: 14px; font-weight: 700; }
+.start-actions { max-width: 300px; margin: 18px auto 0; gap: 10px; }
+.start-button { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--brand-border); border-radius: 10px; background: var(--brand-panel); color: var(--brand-text); box-shadow: none; font-size: 14px; font-weight: 700; }
 .start-button span { display: inline; margin: 0; font-size: inherit; font-weight: inherit; opacity: 1; }
-.start-button .start-button-copy { display: grid; gap: 3px; text-align: left; }
-.start-button-copy small { font-size: 11px; font-weight: 450; }
-.start-button-primary { min-height: 68px; background: var(--brand-gold); color: #172c3b; border-color: var(--brand-gold); }
+.start-button-primary { background: var(--brand-gold); color: #172c3b; border-color: var(--brand-gold); }
 .start-button:hover:not(:disabled), .start-button:focus-visible { background: var(--brand-raised); }
 .start-button-primary:hover:not(:disabled), .start-button-primary:focus-visible { background: #f6d7a5; }
 .start-footnote { display: flex; justify-content: center; align-items: center; gap: 7px; color: var(--brand-muted); }
@@ -140,16 +137,16 @@ button:disabled { cursor: default; }
 .dpad button[data-held="true"] { background: #28546b; }
 .speaker-grille i { background: #061526; box-shadow: 0 1px #31516a; }
 @media (max-width: 767px) {
-  .app-shell { padding: 0 20px; }.app-header { min-height: 72px; }.brand-home { font-size: 15px; gap: 6px; }.header-logo { width: 72px; }.header-note { font-size: 10px; gap: 6px; }
-  .app-nav { gap: 3px; }.app-nav > button { padding: 6px 8px; font-size: 11px; }.brand-home:has(+ .app-nav) > span { display: none; }
+  .app-shell { padding: 0 20px; }.app-header { min-height: 72px; }.brand-home { font-size: 15px; gap: 6px; }.header-logo { width: 148px; }.header-note { font-size: 10px; gap: 6px; }
+  .app-nav { gap: 3px; }.app-nav > button { padding: 6px 8px; font-size: 11px; }
   .login-layout { grid-template-columns: 1fr; gap: 28px; padding: 28px 0 36px; }.login-logo { max-width: 500px; margin-bottom: 12px; }.login-copy { font-size: 14px; }.login-features { gap: 8px 14px; font-size: 9px; margin-top: 12px; }.login-card { width: min(100%, 460px); margin: auto; padding: 26px; }
-  .start-screen { padding: 26px 0; }.start-kicker { font-size: 9px; }.start-logo { margin: 14px auto; }.start-copy { font-size: 12px; }.start-actions { margin-top: 22px; }.start-confirm-actions { gap: 10px; }
+  .start-screen { padding: 26px 0; }.start-kicker { font-size: 9px; }.start-logo { margin: 14px auto; }.start-actions { margin-top: 22px; }.start-confirm-actions { gap: 10px; }
   .game-menu { padding: 12px; }.pause-logo { width: 98px; }.game-menu-heading { gap: 8px; padding-bottom: 6px; margin-bottom: 12px; }.game-menu-heading h2 { font-size: 22px; }.game-menu-heading > div > span { font-size: 8px; }
   .game-menu-list button { min-height: 48px; border-radius: 9px; }.game-menu-list button strong { font-size: 12px; }.menu-symbol .menu-icon { width: 18px; height: 18px; }
   .equipment-card { border-radius: 10px; }.pocket-dialog { border: 0; }.pocket-dialog button { min-height: 36px; }
 }
 @media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
-  .game-active .app-header { min-height: 56px; }.game-active .app-header .header-logo { width: 66px; }.game-active .app-nav > button:first-child { display: none; }.game-active .app-footer { display: none; }
+  .game-active .app-header { min-height: 56px; }.game-active .app-header .header-logo { width: 104px; }.game-active .app-nav > button:first-child { display: none; }.game-active .app-footer { display: none; }
 }
 @media (max-width: 1023px) and (max-height: 500px) {
   .game-menu-heading { padding-bottom: 4px; margin-bottom: 8px; }.pause-logo { width: 74px; }.game-menu-heading h2 { font-size: 20px; }.game-menu-list button { min-height: 40px; padding: 8px; }.game-menu-hint { margin-top: 8px; }

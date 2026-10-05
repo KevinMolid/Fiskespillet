@@ -21,7 +21,7 @@ function Preview() {
   const [look, setLook] = useState(DEFAULT_APPEARANCE)
   const close = () => setView('pause')
   return <main className="brand-app"><div className={`app-shell${view !== 'start' ? ' game-active' : ''}`}>
-    <header className="app-header"><button className="brand-home" onClick={() => setView('start')}><GameLogo className="header-logo" /><span>Godt Haill</span></button><details className="menu-preview-tools"><summary>Vis menyer · lokal test</summary><nav>{Object.entries(views).map(([id, name]) => <button key={id} onClick={() => setView(id as View)}>{name}</button>)}</nav></details></header>
+    <header className="app-header"><button className="brand-home" onClick={() => setView('start')} aria-label="Godt Haill – hjem"><GameLogo className="header-logo" variant="header" /></button><details className="menu-preview-tools"><summary>Vis menyer · lokal test</summary><nav>{Object.entries(views).map(([id, name]) => <button key={id} onClick={() => setView(id as View)}>{name}</button>)}</nav></details></header>
     <div className="flex-1">
       {view === 'start' ? <StartMenu hasSave={hasSave} ready onContinue={close} onNewGame={() => { setHasSave(false); close() }} onRetry={() => {}} />
       : <div className="game-shell"><div className="game-frame relative aspect-[3/2] w-full overflow-hidden rounded-xl">
