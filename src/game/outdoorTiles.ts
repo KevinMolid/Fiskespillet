@@ -2,6 +2,8 @@ import type Phaser from 'phaser'
 import { TILE_SIZE, type Tile, type WorldMap } from './world'
 import { ENVIRONMENT_PALETTE as p, environmentVariant, pixelPainter, woodGrain, type PixelPainter } from './environmentPixels'
 
+import { drawFence, fenceConnections } from './fenceArt'
+
 export const OUTDOOR_PALETTE = p
 export type Decoration = { x: number; y: number; kind: 'flowers' | 'reeds' | 'bench' | 'barrel' | 'lamp' | 'shopSign' | 'chimney'; ground?: 'grass' | 'path' }
 
@@ -150,14 +152,7 @@ export function drawOutdoorObject(g: Phaser.GameObjects.Graphics, map: WorldMap,
     r(8,-3,16,1,p.timberDark); r(8,0,11,1,p.timberDark); r(8,3,14,1,p.timber)
     r(16,12,1,6,p.timber); r(13,29,8,1,p.timberDark)
   } else if (tile === 'fence') {
-    r(0,27,32,3,p.grassDeep,0.25)
-    const vertical = map.tiles[row-1]?.[col] === 'fence' || map.tiles[row+1]?.[col] === 'fence'
-    if (vertical) { r(13,0,7,32,p.timberDark); r(14,0,5,32,p.creamDark); r(14,0,1,32,p.creamLight) }
-    if (!vertical || map.tiles[row]?.[col-1] === 'fence' || map.tiles[row]?.[col+1] === 'fence') {
-      r(0,13,32,4,p.timberDark); r(0,12,32,3,p.cream); r(0,12,32,1,p.creamLight)
-      r(0,23,32,3,p.timberDark); r(0,22,32,2,p.cream)
-    }
-    for (const x of [5,23]) { r(x,7,5,24,p.timberDark); r(x,5,4,25,p.cream); r(x+1,3,2,2,p.cream); r(x,6,1,22,p.creamLight); r(x+3,8,1,21,p.creamDark); r(x+1,14,1,1,p.metalDark); r(x+1,23,1,1,p.metalDark) }
+    drawFence(r, fenceConnections(map, col, row))
   } else if (tile === 'rock') {
     r(3,26,27,4,p.grassDeep,0.4); r(3,16,27,11,p.stoneDark); r(6,9,21,17,p.stoneDark); r(10,6,13,18,p.stoneDark)
     r(5,16,23,8,p.stone); r(7,11,18,11,p.stone); r(11,7,11,10,p.stoneLight)

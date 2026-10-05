@@ -28,7 +28,7 @@ wardrobe, shelves, fireplace and chest. Neighbour checks join rugs, tables,
 beds and counters without changing map data.
 
 Artwork remains code-native, as in the existing renderer. Run
-`node tools/export-tiles.mjs` to export the 36-design catalogue to
+`node tools/export-tiles.mjs` to export the environment catalogue and all 16 fence connection variants to
 `docs/art/fiskespillet-tiles.svg`. This uses the same drawing functions as the
 game, including full tree crowns and all indoor objects.
 
@@ -50,7 +50,7 @@ Buildings keep their previous background-layer behaviour.
 ## Preview and validation
 
 - `tools/art-preview.html`: full overview and playable view of all five maps.
-- `tools/check-environment.mjs`: all 4,224 tiles, 675 raised objects and 42
+- `tools/check-environment.mjs`: all 4,224 tiles, 676 raised objects and 42
   decorations; native integer geometry, ground bounds, larger visual envelopes,
   deterministic artwork and no map mutations.
 - `tools/check-environment-browser.mjs`: desktop, high-DPI mobile and Phaser
@@ -68,3 +68,22 @@ without the `fisherPixels` export expected by `FisherPortrait.tsx`. It is
 preserved. Validation and the review server use an isolated copy containing
 the published version of that file, so this pre-existing portrait issue is not
 included in the environment changes.
+
+## Connected fence revision
+
+`src/game/fenceArt.ts` chooses north/east/south/west arms from adjacent fence
+tiles. Horizontal pickets have a uniform 16 px spacing, including tile seams.
+Boundary half-pickets are clipped to their own tile and meet without duplicated
+shadows. Vertical runs use one 5 px edge-on row with visible pointed board tops.
+Four matching corners and T/cross connections share a single junction post;
+rails extend only along connected arms.
+
+Bryggehavn uses south/east at (3,3) and north/east at (3,13). The latter replaces
+one grass tile to join the previously disconnected lower run. The entrance gap
+and existing interaction/transition positions are retained. Fence collision
+still comes from the existing blocking `fence` tile, including the added corner.
+
+`node tools/check-fences.mjs` checks all 16 masks, cross-tile spacing, the narrow
+vertical envelope and board tips, rail continuity, both installed corners and
+the house entrance. The isolated typecheck/build, environment tests and browser
+checks for desktop, high-DPI mobile and Canvas fallback pass.
