@@ -5,7 +5,7 @@ import type { Decoration } from './outdoorTiles'
 export type MapId = 'havn' | 'skogstjern' | 'hjem' | 'hjem2' | 'butikk'
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type Position = { mapId: MapId; x: number; y: number; facing: Direction }
-export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture' | 'bed' | 'table' | 'rug' | 'window' | 'hearth' | 'houseWall' | 'roof' | 'stairs' | 'counter' | 'stove' | 'sofa' | 'soil' | 'chest' | 'shopCounter' | 'fence' | 'rock'
+export type Tile = 'grass' | 'path' | 'wall' | 'water' | 'dock' | 'exit' | 'sign' | 'door' | 'wardrobe' | 'npc' | 'floor' | 'furniture' | 'bed' | 'table' | 'rug' | 'window' | 'hearth' | 'houseWall' | 'roof' | 'stairs' | 'counter' | 'stove' | 'sofa' | 'soil' | 'chest' | 'shopCounter' | 'fence' | 'rock' | 'fridge' | 'sink' | 'bin' | 'diningTable' | 'chairUp' | 'chairDown'
 
 export function isWalkable(tile: Tile | undefined): boolean {
   return tile !== undefined && ['grass', 'path', 'dock', 'exit', 'door', 'floor', 'rug', 'stairs'].includes(tile)
@@ -158,10 +158,15 @@ const hjem = indoorGrid()
 // Kjøkkenet ligger til venstre. Åpningen i deleveggen forbinder det med stuen.
 rect(hjem, 11, 2, 11, 12, 'wall')
 rect(hjem, 11, 8, 11, 9, 'floor')
-rect(hjem, 3, 3, 8, 3, 'counter')
-rect(hjem, 2, 5, 2, 7, 'counter')
-hjem[3][8] = 'stove'
-rect(hjem, 5, 10, 7, 11, 'table')
+// L-shaped worktops directly against the north and west walls.
+rect(hjem, 1, 1, 9, 1, 'counter')
+rect(hjem, 1, 2, 1, 5, 'counter')
+hjem[1][4] = 'sink'
+hjem[1][8] = 'stove'
+hjem[1][10] = 'fridge'
+hjem[6][1] = 'bin'
+rect(hjem, 5, 8, 7, 9, 'diningTable')
+for (const x of [5, 7]) { hjem[7][x] = 'chairDown'; hjem[10][x] = 'chairUp' }
 rect(hjem, 15, 10, 18, 10, 'sofa')
 rect(hjem, 14, 7, 18, 9, 'rug')
 hjem[3][20] = 'hearth'

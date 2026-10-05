@@ -7,7 +7,7 @@ const {drawOutdoorTile,drawDecoration}=modules[0], {drawIndoorTile}=modules[1]
 const {drawFence}=modules[2]
 const outdoor=['grass','path','water','wall','roof','houseWall','window','door','dock','soil','sign','fence','rock']
 const props=['flowers','reeds','bench','barrel','lamp','shopSign','chimney']
-const indoor=['floor','wall','window','door','stairs','rug','counter','stove','shopCounter','table','sofa','bed','wardrobe','furniture','hearth','chest']
+const indoor=['floor','wall','window','door','stairs','rug','counter','stove','shopCounter','table','sofa','bed','wardrobe','furniture','hearth','chest','fridge','sink','bin','diningTable','chairUp','chairDown']
 const columns=8, slotW=64, slotH=112
 let color='#000000', opacity=1, shapes='', labels='', offsetX=0, offsetY=0, index=0
 const g={

@@ -1,13 +1,14 @@
 import type Phaser from 'phaser'
 import { TILE_SIZE, type Tile, type WorldMap } from './world'
 import { drawIndoorDoor, drawWindow } from './buildingOpenings'
+import { drawKitchenFixture, drawPlaceSetting, drawSink, isKitchenFixture } from './kitchenArt'
 import { drawIndoorStairs, drawIndoorWall } from './indoorArchitecture'
 import { ENVIRONMENT_PALETTE as p, pixelPainter, woodGrain } from './environmentPixels'
 
-const isCounterTile = (tile?: Tile) => tile === 'counter' || tile === 'shopCounter' || tile === 'stove'
+const isCounterTile = (tile?: Tile) => tile === 'counter' || tile === 'shopCounter' || tile === 'stove' || tile === 'sink'
 
 export function isIndoorObject(tile: Tile) {
-  return ['wardrobe', 'furniture', 'bed', 'table', 'hearth', 'counter', 'stove', 'sofa', 'chest', 'shopCounter', 'door'].includes(tile)
+  return ['wardrobe', 'furniture', 'bed', 'table', 'hearth', 'counter', 'stove', 'sofa', 'chest', 'shopCounter', 'door', 'fridge', 'sink', 'bin', 'diningTable', 'chairUp', 'chairDown'].includes(tile)
 }
 
 export function drawIndoorGround(g: Phaser.GameObjects.Graphics, map: WorldMap, col: number, row: number) {
@@ -42,7 +43,9 @@ export function drawIndoorObject(g: Phaser.GameObjects.Graphics, map: WorldMap, 
   if (!isIndoorObject(tile)) return
   if (tile === 'door') { drawIndoorDoor(r); return }
   if (!isCounterTile(tile) || !isCounterTile(at(0,1))) r(3,28,29,3,p.timberDark,0.25)
-  if (tile === 'wardrobe') {
+  if (isKitchenFixture(tile)) {
+    drawKitchenFixture(r, tile)
+  } else if (tile === 'wardrobe') {
     r(3,-15,26,44,p.timberDark); r(4,-14,24,41,p.timber); r(3,-16,26,3,p.timberLight)
     for (const x of [6,17]) { r(x,-10,9,34,p.timberDark); r(x+1,-9,7,32,p.timber); r(x+1,-9,7,1,p.timberLight); r(x+2,-6,1,11,0xa9784c) }
     r(15,-13,1,40,p.timberDark); r(13,8,2,3,0xe1bb71); r(18,8,2,3,0xe1bb71)
@@ -53,7 +56,7 @@ export function drawIndoorObject(g: Phaser.GameObjects.Graphics, map: WorldMap, 
     r(6,4,20,1,p.creamDark); r(3,12,26,2,p.timberDark)
     for (const x of [7,23]) { r(x,3,2,24,p.metalDark); r(x,3,1,23,p.metalLight) }
     r(14,11,5,7,p.metalDark); r(15,11,3,5,0xe1bb71); r(16,13,1,2,p.timberDark)
-  } else if (tile === 'counter' || tile === 'shopCounter' || tile === 'stove') {
+  } else if (isCounterTile(tile)) {
     const left=isCounterTile(at(-1,0))?0:2, right=isCounterTile(at(1,0))?32:30
     const joinsAbove=isCounterTile(at(0,-1)), joinsBelow=isCounterTile(at(0,1))
     // A vertical run is one deep worktop. Only its frontmost/bottom tile
@@ -67,7 +70,9 @@ export function drawIndoorObject(g: Phaser.GameObjects.Graphics, map: WorldMap, 
     r(left,top,right-left,bottom-top,p.cream)
     if (!joinsAbove) r(left,top,right-left,1,p.creamLight)
     if (!joinsBelow) r(left,10,right-left,2,p.creamDark)
-    if (tile === 'stove') {
+    if (tile === 'sink') {
+      drawSink(r)
+    } else if (tile === 'stove') {
       r(3,2,26,10,p.metal); r(4,3,24,8,p.metalLight)
       for (const x of [8,20]) { r(x,4,5,5,p.metalDark); r(x+1,5,3,3,p.metal); r(x+2,6,1,1,p.metalDark) }
       if (!joinsBelow) {
@@ -104,9 +109,10 @@ export function drawIndoorObject(g: Phaser.GameObjects.Graphics, map: WorldMap, 
     if (!same(-1)) { r(1,8,4,20,0x32565a); r(1,8,4,2,p.fabricLight) }
     if (!same(1)) { r(27,8,4,20,0x32565a); r(27,8,4,2,p.fabricLight) }
     r(3,28,3,2,p.timberDark); r(26,28,3,2,p.timberDark)
-  } else if (tile === 'table') {
-    const left=at(-1,0)==='table'?0:1, right=at(1,0)==='table'?32:31
-    const upper=at(0,-1)==='table', lower=at(0,1)==='table'
+  } else if (tile === 'table' || tile === 'diningTable') {
+    const same=(dx:number,dy:number)=>at(dx,dy)===tile
+    const left=same(-1,0)?0:1, right=same(1,0)?32:31
+    const upper=same(0,-1), lower=same(0,1)
     if (!lower) {
       if (left) r(4,20,3,10,p.timberDark)
       if (right<32) r(25,20,3,10,p.timberDark)
@@ -115,6 +121,7 @@ export function drawIndoorObject(g: Phaser.GameObjects.Graphics, map: WorldMap, 
     r(left,top,right-left,bottom-top,p.timberDark)
     for (let y=top+1;y<bottom-1;y+=5) woodGrain(r,left+(left?1:0),y,right-left-(left?1:0)-(right<32?1:0),Math.min(5,bottom-1-y),col+y)
     if (!lower) r(left,23,right-left,2,p.timberDark)
+    if (tile === 'diningTable' && (left > 0 || right < 32)) drawPlaceSetting(r)
   } else if (tile === 'hearth') {
     r(2,-6,28,35,p.stoneDark); r(3,-5,26,32,p.stone)
     for (let y=-3;y<27;y+=6) { r(3,y,26,1,p.stoneLight); r(9+(y%2)*5,y+1,1,5,p.stoneDark) }

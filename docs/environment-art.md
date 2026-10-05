@@ -50,7 +50,7 @@ Buildings keep their previous background-layer behaviour.
 ## Preview and validation
 
 - `tools/art-preview.html`: full overview and playable view of all five maps.
-- `tools/check-environment.mjs`: all 4,224 tiles, 678 raised objects and 42
+- `tools/check-environment.mjs`: all 4,224 tiles, 688 raised objects and 42
   decorations; native integer geometry, ground bounds, larger visual envelopes,
   deterministic artwork and no map mutations.
 - `tools/check-environment-browser.mjs`: desktop, high-DPI mobile and Phaser
@@ -168,6 +168,35 @@ Vertical kitchen worktops join above/below as well as left/right. Only the
 lowest tile of each run draws a cabinet front, handle, front lip and floor
 shadow. Upper tiles show a full-depth worktop and adjoining cells meet at
 Y=32/Y=0. This applies to the existing counter/stove/shop-counter family,
-retaining stove-top and register details. The three-cell kitchen run at
-(2,5)–(2,7) is covered by the indoor architecture raster check. Map data,
+retaining stove-top and register details. The west-wall kitchen run at
+(1,1)–(1,5) is covered by the indoor architecture raster check. Map data,
 collision and depth are unchanged.
+
+
+## Furnished kitchen
+
+`src/game/kitchenArt.ts` adds native-pixel artwork for a 60 px tall two-door
+fridge, a fitted metal sink with tap, a lidded waste bin and wooden chairs
+facing the table from north/south. The existing counter family includes
+`sink`, so its worktop joins its neighbours. `diningTable` reuses the joined
+wooden table surface and adds four ceramic plates, cutlery and cups; regular
+`table` artwork elsewhere is unchanged. New furniture uses the existing
+blocking tile convention and object group with ground-Y depth sorting.
+No new interaction handlers or inventory actions are added.
+
+Home now has an L-shaped worktop along row 1 (columns 1–9) and column 1
+(rows 2–5), directly beside the north and west walls. The sink is at (4,1),
+stove at (8,1), fridge at (10,1) and bin at (1,6). A 3×2 dining table occupies
+(5,8)–(7,9), with four chairs at (5,7), (7,7), (5,10) and (7,10). Both side
+aisles, the partition opening, home exit and staircase landings remain open.
+Mother moves from (7,5) to (6,3); her artwork, facing and conversations stay
+unchanged. All other NPCs and maps are untouched.
+
+`tools/check-kitchen.mjs` checks wall adjacency, ordinary blocking behaviour,
+chair orientation and access from the entrance with both resident NPCs
+blocking their tiles. `tools/check-kitchen-browser.mjs` verifies the fixture
+objects, actual movement blocked by a counter/table/chair, Mother's conversation
+and sharp rendering on desktop, DPR-3 mobile and Canvas. Review screenshots
+are written to `output/kitchen-review/`. Typecheck, build, world/NPC/native-
+geometry and environment/indoor browser checks pass in the isolated published-
+baseline copy. The catalogue exporter now includes all six kitchen tile types.

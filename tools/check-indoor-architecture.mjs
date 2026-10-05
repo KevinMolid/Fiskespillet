@@ -36,10 +36,10 @@ const boundaryWall = rasterCell({ id: 'hjem', tiles: [['wall']] }, 0, 0)
 assert.equal(boundaryWall(16, 27), p.timberLight, 'A run ending at the map edge still has a bottom board')
 assert.equal(boundaryWall(16, 31), p.timberDark)
 
-// The installed three-tile kitchen worktop has no drawers or shadows at seams.
-for (const row of [5, 6, 7]) {
-  const at = rasterCell(MAPS.hjem, 2, row, tiles.drawIndoorObject)
-  if (row < 7) {
+// The installed west-wall worktop has no drawers or shadows at seams.
+for (const row of [2, 3, 4, 5]) {
+  const at = rasterCell(MAPS.hjem, 1, row, tiles.drawIndoorObject)
+  if (row < 5) {
     assert.equal(at(14, 16), p.cream, 'Upper worktop cells must not show cabinet handles')
     assert.equal(at(14, 31), p.cream, 'Worktop reaches the next cell without a front lip')
     assert.equal(at(31, 28), 0, 'No per-cell floor shadow along the vertical run')
@@ -47,7 +47,7 @@ for (const row of [5, 6, 7]) {
     assert.equal(at(14, 16), p.metalLight, 'The bottom cabinet keeps its handle')
     assert.equal(at(7, 14), p.timberLight, 'Only the bottom cell exposes the cabinet front')
   }
-  if (row > 5) assert.equal(at(14, 0), p.cream, 'Adjoining worktop starts immediately at the tile seam')
+  if (row > 1) assert.equal(at(14, 0), p.cream, 'Adjoining worktop starts immediately at the tile seam')
 }
 
 assert(tiles.isIndoorObject('door'), 'Interior doors need independent foreground objects')
