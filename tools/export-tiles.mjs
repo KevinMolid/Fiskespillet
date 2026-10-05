@@ -14,14 +14,14 @@ const g={
   fillStyle(c,a=1) { color=`#${c.toString(16).padStart(6,'0')}`; opacity=a; return this },
   fillRect(x,y,w,h) { shapes+=`<rect x="${x+offsetX}" y="${y+offsetY}" width="${w}" height="${h}" fill="${color}" opacity="${opacity}"/>`; return this },
 }
-function slot(label,draw) {
+function slot(label,draw,width=32) {
   const x=index%columns*slotW,y=Math.floor(index/columns)*slotH
-  offsetX=x+16; offsetY=y+52
+  offsetX=x+(slotW-width)/2; offsetY=y+52
   labels+=`<text x="${x+32}" y="${y+103}" text-anchor="middle">${label}</text>`
   draw(); index++
 }
 for(const tile of outdoor) slot(tile,()=>drawOutdoorTile(g,{tiles:[[tile]],decorations:[]},0,0))
-for(const kind of props) slot(kind,()=>drawDecoration(g,{kind,x:0,y:0}))
+for(const kind of props) slot(kind,()=>drawDecoration(g,{kind,x:0,y:0}),kind==='bench'?64:32)
 for(const tile of indoor) slot(tile,()=>drawIndoorTile(g,{id:'butikk',tiles:[[tile]]},0,0))
 for(let links=0;links<16;links++) {
   const label=['N','E','S','W'].filter((_,i)=>links&(1<<i)).join('/')||'solo'

@@ -1,6 +1,7 @@
 export { FISH, FISH_BY_ID, FISHING_ZONES, rollFish } from './fish'
 export type { FishSpecies } from './fish'
 import type { Decoration } from './outdoorTiles'
+import { BENCH_WIDTH_TILES } from './benchArt'
 
 export type MapId = 'havn' | 'skogstjern' | 'hjem' | 'hjem2' | 'butikk'
 export type Direction = 'up' | 'down' | 'left' | 'right'
@@ -143,7 +144,9 @@ const forestDecorations: Decoration[] = [
 for (const [tiles, decorations] of [[havn, harborDecorations], [skogstjern, forestDecorations]] as const) {
   for (const d of decorations) if (['bench', 'barrel', 'lamp'].includes(d.kind)) {
     d.ground = tiles[d.y][d.x] === 'path' ? 'path' : 'grass'
-    tiles[d.y][d.x] = 'furniture'
+    for (let dx = 0; dx < (d.kind === 'bench' ? BENCH_WIDTH_TILES : 1); dx++) {
+      tiles[d.y][d.x + dx] = 'furniture'
+    }
   }
 }
 

@@ -4,6 +4,7 @@ import { ENVIRONMENT_PALETTE as p, environmentVariant, pixelPainter, woodGrain, 
 
 import { drawFence, fenceConnections } from './fenceArt'
 import { drawDoor, drawWindow } from './buildingOpenings'
+import { BENCH_WIDTH_TILES, drawBench } from './benchArt'
 
 export const OUTDOOR_PALETTE = p
 export type Decoration = { x: number; y: number; kind: 'flowers' | 'reeds' | 'bench' | 'barrel' | 'lamp' | 'shopSign' | 'chimney'; ground?: 'grass' | 'path' }
@@ -16,7 +17,7 @@ export function isRaisedDecoration(kind: Decoration['kind']) {
 }
 function groundAt(map: WorldMap, x: number, y: number): Tile | undefined {
   const tile = map.tiles[y]?.[x]
-  return tile === 'furniture' ? map.decorations?.find(d => d.x === x && d.y === y)?.ground ?? 'grass' : tile
+  return tile === 'furniture' ? map.decorations?.find(d => d.y === y && x >= d.x && x < d.x + (d.kind === 'bench' ? BENCH_WIDTH_TILES : 1))?.ground ?? 'grass' : tile
 }
 function grass(r: PixelPainter, col: number, row: number) {
   const v = environmentVariant(col, row)
@@ -171,10 +172,7 @@ export function drawDecoration(g: Phaser.GameObjects.Graphics, d: Decoration) {
       r(x+1,y+9,1,9,p.grassLight); r(x+2,y+7,1,3,p.grassLight); r(x-2,y+12,1,6,p.grassDark)
     }
   } else if (d.kind === 'bench') {
-    r(1,28,30,3,p.grassDeep,0.3); r(4,18,3,12,p.metalDark); r(25,18,3,12,p.metalDark)
-    woodGrain(r,2,2,28,4); woodGrain(r,2,7,28,4,8); woodGrain(r,1,18,30,4,4)
-    woodGrain(r,1,23,30,3,12); r(2,16,2,6,p.metal); r(28,16,2,6,p.metal)
-    r(5,4,1,1,p.metalDark); r(26,9,1,1,p.metalDark)
+    drawBench(r, BENCH_WIDTH_TILES * TILE_SIZE)
   } else if (d.kind === 'barrel') {
     r(4,28,25,3,p.grassDeep,0.35); r(7,-2,18,31,p.timberDark); r(5,3,22,23,p.timberDark)
     r(7,2,18,24,p.timber); r(8,2,3,24,p.timberLight); r(12,2,1,24,p.timberDark); r(20,2,1,24,p.timberDark)

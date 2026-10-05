@@ -222,3 +222,25 @@ A published-baseline comparison confirms exactly 66 wall-to-water changes
 and identical other maps and walkability. Typecheck/build, world/native-art/
 fishing checks and desktop, DPR-3 mobile and Canvas map/depth checks pass.
 Review images of the pier and both shore edges go to `output/sea-review/`.
+
+## Two-tile outdoor benches
+
+`src/game/benchArt.ts` draws each outdoor bench as one continuous 64 px wide
+object across two horizontal 32 px cells. Full-length backrest and seat planks
+have no join or repeated end caps at the middle. Metal rear uprights extend
+from the backrest through the seat to the feet, with connected arm supports
+and front legs. Height, palette, nearest-neighbour rendering and ground-Y
+depth remain unchanged.
+
+`BENCH_WIDTH_TILES = 2` defines both artwork width and the existing furniture
+collision footprint. The harbor bench stays anchored at (18,19), covering
+(19,19) too; the forest bench stays at (11,21), covering (12,21) too. Both
+halves retain their original path/grass beneath the artwork. The lamp beside
+the harbor bench and the routes in front/behind stay clear. Only these two
+additional cells become blocking; kitchen worktops and NPC routes are unchanged.
+
+`tools/check-benches.mjs` checks a single connected opaque bench silhouette,
+continuous pixels across the tile join, both blocking cells, ground materials
+and open front/back paths. The catalogue shows the complete bench without
+clipping. World access, native artwork, NPC and browser movement/depth checks
+cover the widened placement on desktop, high-DPI mobile and Canvas.
