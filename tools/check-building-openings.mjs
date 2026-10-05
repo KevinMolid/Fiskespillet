@@ -3,7 +3,7 @@ import { build } from 'esbuild'
 
 const bundle = await build({ entryPoints: ['src/game/buildingOpenings.ts', 'src/game/world.ts', 'src/game/environmentPixels.ts'], outdir: 'unused', bundle: true, write: false, platform: 'node', format: 'esm', loader: { '.png': 'dataurl' } })
 const [art, world, pixels] = await Promise.all(bundle.outputFiles.map(file => import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)))
-const { drawWindow, drawBuildingDoors, windowRegion, DOOR_STANDARD } = art
+const { drawWindow, drawBuildingDoors, drawIndoorDoor, windowRegion, DOOR_STANDARD, INDOOR_DOOR_STANDARD } = art
 const { MAPS, TILE_SIZE, isWalkable, stepTransition } = world
 const { ENVIRONMENT_PALETTE: p } = pixels
 
@@ -65,11 +65,17 @@ for (const map of Object.values(MAPS)) {
   for (const [key] of Object.entries(map.transitions ?? {})) {
     const [x, y] = key.split(',').map(Number)
     if (map.tiles[y][x] !== 'door') continue
-    const thresholdY = y * TILE_SIZE + DOOR_STANDARD.groundY
-    assert(shapes.some(s => s.x === x * TILE_SIZE + 1 && s.y === thresholdY - DOOR_STANDARD.height && s.h === DOOR_STANDARD.height && s.w === DOOR_STANDARD.width), 'Full-height door rises from the original threshold')
+    const outdoor = ['havn', 'skogstjern'].includes(map.id)
+    const standard = outdoor ? DOOR_STANDARD : INDOOR_DOOR_STANDARD
+    if (!outdoor) {
+      assert.equal(shapes.length, 0, 'Indoor exit must not be painted on the background')
+      drawIndoorDoor((px, py, w, h, color) => shapes.push({ x: px + x * TILE_SIZE, y: py + y * TILE_SIZE, w, h, color }))
+    }
+    const thresholdY = y * TILE_SIZE + standard.groundY
+    assert(shapes.some(s => s.x === x * TILE_SIZE + 1 && s.y === thresholdY - standard.height && s.h === standard.height && s.w === standard.width), 'Door rises from the original threshold using the indoor/outdoor size')
     assert(shapes.some(s => s.y === thresholdY && s.x === x * TILE_SIZE && s.h === 1 && s.w === TILE_SIZE), 'Threshold stays at tile-local Y=30')
   }
 }
 assert.equal(doors, 4)
 assert.equal(JSON.stringify(MAPS), before, 'Rendering must not mutate the map')
-console.log('Joined windows: 1x1, 2x1, 3x1, 2x2 and 3x2 seam pixels and tile order passed; installed blocks and all four 64px doors retain their entrance/ground anchor.')
+console.log('Joined windows: 1x1, 2x1, 3x1, 2x2 and 3x2 seam pixels and tile order passed; installed blocks and 64px exterior doors and one-tile interior exits retain their entrance/ground anchor.')

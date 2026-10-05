@@ -50,7 +50,7 @@ Buildings keep their previous background-layer behaviour.
 ## Preview and validation
 
 - `tools/art-preview.html`: full overview and playable view of all five maps.
-- `tools/check-environment.mjs`: all 4,224 tiles, 676 raised objects and 42
+- `tools/check-environment.mjs`: all 4,224 tiles, 678 raised objects and 42
   decorations; native integer geometry, ground bounds, larger visual envelopes,
   deterministic artwork and no map mutations.
 - `tools/check-environment-browser.mjs`: desktop, high-DPI mobile and Phaser
@@ -94,12 +94,15 @@ checks for desktop, high-DPI mobile and Canvas fallback pass.
 defines a 30 px wide, 64 px high frame, close to the player's approximately
 59 px visible height. Its threshold remains at tile-local Y=30. The frame
 extends upward to Y=-34; the door's logical tile and transition stay unchanged.
-Outdoor doors have an upper glazed panel; indoor doors use a timber panel.
+Outdoor doors have an upper glazed panel. Interior exits use the separate
+`INDOOR_DOOR_STANDARD`: a 30×30 px timber panel plus its 2 px threshold, fitting
+inside one 32×32 tile.
 
 `WorldScene.drawMap()` and the art overview call `drawBuildingDoors()` after
-all ground tiles have been painted. Doors remain background building artwork,
-so adjacent cells cannot cover their upper half and characters stay in front.
-The existing object sorting, collision and camera logic are unaffected.
+all ground tiles have been painted. Exterior doors remain background building
+artwork, so adjacent cells cannot cover their upper half. Interior exits are
+separate foreground objects; see the interior revision below. Collision and
+camera logic are unaffected.
 
 Adjacent `window` cells form a rectangular block. `windowRegion()` finds the
 block and `drawWindow()` clips one complete frame, glass, mullions and sill
@@ -126,3 +129,45 @@ environment/world/NPC/controls/fishing checks and the desktop, mobile and Canvas
 browser checks pass in the isolated published-baseline copy described above.
 `node tools/export-tiles.mjs` also exports `docs/art/building-openings.svg`,
 showing complete four- and six-tile windows beside the taller doors.
+
+
+## Interior wall, door and staircase revision
+
+`src/game/indoorArchitecture.ts` draws wall boards with a continuous six-world-
+pixel rhythm. Only the lowest block in a connected vertical wall/window run
+has a bottom skirting board, including runs ending at the map boundary. There
+is no trim on the sides or top, and connected blocks have no repeated baseboards.
+
+Interior doors belong to the existing environment object group. Their depth
+is the front boundary of their tile, `(row + 1) * TILE_SIZE`; ordinary objects
+retain the existing tile-centre Y depth. This keeps the door panel in front of
+the player throughout the exit tween, including its last frames. The home and
+shop exit positions and exterior destinations stay unchanged. Exterior doors
+retain their 64 px height and background rendering.
+
+`HOME_STAIRS` in `src/game/world.ts` describes the upper-right corner staircase
+on both home floors: column 22, free floor at row 1, three connected stair tiles
+at rows 2–4, and free floor at row 5. Rails and an eight-pixel tread rhythm join
+across all three tiles. The former single stair tiles at (19,4) and (19,11)
+become ordinary floor. Going up triggers at the first-floor upper landing and
+arrives at the second-floor upper landing; going down triggers at the second-
+floor lower landing and arrives at the first-floor lower landing. Arrival
+landings never immediately trigger the reverse transition. Movement code and
+NPC routes are unchanged; every map cell retains its previous walkability.
+
+`tools/check-indoor-architecture.mjs` checks actual wall seam pixels, bottom-only
+trim on the lowest block and at map boundaries, bounded one-tile doors, foreground depth, the five-cell corridor and
+safe landing destinations. `tools/check-indoor-browser.mjs` freezes the normal
+exit tween to verify actual display order, then resumes it and traverses the
+complete staircase up and down. Both tests pass, as do typecheck, build, map
+and existing environment/player checks. Browser coverage includes desktop,
+DPR-3 mobile and Phaser Canvas. Review images go to `output/indoor-review/`.
+
+
+Vertical kitchen worktops join above/below as well as left/right. Only the
+lowest tile of each run draws a cabinet front, handle, front lip and floor
+shadow. Upper tiles show a full-depth worktop and adjoining cells meet at
+Y=32/Y=0. This applies to the existing counter/stove/shop-counter family,
+retaining stove-top and register details. The three-cell kitchen run at
+(2,5)–(2,7) is covered by the indoor architecture raster check. Map data,
+collision and depth are unchanged.

@@ -1,10 +1,13 @@
 import type Phaser from 'phaser'
 import { TILE_SIZE, type Tile, type WorldMap } from './world'
-import { drawDoor, drawWindow } from './buildingOpenings'
+import { drawIndoorDoor, drawWindow } from './buildingOpenings'
+import { drawIndoorStairs, drawIndoorWall } from './indoorArchitecture'
 import { ENVIRONMENT_PALETTE as p, pixelPainter, woodGrain } from './environmentPixels'
 
+const isCounterTile = (tile?: Tile) => tile === 'counter' || tile === 'shopCounter' || tile === 'stove'
+
 export function isIndoorObject(tile: Tile) {
-  return ['wardrobe', 'furniture', 'bed', 'table', 'hearth', 'counter', 'stove', 'sofa', 'chest', 'shopCounter'].includes(tile)
+  return ['wardrobe', 'furniture', 'bed', 'table', 'hearth', 'counter', 'stove', 'sofa', 'chest', 'shopCounter', 'door'].includes(tile)
 }
 
 export function drawIndoorGround(g: Phaser.GameObjects.Graphics, map: WorldMap, col: number, row: number) {
@@ -17,9 +20,7 @@ export function drawIndoorGround(g: Phaser.GameObjects.Graphics, map: WorldMap, 
     r(seam,y+1,1,6,0xa7865e); r((seam+8)%27,y+4,5,1,0xba9368)
   }
   if (tile === 'wall' || tile === 'window') {
-    r(0,0,32,32,p.cream)
-    for (let y=1;y<27;y+=6) { r(0,y,32,1,p.creamLight); r(0,y+5,32,1,p.creamDark) }
-    r(0,27,32,5,p.timberDark); r(0,27,32,1,p.timberLight)
+    drawIndoorWall(r, map, col, row)
     if (tile === 'window') drawWindow(r, map, col, row)
   } else if (tile === 'rug') {
     const same = (dx: number, dy: number) => at(dx,dy) === 'rug'
@@ -31,12 +32,7 @@ export function drawIndoorGround(g: Phaser.GameObjects.Graphics, map: WorldMap, 
     r(14,13,4,1,0xc59873); r(13,14,6,3,0xc59873); r(14,17,4,1,0xc59873)
     r(15,14,2,3,0x805444)
   } else if (tile === 'stairs') {
-    r(2,1,28,30,p.timberDark)
-    for (let y=2;y<31;y+=6) { r(4,y,24,4,p.timber); r(4,y,24,1,p.timberLight); r(4,y+4,24,1,0x463b30) }
-    r(2,1,1,30,p.timberLight); r(29,1,1,30,p.timber)
-    // Small stair marker retains the existing affordance without changing transitions.
-    r(15,3,2,1,p.creamLight); r(13,4,6,1,p.creamLight); r(11,5,10,1,p.creamLight)
-
+    drawIndoorStairs(r, map, col, row)
   }
 }
 
@@ -44,7 +40,8 @@ export function drawIndoorObject(g: Phaser.GameObjects.Graphics, map: WorldMap, 
   const r=pixelPainter(g,col*TILE_SIZE,row*TILE_SIZE), tile=map.tiles[row][col]
   const at=(dx:number,dy:number)=>map.tiles[row+dy]?.[col+dx]
   if (!isIndoorObject(tile)) return
-  r(3,28,29,3,p.timberDark,0.25)
+  if (tile === 'door') { drawIndoorDoor(r); return }
+  if (!isCounterTile(tile) || !isCounterTile(at(0,1))) r(3,28,29,3,p.timberDark,0.25)
   if (tile === 'wardrobe') {
     r(3,-15,26,44,p.timberDark); r(4,-14,24,41,p.timber); r(3,-16,26,3,p.timberLight)
     for (const x of [6,17]) { r(x,-10,9,34,p.timberDark); r(x+1,-9,7,32,p.timber); r(x+1,-9,7,1,p.timberLight); r(x+2,-6,1,11,0xa9784c) }
@@ -57,17 +54,26 @@ export function drawIndoorObject(g: Phaser.GameObjects.Graphics, map: WorldMap, 
     for (const x of [7,23]) { r(x,3,2,24,p.metalDark); r(x,3,1,23,p.metalLight) }
     r(14,11,5,7,p.metalDark); r(15,11,3,5,0xe1bb71); r(16,13,1,2,p.timberDark)
   } else if (tile === 'counter' || tile === 'shopCounter' || tile === 'stove') {
-    const counter=(t?:Tile)=>['counter','shopCounter','stove'].includes(t ?? '')
-    const left=counter(at(-1,0))?0:2, right=counter(at(1,0))?32:30
-    r(left,2,right-left,28,p.timberDark); r(left+1,12,right-left-2,16,p.timber)
-    r(left,1,right-left,10,p.cream); r(left,1,right-left,1,p.creamLight); r(left,10,right-left,2,p.creamDark)
-    r(left+2,14,right-left-4,1,p.timberLight); r(left+2,24,right-left-4,1,p.timberDark)
-    r(14,17,4,1,p.metalDark); r(14,16,4,1,p.metalLight)
+    const left=isCounterTile(at(-1,0))?0:2, right=isCounterTile(at(1,0))?32:30
+    const joinsAbove=isCounterTile(at(0,-1)), joinsBelow=isCounterTile(at(0,1))
+    // A vertical run is one deep worktop. Only its frontmost/bottom tile
+    // exposes the cabinet, handle, front lip and floor shadow.
+    if (!joinsBelow) {
+      r(left,2,right-left,28,p.timberDark); r(left+1,12,right-left-2,16,p.timber)
+      r(left+2,14,right-left-4,1,p.timberLight); r(left+2,24,right-left-4,1,p.timberDark)
+      r(14,17,4,1,p.metalDark); r(14,16,4,1,p.metalLight)
+    }
+    const top=joinsAbove?0:1, bottom=joinsBelow?32:10
+    r(left,top,right-left,bottom-top,p.cream)
+    if (!joinsAbove) r(left,top,right-left,1,p.creamLight)
+    if (!joinsBelow) r(left,10,right-left,2,p.creamDark)
     if (tile === 'stove') {
       r(3,2,26,10,p.metal); r(4,3,24,8,p.metalLight)
       for (const x of [8,20]) { r(x,4,5,5,p.metalDark); r(x+1,5,3,3,p.metal); r(x+2,6,1,1,p.metalDark) }
-      r(6,15,20,11,p.metalDark); r(8,17,16,7,p.metal); r(8,16,16,1,p.metalLight)
-      r(9,13,2,1,p.metalDark); r(21,13,2,1,p.metalDark)
+      if (!joinsBelow) {
+        r(6,15,20,11,p.metalDark); r(8,17,16,7,p.metal); r(8,16,16,1,p.metalLight)
+        r(9,13,2,1,p.metalDark); r(21,13,2,1,p.metalDark)
+      }
     } else if (tile === 'shopCounter') {
       // Register and bait tins, avoiding labels too small to read at world scale.
       r(16,-4,10,9,p.metalDark); r(17,-3,8,5,p.metal); r(18,-2,6,2,p.glassLight)
@@ -135,5 +141,4 @@ export function drawIndoorObject(g: Phaser.GameObjects.Graphics, map: WorldMap, 
 export function drawIndoorTile(g: Phaser.GameObjects.Graphics, map: WorldMap, col: number, row: number) {
   drawIndoorGround(g,map,col,row)
   drawIndoorObject(g,map,col,row)
-  if (map.tiles[row][col] === 'door') drawDoor(pixelPainter(g,col*TILE_SIZE,row*TILE_SIZE),false)
 }

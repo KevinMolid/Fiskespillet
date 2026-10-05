@@ -3,6 +3,7 @@ import { TILE_SIZE, type WorldMap } from './world'
 import { ENVIRONMENT_PALETTE as p, pixelPainter, type PixelPainter } from './environmentPixels'
 
 export const DOOR_STANDARD = { width: 30, height: 64, groundY: 30 } as const
+export const INDOOR_DOOR_STANDARD = { width: 30, height: 30, groundY: 30 } as const
 
 export function windowRegion(map: WorldMap, col: number, row: number) {
   const cells: [number, number][] = [[col, row]], seen = new Set([`${col},${row}`])
@@ -76,11 +77,30 @@ export function drawDoor(r: PixelPainter, glazed = true) {
   r(0, groundY + 1, TILE_SIZE, 1, p.stoneDark)
 }
 
-// Doors are building/background artwork, painted after all ground tiles so the
-// upper part cannot be covered by a neighbouring cell. Characters remain in front.
+// Interior exits belong to the foreground boundary wall and fit inside one tile.
+export function drawIndoorDoor(r: PixelPainter) {
+  const { width, height, groundY } = INDOOR_DOOR_STANDARD
+  const left = (TILE_SIZE - width) / 2, top = groundY - height
+  r(left, top, width, height, p.timberDark)
+  r(left + 1, top + 1, width - 2, height - 1, p.timberLight)
+  r(left + 3, top + 3, width - 6, height - 3, p.timber)
+  for (const y of [top + 5, top + 18]) {
+    r(left + 5, y, width - 10, 9, p.timberDark)
+    r(left + 6, y + 1, width - 12, 7, p.timber)
+    r(left + 6, y + 1, width - 12, 1, p.timberLight)
+  }
+  r(left + width - 8, top + 14, 3, 4, p.timberDark)
+  r(left + width - 8, top + 14, 2, 2, 0xe6c57d)
+  r(0, groundY, TILE_SIZE, 1, p.stoneLight)
+  r(0, groundY + 1, TILE_SIZE, 1, p.stoneDark)
+}
+
+// Only exterior doors extend above a tile. Paint these after the ground so the
+// upper part cannot be covered by a neighbouring cell. Interior doors are objects.
 export function drawBuildingDoors(g: Phaser.GameObjects.Graphics, map: WorldMap) {
   const outdoor = map.id === 'havn' || map.id === 'skogstjern'
+  if (!outdoor) return
   for (let y = 0; y < map.tiles.length; y++) for (let x = 0; x < map.tiles[y].length; x++) {
-    if (map.tiles[y][x] === 'door') drawDoor(pixelPainter(g, x * TILE_SIZE, y * TILE_SIZE), outdoor)
+    if (map.tiles[y][x] === 'door') drawDoor(pixelPainter(g, x * TILE_SIZE, y * TILE_SIZE))
   }
 }

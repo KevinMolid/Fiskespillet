@@ -43,8 +43,10 @@ for (const [x,cols,rows] of [[16,1,1],[72,2,2],[152,3,2]]) {
 }
 for(const [x,glazed] of [[280,true],[340,false]]) {
   offsetX=x; offsetY=78
-  modules[3].drawDoor((x,y,w,h,c,a=1)=>g.fillStyle(c,a).fillRect(x,y,w,h),glazed)
+  const painter=(x,y,w,h,c,a=1)=>g.fillStyle(c,a).fillRect(x,y,w,h)
+  if(glazed) modules[3].drawDoor(painter)
+  else modules[3].drawIndoorDoor(painter)
   labels+=`<text x="${x+16}" y="128" text-anchor="middle">${glazed?'Outside':'Inside'}</text>`
 }
-await writeFile('docs/art/building-openings.svg',`<svg xmlns="http://www.w3.org/2000/svg" width="392" height="144" viewBox="0 0 392 144" shape-rendering="crispEdges"><title>Joined windows and 64px doors</title><rect width="100%" height="100%" fill="#203b36"/>${shapes}<g fill="#e4d5b0" font-family="sans-serif" font-size="9"><text x="16" y="18">Joined window frames · 32px tiles · 64px doors</text>${labels}</g></svg>`)
+await writeFile('docs/art/building-openings.svg',`<svg xmlns="http://www.w3.org/2000/svg" width="392" height="144" viewBox="0 0 392 144" shape-rendering="crispEdges"><title>Joined windows, exterior doors and single-tile interior exits</title><rect width="100%" height="100%" fill="#203b36"/>${shapes}<g fill="#e4d5b0" font-family="sans-serif" font-size="9"><text x="16" y="18">Joined window frames · 32px tiles · 64px exterior / 32px interior</text>${labels}</g></svg>`)
 console.log('Exported joined 1-, 4- and 6-tile windows and full-height door samples.')

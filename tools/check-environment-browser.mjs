@@ -31,10 +31,11 @@ try {
         const {MAPS}=await import('/src/game/world.ts')
         const {isOutdoorObject,isRaisedDecoration}=await import('/src/game/outdoorTiles.ts')
         const {isIndoorObject}=await import('/src/game/indoorTiles.ts')
+        const {indoorObjectDepth}=await import('/src/game/indoorArchitecture.ts')
         const map=MAPS[mapId],outside=['havn','skogstjern'].includes(mapId)
         const expected=map.tiles.flat().filter(outside?isOutdoorObject:isIndoorObject).length+(map.decorations??[]).filter(d=>isRaisedDecoration(d.kind)).length
         const objects=scene.environmentObjects.getChildren()
-        return {expected,count:objects.length,oldDestroyed:old.every(o=>!o.scene),depths:objects.every(o=>(o.depth-16)%32===0),playerX:scene.player.x,playerY:scene.player.y,cameraFollows:scene.cameras.main._follow===scene.player,nearest:scene.playerImage.texture.source[0].scaleMode===1,pixelated:game.canvas.style.imageRendering==='pixelated',fps:game.loop.actualFps}
+        return {expected,count:objects.length,oldDestroyed:old.every(o=>!o.scene),depths:objects.every(o=>{ const cell=o.name?.match(/:(\d+),(\d+)$/); return !outside&&cell ? o.depth===indoorObjectDepth(map.tiles[Number(cell[2])][Number(cell[1])],Number(cell[2])) : (o.depth-16)%32===0 }),playerX:scene.player.x,playerY:scene.player.y,cameraFollows:scene.cameras.main._follow===scene.player,nearest:scene.playerImage.texture.source[0].scaleMode===1,pixelated:game.canvas.style.imageRendering==='pixelated',fps:game.loop.actualFps}
       },{mapId,x,y})
       assert.equal(metrics.count,metrics.expected);assert(metrics.oldDestroyed&&metrics.depths)
       assert.equal(metrics.playerX,x*32+16);assert.equal(metrics.playerY,y*32+16)

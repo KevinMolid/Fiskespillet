@@ -5,6 +5,7 @@ import { characterWalkStep } from './characterAnimation'
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorGround, drawOutdoorObject, isOutdoorObject, isRaisedDecoration } from './outdoorTiles'
 import { drawIndoorGround, drawIndoorObject, isIndoorObject } from './indoorTiles'
+import { indoorObjectDepth } from './indoorArchitecture'
 import { drawBuildingDoors } from './buildingOpenings'
 import { isWalkable } from './world'
 import { canFish, digSpotAhead, edgeTransition, interactionAhead, MAPS, stepTransition, TILE_SIZE, VIEW_HEIGHT, VIEW_WIDTH, type Appearance, type Direction, type Position } from './world'
@@ -223,7 +224,7 @@ export class WorldScene extends Phaser.Scene {
         if (outdoor) drawOutdoorGround(graphics, map, x, y)
         else drawIndoorGround(graphics, map, x, y)
         if (outdoor ? isOutdoorObject(tile) : isIndoorObject(tile)) {
-          const object = this.add.graphics().setDepth(y * TILE_SIZE + 16).setName(`environment-${tile}:${x},${y}`)
+          const object = this.add.graphics().setDepth(outdoor ? y * TILE_SIZE + 16 : indoorObjectDepth(tile, y)).setName(`environment-${tile}:${x},${y}`)
           if (outdoor) drawOutdoorObject(object, map, x, y)
           else drawIndoorObject(object, map, x, y)
           this.environmentObjects.add(object)

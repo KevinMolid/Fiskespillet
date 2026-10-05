@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { createWorld } from '../src/game/WorldScene'
 import { drawDecoration, drawOutdoorGround, drawOutdoorObject, isOutdoorObject, isRaisedDecoration } from '../src/game/outdoorTiles'
 import { drawIndoorGround, drawIndoorObject, isIndoorObject } from '../src/game/indoorTiles'
+import { indoorObjectDepth } from '../src/game/indoorArchitecture'
 import { drawBuildingDoors } from '../src/game/buildingOpenings'
 import { MAPS, DEFAULT_APPEARANCE, START, TILE_SIZE, type Direction, type MapId } from '../src/game/world'
 
@@ -20,7 +21,7 @@ function show(mapId: MapId) {
         if (outdoor) drawOutdoorGround(ground,map,x,y)
         else drawIndoorGround(ground,map,x,y)
         if (outdoor ? isOutdoorObject(map.tiles[y][x]) : isIndoorObject(map.tiles[y][x])) {
-          const object=this.add.graphics().setDepth(y*TILE_SIZE+16)
+          const object=this.add.graphics().setDepth(outdoor ? y*TILE_SIZE+16 : indoorObjectDepth(map.tiles[y][x],y))
           if (outdoor) drawOutdoorObject(object,map,x,y)
           else drawIndoorObject(object,map,x,y)
         }
@@ -49,5 +50,6 @@ function show(mapId: MapId) {
 
 document.querySelectorAll<HTMLButtonElement>('[data-map]').forEach(button => button.addEventListener('click',()=>show(button.dataset.map as MapId)))
 document.querySelectorAll<HTMLButtonElement>('[data-direction]').forEach(button => button.addEventListener('click', () => playable?.scene.move(button.dataset.direction as Direction)))
-show('havn')
+const requestedMap = new URLSearchParams(location.search).get('map') as MapId | null
+show(requestedMap && Object.hasOwn(MAPS, requestedMap) ? requestedMap : 'havn')
 if (import.meta.hot) import.meta.hot.dispose(()=>{ overview?.destroy(true); playable?.game.destroy(true) })

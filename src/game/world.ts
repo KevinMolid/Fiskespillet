@@ -151,6 +151,9 @@ function indoorGrid(): Tile[][] {
       x === 0 || y === 0 || x === 23 || y === 15 ? 'wall' : 'floor'))
 }
 
+// One free landing, three connected stair cells, one free landing, by the corner.
+export const HOME_STAIRS = { x: 22, upperY: 1, lowerY: 5 } as const
+
 const hjem = indoorGrid()
 // Kjøkkenet ligger til venstre. Åpningen i deleveggen forbinder det med stuen.
 rect(hjem, 11, 2, 11, 12, 'wall')
@@ -164,7 +167,7 @@ rect(hjem, 14, 7, 18, 9, 'rug')
 hjem[3][20] = 'hearth'
 hjem[0][5] = 'window'
 hjem[0][17] = 'window'
-hjem[4][19] = 'stairs'
+rect(hjem, HOME_STAIRS.x, HOME_STAIRS.upperY + 1, HOME_STAIRS.x, HOME_STAIRS.lowerY - 1, 'stairs')
 hjem[15][12] = 'door'
 
 const butikk = indoorGrid()
@@ -186,7 +189,7 @@ hjem2[4][10] = 'furniture'
 hjem2[4][20] = 'chest'
 hjem2[0][5] = 'window'
 hjem2[0][18] = 'window'
-hjem2[11][19] = 'stairs'
+rect(hjem2, HOME_STAIRS.x, HOME_STAIRS.upperY + 1, HOME_STAIRS.x, HOME_STAIRS.lowerY - 1, 'stairs')
 
 // Joined window blocks replace only existing facade/wall cells. Door coordinates
 // and all walkable routes stay unchanged: 4-tile home windows, 6-tile shop windows.
@@ -222,7 +225,7 @@ export const MAPS: Record<MapId, WorldMap> = {
     tiles: hjem, neighbors: {}, signs: {},
     transitions: {
       '12,15': { mapId: 'havn', x: 8, y: 12, facing: 'down' },
-      '19,4': { mapId: 'hjem2', x: 19, y: 10, facing: 'up' },
+      [`${HOME_STAIRS.x},${HOME_STAIRS.upperY}`]: { mapId: 'hjem2', x: HOME_STAIRS.x, y: HOME_STAIRS.upperY, facing: 'down' },
     },
   },
   butikk: {
@@ -235,7 +238,7 @@ export const MAPS: Record<MapId, WorldMap> = {
     id: 'hjem2', name: 'Hjemme · 2. etasje',
     description: 'Soverom med garderobe.',
     tiles: hjem2, neighbors: {}, signs: {},
-    transitions: { '19,11': { mapId: 'hjem', x: 19, y: 5, facing: 'down' } },
+    transitions: { [`${HOME_STAIRS.x},${HOME_STAIRS.lowerY}`]: { mapId: 'hjem', x: HOME_STAIRS.x, y: HOME_STAIRS.lowerY, facing: 'down' } },
   },
   skogstjern: {
     id: 'skogstjern',
