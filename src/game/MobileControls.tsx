@@ -60,7 +60,7 @@ export function MobileControls(props: Props) {
   }
   const directions: [Direction, string, string][] = [['up', 'Opp', '▲'], ['left', 'Venstre', '◀'], ['down', 'Ned', '▼'], ['right', 'Høyre', '▶']]
   return <div className="handheld-controls" aria-label="Spillkontroller" onContextMenu={e => e.preventDefault()}>
-    <div className="handheld-brand" aria-hidden="true"><i /> FISKE<span>POCKET</span></div>
+    <div className="handheld-brand" aria-hidden="true"><i /> GODT<span>HAILL</span></div>
     <div className="dpad" role="group" aria-label="Styrekryss">
       {directions.map(([direction, label, symbol]) => <button key={direction} aria-label={label} className={`dpad-${direction}`} data-held={held === direction} disabled={props.disabled}
         onPointerDown={e => start(e, direction)} onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop}

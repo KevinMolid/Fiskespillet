@@ -1,0 +1,81 @@
+import assert from 'node:assert/strict'
+import { mkdir } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright')
+const browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' })
+const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5173', errors = []
+await mkdir('output/menu-review', { recursive: true })
+try {
+  for (const [mode, width, height] of [['desktop', 1440, 1000], ['mobile', 390, 844], ['narrow', 320, 740], ['landscape', 844, 390]]) {
+    const mobile = mode !== 'desktop'
+    const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: mobile ? 3 : 1, isMobile: mobile, hasTouch: mobile })
+    const page = await context.newPage()
+    page.on('pageerror', e => errors.push(`${mode}: ${e.message}`))
+    const noOverflow = async () => assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${mode}: horizontal overflow`)
+    await page.goto(base)
+    await page.getByRole('heading', { name: 'Velkommen tilbake' }).waitFor()
+    assert.equal(await page.title(), 'Godt Haill – Bare ett kast til')
+    const logo = await page.locator('.login-logo').evaluate(img => ({ loaded: img.complete && img.naturalWidth === 1672, width: img.width, height: img.height }))
+    assert(logo.loaded && Math.abs(logo.width / logo.height - 1672 / 941) < .03, 'Original logo is loaded without distortion')
+    await noOverflow()
+    await page.screenshot({ path: `output/menu-review/login-${mode}.png`, fullPage: true })
+    await page.getByRole('button', { name: 'Opprett konto', exact: true }).click()
+    await page.getByLabel('E-post', { exact: true }).fill('preview@example.com')
+    await page.getByLabel('Passord', { exact: true }).fill('preview123')
+    await page.getByLabel('Gjenta passord').fill('different123')
+    await page.getByRole('button', { name: 'Opprett konto', exact: true }).click()
+    await page.getByRole('alert').filter({ hasText: 'Passordene er ikke like.' }).waitFor() // Local validation, never creates an account.
+    await page.getByRole('button', { name: 'Tilbake til innlogging' }).click()
+    await page.getByRole('button', { name: 'Glemt passord?' }).click()
+    assert.equal(await page.locator('input[type=password]').count(), 0)
+    await page.getByRole('button', { name: 'Tilbake til innlogging' }).click()
+    await page.goto(`${base}/tools/menu-preview.html`)
+    await page.getByRole('button', { name: 'Nytt spill', exact: true }).click()
+    await page.getByRole('alertdialog').waitFor()
+    assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Avbryt')
+    await page.keyboard.press('Escape')
+    assert.equal(await page.getByRole('alertdialog').count(), 0)
+    assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Nytt spill')
+    await page.screenshot({ path: `output/menu-review/start-${mode}.png`, fullPage: true })
+    await page.getByRole('button', { name: /Fortsett spill/ }).click()
+    await page.getByRole('dialog', { name: 'Spillmeny' }).waitFor()
+    await noOverflow()
+    await page.goto(`${base}/tools/menu-preview.html?saved=0`)
+    assert(await page.getByRole('button', { name: /Fortsett spill/ }).isDisabled())
+    await page.getByRole('button', { name: 'Nytt spill', exact: true }).click()
+    assert.equal(await page.getByRole('alertdialog').count(), 0)
+    await page.getByRole('dialog', { name: 'Spillmeny' }).waitFor()
+
+    // Real GamePage and local game services exercise keyboard and touch navigation.
+    await page.goto(`${base}/tools/game-preview.html`)
+    await page.locator('[aria-label="Spillkart"] canvas').waitFor()
+    await page.waitForTimeout(600)
+    if (mobile) await page.getByRole('button', { name: 'Meny eller tilbake' }).click()
+    else { await page.locator('.game-frame').focus(); await page.keyboard.press('Enter') }
+    await page.getByRole('dialog', { name: 'Spillmeny' }).waitFor()
+    await page.locator('.game-shell').screenshot({ path: `output/menu-review/pause-${mode}.png` })
+    await page.getByRole('button', { name: /^Sekk/ }).click()
+    await page.getByRole('dialog', { name: 'Sekken' }).waitFor()
+    await page.locator('.game-shell').screenshot({ path: `output/menu-review/bag-${mode}.png` })
+    await page.getByRole('tab', { name: 'Forbruk' }).click()
+    await page.getByRole('button', { name: 'Velg agn', exact: true }).first().click()
+    await page.getByRole('button', { name: 'Ta av agn', exact: true }).waitFor()
+    if (mobile) await page.getByRole('button', { name: 'Meny eller tilbake' }).click()
+    else await page.keyboard.press('Escape')
+    await page.getByRole('dialog', { name: 'Spillmeny' }).waitFor()
+    await page.getByRole('button', { name: /^Fiskebok/ }).click()
+    await page.getByRole('dialog', { name: 'Fiskeboken' }).waitFor()
+    await page.getByRole('option', { name: /^Mort,/ }).click()
+    await page.locator('.game-shell').screenshot({ path: `output/menu-review/book-${mode}.png` })
+    await noOverflow()
+    // Every menu choice remains inside the visible game frame, including landscape.
+    const clipping = await page.evaluate(() => {
+      const dialog = document.querySelector('.pocket-dialog'), frame = document.querySelector('.game-frame').getBoundingClientRect()
+      return [...dialog.querySelectorAll('button')].filter(b => b.getBoundingClientRect().width && !b.closest('.fish-list')).every(b => { const r = b.getBoundingClientRect(); return r.left >= frame.left && r.right <= frame.right + 1 && r.top >= frame.top && r.bottom <= frame.bottom + 1 })
+    })
+    assert(clipping, `${mode}: dialog controls clipped`)
+    await context.close()
+    console.log(`${mode}: original logo, login/register/reset UI, saved/unsaved start, reset cancellation/focus, pause/bag/book, bait actions, keyboard/touch and layout passed.`)
+  }
+  assert.deepEqual(errors, [])
+} finally { await browser.close() }

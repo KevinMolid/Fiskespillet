@@ -9,6 +9,8 @@ import ProfilePage from './ProfilePage'
 import PlayersPage from './PlayersPage'
 import { hasExistingGame, resetGameData } from './game/persistence'
 import { StartMenu } from './game/StartMenu'
+import { GameLogo } from './GameLogo'
+import { MenuIcon } from './MenuIcon'
 
 const GamePage = lazy(() => import('./game/GamePage'))
 
@@ -182,24 +184,24 @@ function App() {
     }
   }
 
-  const inputClass = 'mt-2 w-full rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20'
+  const inputClass = 'ui-input'
 
   return (
-    <main className="min-h-screen bg-[#061c2b] text-slate-100">
-      <div className={`app-shell ${user && page === 'home' && gameStart === 'playing' ? 'game-active' : ''} mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-8 sm:px-10`}>
-        <header className="app-header flex items-center justify-between gap-4 border-b border-white/10 pb-5">
-          <button onClick={() => setPage('home')} className="text-lg font-semibold tracking-wide">🎣 Fiskespill</button>
-          {user && <div className="flex items-center gap-3">
-            <button onClick={() => setPage('home')} className="rounded-lg px-2 py-2 text-sm hover:bg-white/10">Spill</button>
+    <main className="brand-app">
+      <div className={`app-shell ${user && page === 'home' && gameStart === 'playing' ? 'game-active' : ''}`}>
+        <header className="app-header">
+          <button onClick={() => setPage('home')} className="brand-home" aria-label="Godt Haill – hjem"><GameLogo className="header-logo" /><span>Godt Haill</span></button>
+          {user ? <nav className="app-nav" aria-label="Hovedmeny">
+            <button onClick={() => setPage('home')} aria-current={page === 'home' ? 'page' : undefined}>Spill</button>
             <button onClick={() => setPage('profile')} className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-white/10" aria-label="Åpne min profil">
               <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-cyan-300/15">
                 {profile?.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : '🎣'}
               </span>
               <span className="hidden max-w-36 truncate sm:block">{profile?.username || user.email}</span>
             </button>
-            <button onClick={() => setPage('players')} className="rounded-lg px-2 py-2 text-sm hover:bg-white/10">Spillere</button>
-            <button onClick={logout} disabled={busy} className="rounded-lg border border-white/20 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-50">Logg ut</button>
-          </div>}
+            <button onClick={() => setPage('players')} aria-current={page === 'players' ? 'page' : undefined}>Spillere</button>
+            <button onClick={logout} disabled={busy}>Logg ut</button>
+          </nav> : <span className="header-note"><MenuIcon name="wave" /> Et fiskeeventyr</span>}
         </header>
         {user && page === 'players' ? <div className="flex-1"><PlayersPage onBack={() => setPage('home')} /></div>
         : user && page === 'profile' ? <div className="flex-1">
@@ -207,18 +209,21 @@ function App() {
           <ProfilePage user={user} profile={profile} onBack={() => setPage('home')} />
         </div> : user && gameStart !== 'playing' ? <div className="flex-1"><StartMenu hasSave={hasSave} ready={gameStart === 'menu'} pending={gameStart === 'checking' || startPending} error={startError} onContinue={() => setGameStart('playing')} onNewGame={() => void startNewGame()} onRetry={() => void retryGameCheck()} /></div>
         : user ? <div className="flex-1"><Suspense fallback={<p className="py-16 text-slate-300">Laster spillet …</p>}><GamePage key={user.uid} user={user} /></Suspense></div>
-        : <section className="grid flex-1 items-center gap-12 py-16 md:grid-cols-2">
-          <div>
-            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">Et nytt online fiskespill</p>
-            <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">Eventyret starter ved vannkanten.</h1>
-            <p className="mt-7 max-w-xl text-lg leading-relaxed text-slate-300">Her bygger vi etter hvert fiske, fangster, progresjon og spill sammen med andre.</p>
+        : <section className="login-layout">
+          <div className="login-hero">
+            <p className="start-kicker">ROEN. NAPPET. DET NESTE KASTET.</p>
+            <GameLogo className="login-logo" priority />
+            <h1 className="sr-only">Godt Haill – Bare ett kast til</h1>
+            <p className="login-copy">En liten bygd. Store fiskehistorier.<br />Ditt neste eventyr begynner ved vannkanten.</p>
+            <div className="login-features"><span>Utforsk bygda</span><span>Finn din favorittplass</span><span>Fyll fiskeboken</span></div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
+          <div className="login-card">
             {!auth ? <p role="alert" className="text-amber-200">Firebase er ikke konfigurert. Se README for oppsett.</p>
               : checking ? <p role="status" className="text-slate-300">Sjekker innlogging …</p>
               : <>
-                  <h2 className="text-2xl font-bold">{mode === 'register' ? 'Opprett konto' : mode === 'reset' ? 'Glemt passord?' : 'Logg inn'}</h2>
-                  <p className="mt-2 text-sm text-slate-400">{mode === 'reset' ? 'Vi sender deg en lenke for å velge nytt passord.' : 'Bruk e-postadressen din for å komme i gang.'}</p>
+                  <p className="start-kicker">{mode === 'register' ? 'DITT EGET FISKEEVENTYR' : mode === 'reset' ? 'TILBAKE TIL VANNKANTEN' : 'KLAR FOR EN FISKETUR?'}</p>
+                  <h2>{mode === 'register' ? 'Opprett konto' : mode === 'reset' ? 'Glemt passord?' : 'Velkommen tilbake'}</h2>
+                  <p className="login-description">{mode === 'reset' ? 'Vi sender deg en lenke for å velge nytt passord.' : mode === 'register' ? 'Opprett en konto og gjør ditt første kast.' : 'Logg inn og fortsett der du slapp.'}</p>
                   <form onSubmit={submit} className="mt-7 space-y-4">
                     <label className="block text-sm font-medium">E-post
                       <input className={inputClass} type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} />
@@ -231,11 +236,11 @@ function App() {
                     </label>}
                     {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
                     {notice && <p role="status" className="text-sm text-emerald-300">{notice}</p>}
-                    <button disabled={busy} className="w-full rounded-lg bg-cyan-300 px-4 py-3 font-semibold text-slate-950 hover:bg-cyan-200 disabled:opacity-50">
+                    <button disabled={busy} className="brand-primary">
                       {busy ? 'Vennligst vent …' : mode === 'register' ? 'Opprett konto' : mode === 'reset' ? 'Send lenke' : 'Logg inn'}
                     </button>
                   </form>
-                  <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-cyan-300">
+                  <div className="auth-links">
                     {mode !== 'login' && <button type="button" onClick={() => changeMode('login')} className="hover:underline">Tilbake til innlogging</button>}
                     {mode === 'login' && <>
                       <button type="button" onClick={() => changeMode('register')} className="hover:underline">Opprett konto</button>
@@ -245,7 +250,7 @@ function App() {
                 </>}
           </div>
         </section>}
-        <footer className="border-t border-white/10 py-5 text-xs text-slate-500">React · Vite · Tailwind CSS · Firebase</footer>
+        <footer className="app-footer"><span>Godt Haill</span><span>Bare ett kast til.</span></footer>
       </div>
     </main>
   )

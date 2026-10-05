@@ -292,7 +292,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
         {!position && <p role="status" className="absolute left-4 top-4 text-white">Laster kart …</p>}
         {actionLabel && <button onClick={() => scene.current?.action()} className="context-action">{actionLabel}</button>}
 
-        {(error || busy || result || signMessage) && <div role={error ? 'alert' : 'status'} className="absolute inset-x-2 bottom-2 min-h-16 border-4 border-[#405e59] bg-[#f7f4df] p-2 pb-6 text-sm font-semibold text-[#233b3a] shadow-[0_4px_0_#122b29] sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:pb-8 sm:text-lg">
+        {(error || busy || result || signMessage) && <div role={error ? 'alert' : 'status'} className="world-message absolute inset-x-2 bottom-2 min-h-16 p-2 pb-6 text-sm font-semibold sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:pb-8 sm:text-lg">
           {error ? <p>{error}</p>
             : busy ? <p>{busyText}</p>
               : result ? <p>{result.icon} {result.caught

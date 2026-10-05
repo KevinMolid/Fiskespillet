@@ -1,0 +1,302 @@
+
+
+:root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-synthesis: none; }
+body { margin: 0; }
+button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+.control-button { width: 3rem; height: 3rem; border: 1px solid #ffffff33; border-radius: .5rem; background: #ffffff14; color: white; touch-action: manipulation; }
+.control-button:active { background: #67e8f966; }
+.control-button:disabled { opacity: .35; }
+
+.game-hud-button { border: 1px solid #e4dfbc88; border-radius: 5px; background: #173d36e8; color: #faf3d8; padding: 7px 11px; font-size: 12px; font-weight: 700; }
+.game-hud-button:disabled { opacity: .4; }
+.game-hud-button kbd { margin-left: 7px; color: #bdd0b9; font-size: 10px; }
+.context-action { position: absolute; top: 8px; right: 8px; border: 1px solid #e4dfbc88; border-radius: 4px; background: #173d36ed; color: #faf3d8; padding: 4px 8px; font-size: 11px; line-height: 16px; font-weight: 700; cursor: pointer; }
+.context-action:focus-visible { outline: 2px solid #dac38c; outline-offset: 2px; }
+.place-notice { position: absolute; top: 16px; left: 16px; pointer-events: none; color: #fff5d8; background: #183a36ed; border-left: 4px solid #dac38c; padding: 10px 24px 12px 14px; border-radius: 0 4px 4px 0; box-shadow: 0 3px 0 #102d2c44; animation: place-arrival 3.2s ease both; }
+.place-notice span { display: block; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #b7cbb2; }
+.place-notice strong { display: block; font-size: 19px; font-family: Georgia, serif; margin-top: 2px; }
+@keyframes place-arrival { 0% { opacity: 0; transform: translateX(-12px); } 10%, 78% { opacity: 1; transform: translateX(0); } 100% { opacity: 0; transform: translateX(-6px); } }
+.game-menu { position: absolute; inset: 0; overflow-y: auto; padding: clamp(12px, 4%, 32px); color: #263e38; background: #eae4cfee; backdrop-filter: blur(3px); border: 6px solid #476454; box-shadow: inset 0 0 0 2px #f7f0d9; }
+.game-menu-heading { border-bottom: 2px solid #9aa68a; padding-bottom: 12px; margin-bottom: 18px; }
+.game-menu-heading > span { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #667b62; }
+.game-menu-heading h2 { margin: 2px 0 0; font: bold clamp(22px, 4vw, 32px) Georgia, serif; }
+.game-menu-columns { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(12px, 4%, 28px); align-items: start; }
+.equipment-card { background: #f9f3df; border: 2px solid #96a486; box-shadow: 3px 3px 0 #b4baa2; padding: 14px; }
+.equipment-portrait { display: flex; align-items: center; gap: 12px; padding-bottom: 9px; border-bottom: 1px solid #d3d4b8; font-size: 14px; font-weight: 800; }
+.fisher-portrait { width: 66px; height: 78px; flex: 0 0 auto; image-rendering: pixelated; }
+.equipment-card dl { margin: 10px 0; font-size: 13px; }
+.equipment-card dl > div { display: flex; gap: 6px; flex-wrap: wrap; justify-content: space-between; padding: 6px 0; }
+.equipment-card dt { color: #6f7b65; }.equipment-card dd { font-weight: 700; }
+.menu-coins { border-top: 1px solid #d3d4b8; padding-top: 10px; font-weight: 800; color: #8e6f36; }.menu-coins span { font-size: 11px; font-weight: 500; }
+.game-menu-list { display: grid; gap: 10px; }
+.game-menu-list button { display: grid; grid-template-columns: 30px 1fr 10px; align-items: center; gap: 10px; text-align: left; padding: 16px 12px; border: 2px solid #9aa68a; border-radius: 3px; background: #f8f2dc; box-shadow: 0 3px 0 #b4baa2; cursor: pointer; }
+.game-menu-list button:hover, .game-menu-list button:focus-visible { outline: 3px solid #bb9349; outline-offset: 2px; background: #fff8df; }
+.game-menu-list button strong { display: block; font-size: 16px; }.game-menu-list button small { display: block; font-size: 10px; margin-top: 3px; color: #6f7b65; }.menu-symbol { font-size: 23px; text-align: center; }
+.game-menu-hint { margin: 20px 0 0; font-size: 10px; color: #687761; text-align: right; }
+.wardrobe-preview { display: flex; justify-content: center; gap: 20px; margin: 14px 0; padding: 10px; background: #ced7b7; border: 2px solid #9cae8c; }
+@media (max-width: 520px) {
+  .game-hud-button { font-size: 10px; padding: 5px 7px; }.game-hud-button kbd { display: none; }
+  .place-notice { top: 8px; left: 8px; padding: 5px 10px; }.place-notice strong { font-size: 14px; }.place-notice span { font-size: 7px; }
+  .game-menu { padding: 10px; border-width: 3px; }.game-menu-heading { padding-bottom: 6px; margin-bottom: 10px; }.game-menu-heading > span { display: none; }
+  .game-menu-columns { gap: 10px; }.equipment-card { padding: 6px; }.equipment-portrait { gap: 3px; padding-bottom: 4px; font-size: 10px; }.equipment-portrait .fisher-portrait { width: 25px; height: 30px; }
+  .equipment-card dl { margin: 2px 0; font-size: 10px; }.equipment-card dl > div { padding: 2px 0; }.menu-coins { padding-top: 3px; font-size: 11px; line-height: 1.2; }
+  .game-menu-list { gap: 7px; }.game-menu-list button { padding: 9px 6px; gap: 5px; grid-template-columns: 18px 1fr 6px; }.game-menu-list button strong { font-size: 11px; }.game-menu-list button small { display: none; }.menu-symbol { font-size: 15px; }.game-menu-hint { font-size: 8px; margin-top: 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .place-notice { animation: none; } }
+
+/* Shared compact dialogs: long collections use pages, never nested scrolling. */
+.game-shell { padding-top: 24px; }
+.pocket-dialog { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; padding: 24px; overflow: hidden; background: #e9e5ce; color: #263e38; }
+.dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 2px solid #9aa68a; padding-bottom: 10px; flex: 0 0 auto; }
+.dialog-heading h2 { font: bold 25px Georgia, serif; margin: 0; }.dialog-heading p { font-size: 12px; margin: 4px 0 0; }
+.pocket-dialog button { border: 1px solid #859879; border-radius: 4px; padding: 7px 12px; background: #faf5df; color: #263e38; font-size: 12px; font-weight: 700; min-height: 32px; }
+.pocket-dialog button:disabled { opacity: .4; }
+.game-frame [data-nav-active="true"], .game-frame button:focus-visible { outline: 3px solid #bd8c35; outline-offset: 1px; }
+.dialog-tabs { display: flex; gap: 6px; }.dialog-tabs button { flex: 1; padding: 6px 8px; }
+.dialog-tabs button[aria-selected="true"] { background: #315b51; color: #fff7dd; }
+.inventory-filters { display: grid; gap: 6px; }.dialog-items { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 8px; flex: 1; min-height: 0; }
+.inventory-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid #a8b095; background: #f7f2de; min-width: 0; }
+.inventory-item h3 { font-size: 15px; font-weight: 800; }.inventory-item h3 span { color: #768065; font-size: 12px; }.inventory-item p { font-size: 12px; margin-top: 3px; }.inventory-item strong { font-size: 12px; }
+.item-actions { display: flex; flex-wrap: wrap; gap: 6px; flex: 0 0 auto; }.item-actions button { background: #315b51; color: #fff7dd; }
+.dialog-empty { padding: 20px 0; font-size: 13px; }
+.dialog-footer { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 11px; flex: 0 0 auto; margin-top: auto; }
+.dialog-pager { display: flex; gap: 10px; align-items: center; }.dialog-pager span { min-width: 32px; text-align: center; }.dialog-pager button { min-width: 36px; }
+.dialog-error { font-size: 11px; color: #822f27; background: #efd5bf; padding: 5px 8px; flex: 0 0 auto; }
+.wardrobe-content { display: grid; grid-template-columns: 110px 1fr; gap: 20px; align-items: center; flex: 1; min-height: 0; }
+.wardrobe-content .wardrobe-preview { flex-direction: column; align-items: center; gap: 0; margin: 0; padding: 2px; }.wardrobe-content .fisher-portrait { width: 48px; height: 57px; }
+.wardrobe-colors { display: grid; gap: 12px; }.wardrobe-colors legend { font-size: 12px; font-weight: 700; margin-bottom: 5px; }.color-options { display: flex; gap: 8px; }
+.pocket-dialog .color-options button { width: 36px; height: 36px; min-height: 0; padding: 0; border: 2px solid #fff9e8; color: white; text-shadow: 0 1px 2px #000; }.color-options button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px #263e38; }
+.wardrobe-footer { justify-content: flex-end; }.wardrobe-footer button:last-child { background: #315b51; color: #fff7dd; }
+.fish-entry { display: flex; align-items: center; gap: 24px; flex: 1; min-height: 0; padding: 16px; background: #f7f2de; border: 1px solid #a8b095; }.fish-illustration { font-size: 64px; min-width: 96px; text-align: center; color: #869975; }.fish-number { font-size: 11px; letter-spacing: 2px; color: #798368; }.fish-entry h3 { font: bold 24px Georgia, serif; }.fish-entry p { font-size: 13px; margin: 8px 0; }.fish-entry dl { display: flex; gap: 24px; font-size: 12px; }.fish-entry dd { font-weight: 800; }
+.handheld-controls { display: none; }
+
+.start-screen { min-height: 0; flex: 1; display: grid; place-items: center; padding: clamp(20px, 6vw, 64px) 12px; }
+.start-card { position: relative; width: min(100%, 520px); padding: clamp(24px, 6vw, 46px); text-align: center; color: #263e38; background: #eae4cfee; border: 6px solid #476454; box-shadow: inset 0 0 0 2px #f7f0d9, 8px 8px 0 #020d16aa; }
+.start-emblem { display: grid; place-items: center; width: 60px; height: 60px; margin: 0 auto 14px; border: 2px solid #96a486; background: #f9f3df; box-shadow: 3px 3px 0 #b4baa2; font-size: 30px; }
+.start-kicker { color: #667b62; font-size: 10px; font-weight: 800; letter-spacing: .2em; }
+.start-card h1 { margin: 3px 0 0; font: bold clamp(34px, 8vw, 48px) Georgia, serif; letter-spacing: .02em; }
+.start-copy { margin: 8px auto 0; color: #667b62; font-size: 14px; }
+.start-actions { display: grid; gap: 10px; margin-top: 28px; }
+.start-button { min-height: 50px; padding: 10px 14px; border: 2px solid #89977d; border-radius: 3px; background: #f9f3df; box-shadow: 0 3px 0 #b4baa2; color: #263e38; font-size: 15px; font-weight: 800; cursor: pointer; }
+.start-button:hover:not(:disabled), .start-button:focus-visible { outline: 3px solid #bb9349; outline-offset: 2px; background: #fff8df; }
+.start-button:disabled { cursor: default; opacity: .48; }
+.start-button-primary { border-color: #315b51; background: #315b51; color: #fff7dd; }
+.start-button-primary:hover:not(:disabled), .start-button-primary:focus-visible { background: #24483f; }
+.start-button span { display: block; margin-top: 2px; font-size: 10px; font-weight: 500; opacity: .8; }
+.start-status, .start-footnote { margin-top: 20px; color: #667b62; font-size: 11px; }
+.start-error { margin-top: 14px; padding: 9px 11px; border: 1px solid #b97d6d; background: #f3d9ce; color: #762f28; font-size: 12px; text-align: left; }
+.start-retry { margin-top: 10px; color: #315b51; font-size: 12px; font-weight: 700; text-decoration: underline; }
+.start-confirm-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 18px; background: #061c2bd9; }
+.start-confirm { width: min(100%, 430px); padding: clamp(20px, 5vw, 30px); border: 4px solid #476454; background: #eae4cf; color: #263e38; box-shadow: inset 0 0 0 2px #f7f0d9, 8px 8px 0 #020d1680; }
+.start-confirm h2 { margin: 5px 0 10px; font: bold 24px Georgia, serif; }
+.start-confirm > p:not(.start-kicker):not(.start-error) { color: #566a58; font-size: 13px; line-height: 1.5; }
+.start-confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 22px; }
+.start-button-danger { border-color: #8a3c32; background: #8a3c32; color: #fff4e5; }
+.start-button-danger:hover:not(:disabled), .start-button-danger:focus-visible { background: #702d27; }
+@media (max-width: 520px) { .start-screen { padding: 18px 12px; }.start-card { border-width: 4px; }.start-confirm-actions { grid-template-columns: 1fr; }.start-confirm h2 { font-size: 21px; } }
+
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
+  .app-shell.game-active { padding: 0; }.game-active .app-header { height: 56px; padding: 6px 12px; gap: 8px; flex: 0 0 auto; }
+  .game-active .app-header > button { font-size: 14px; }.game-active .app-header > div { gap: 8px; }.game-active .app-header > div > button:first-child { display: none; }
+  .game-active .app-header > div > button { font-size: 11px; padding: 5px 6px; }
+  .game-shell { --controls-height: 176px; width: 100%; margin-left: 0; height: calc(100svh - 56px); min-height: 460px; padding: 0; display: grid; grid-template-rows: minmax(0, 1fr) var(--controls-height); background: #d0cfbe; }
+  .game-frame { aspect-ratio: auto; min-height: 0; border: 0; border-radius: 0; box-shadow: inset 0 0 0 2px #617567; }
+  .desktop-control-hint { display: none; }.context-action { display: none; }
+  .handheld-controls { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 24px max(22px, env(safe-area-inset-right)) 16px max(22px, env(safe-area-inset-left)); border-top: 6px solid #757c72; background: linear-gradient(120deg, #d8d8c9, #b5baaf); border-radius: 0 0 30px 6px; box-shadow: inset 0 3px 0 #edf0de; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .handheld-brand { position: absolute; left: 20px; top: 5px; display: flex; align-items: center; gap: 6px; color: #4d6261; font-size: 9px; font-weight: 900; letter-spacing: 2px; font-style: italic; }.handheld-brand span { font-weight: 500; }.handheld-brand i { width: 5px; height: 5px; border-radius: 50%; background: #68863f; box-shadow: 0 0 4px #68863f; }
+  .dpad { display: grid; grid-template: repeat(3, 40px) / repeat(3, 40px); filter: drop-shadow(0 4px 0 #7b8379); }
+  .dpad button, .dpad-center { display: flex; align-items: center; justify-content: center; background: #303d3e; color: #a4af9e; border: 0; padding: 0; font-size: 17px; touch-action: none; -webkit-tap-highlight-color: transparent; }
+  .dpad button[data-held="true"], .dpad button:active { background: #516059; color: #e5efd6; box-shadow: inset 0 3px 5px #182c2a; }
+  .dpad-up { grid-area: 1 / 2; border-radius: 5px 5px 0 0; }.dpad-left { grid-area: 2 / 1; border-radius: 5px 0 0 5px; }.dpad-right { grid-area: 2 / 3; border-radius: 0 5px 5px 0; }.dpad-down { grid-area: 3 / 2; border-radius: 0 0 5px 5px; }.dpad-center { grid-area: 2 / 2; }.dpad-center::after { content: ''; width: 17px; height: 17px; border-radius: 50%; box-shadow: inset 0 2px 3px #172a2a; }
+  .handheld-buttons { display: flex; align-items: center; gap: 14px; transform: rotate(-12deg); padding-bottom: 10px; }.handheld-key { display: flex; flex-direction: column; align-items: center; gap: 9px; }.handheld-key span { font-size: 8px; font-weight: 800; letter-spacing: .5px; color: #4b605b; text-transform: uppercase; max-width: 80px; text-align: center; }
+  .handheld-key button { width: 54px; height: 54px; border-radius: 50%; border: 2px solid #713b50; background: #98465f; color: #f3d4d5; box-shadow: 0 5px 0 #613848, inset 0 2px 2px #cf879080; font-size: 23px; font-weight: 800; touch-action: none; }
+  .handheld-key .pocket-menu { background: #596a66; border-color: #3d514d; box-shadow: 0 5px 0 #344a45, inset 0 2px 2px #8fa393; }
+  .handheld-key button:active { transform: translateY(3px); box-shadow: 0 2px 0 #613848; }.handheld-key button:disabled, .dpad button:disabled { opacity: .45; }
+  .speaker-grille { position: absolute; right: 18px; bottom: 10px; display: flex; gap: 5px; transform: rotate(-20deg); }.speaker-grille i { width: 3px; height: 13px; border-radius: 3px; background: #8a968b; box-shadow: 1px 0 0 #dde1cd; }
+  .pocket-dialog { padding: 12px; gap: 8px; }.dialog-heading { padding-bottom: 7px; }.dialog-heading h2 { font-size: 21px; }.dialog-heading p { font-size: 10px; }.pocket-dialog button { padding: 6px 8px; min-height: 30px; font-size: 11px; }
+  .dialog-items { gap: 6px; }.inventory-item { padding: 8px; gap: 6px; }.inventory-item h3 { font-size: 13px; }.inventory-item p, .inventory-item strong { font-size: 10px; }.item-actions { flex-direction: column; gap: 4px; }.dialog-footer { font-size: 10px; }.dialog-pager { gap: 5px; }
+  .dialog-tabs { gap: 4px; }.dialog-tabs button { font-size: 10px; padding: 5px 2px; }.category-tabs button { min-width: 0; }
+  .wardrobe-content { grid-template-columns: 64px minmax(0, 1fr); gap: 12px; }.wardrobe-content .fisher-portrait { width: 40px; height: 48px; }.wardrobe-content .wardrobe-preview { padding: 0; }.wardrobe-colors { gap: 10px; }.wardrobe-colors legend { font-size: 11px; }.color-options { gap: 5px; }.pocket-dialog .color-options button { width: 32px; height: 32px; }
+  .fish-entry { gap: 12px; padding: 10px; }.fish-illustration { min-width: 54px; font-size: 40px; }.fish-entry h3 { font-size: 22px; }.fish-entry p { font-size: 12px; }.fish-entry dl { font-size: 11px; gap: 16px; }
+  .game-menu { padding: 12px; display: flex; flex-direction: column; overflow: hidden; border: 3px solid #73816a; gap: 10px; }.game-menu-heading { margin: 0; padding-bottom: 6px; }.game-menu-heading h2 { font-size: 24px; }.game-menu-heading > span { display: none; }.game-menu-columns { flex: 1; align-items: center; gap: 10px; }.game-menu-hint { margin: 0; font-size: 9px; }
+  .game-menu-list button { padding: 14px 8px; grid-template-columns: 20px 1fr 6px; gap: 6px; }.game-menu-list button strong { font-size: 12px; }.game-menu-list button small { display: none; }.menu-symbol { font-size: 17px; }.equipment-card { padding: 10px; }.equipment-portrait { font-size: 11px; }.equipment-portrait .fisher-portrait { width: 34px; height: 40px; }.equipment-card dl { font-size: 11px; }.equipment-card dl > div { padding: 5px 0; }
+}
+@media (max-width: 350px) {
+  .handheld-controls { padding-left: 15px; padding-right: 15px; }.dpad { grid-template: repeat(3, 36px) / repeat(3, 36px); }.handheld-buttons { gap: 10px; }.handheld-key button { width: 48px; height: 48px; }
+  .pocket-dialog { padding: 9px; }.wardrobe-content { grid-template-columns: 49px minmax(0, 1fr); gap: 8px; }.color-options { gap: 4px; }.pocket-dialog .color-options button { width: 30px; height: 30px; }
+}
+@media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) {
+  .game-shell { --controls-height: 112px; min-height: 0; }.handheld-controls { padding: 10px 15%; }.handheld-brand { left: 30px; top: 12px; }.dpad { grid-template: repeat(3, 29px) / repeat(3, 29px); }.handheld-buttons { padding: 0; gap: 18px; }.handheld-key button { width: 43px; height: 43px; }.handheld-key { gap: 5px; }
+  .pocket-dialog { padding: 7px 16px; gap: 5px; }.dialog-heading { padding-bottom: 3px; }.dialog-heading h2 { font-size: 18px; }.dialog-heading p { display: inline; font-size: 9px; }.dialog-items { grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); }.inventory-item { padding: 5px 8px; }.inventory-item p { margin: 0; }.dialog-tabs button { min-height: 24px; padding: 3px 8px; }.inventory-filters { display: flex; }.inventory-filters > * { flex: 1; }.dialog-footer button { min-height: 24px; padding: 3px 8px; }
+  .wardrobe-content { grid-template-columns: 120px 1fr; gap: 16px; }.wardrobe-content .wardrobe-preview { flex-direction: row; border: 0; background: transparent; }.wardrobe-colors { grid-template-columns: 1fr 1fr 1fr; gap: 10px; }.pocket-dialog .color-options button { width: 23px; height: 25px; }.color-options { gap: 3px; }.wardrobe-colors legend { font-size: 10px; }
+  .game-menu { padding: 7px 16px; gap: 4px; }.game-menu-heading h2 { font-size: 18px; }.game-menu-columns { grid-template-columns: 1fr 1fr; gap: 20px; }.equipment-card { padding: 5px 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }.equipment-portrait { padding: 0; border: 0; }.equipment-card dl { margin: 0; font-size: 10px; }.equipment-card dl > div { padding: 1px 0; }.menu-coins { padding: 0; border: 0; font-size: 10px; }.game-menu-list { gap: 4px; }.game-menu-list button { padding: 4px 8px; }.game-menu-list button strong { font-size: 11px; }.game-menu-hint { font-size: 8px; }
+  .fish-entry { padding: 5px 14px; }.fish-entry p { margin: 3px 0; font-size: 11px; }.fish-entry h3 { font-size: 18px; }
+}
+
+/* Compact fishing loop dialog fits both the desktop scene and the handheld display. */
+.fishing-dialog { position: absolute; z-index: 8; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 28px)); max-height: calc(100% - 28px); overflow-y: auto; padding: clamp(14px, 3vw, 24px); border: 4px solid #476454; background: #eae4cf; color: #263e38; box-shadow: inset 0 0 0 2px #f7f0d9, 7px 7px 0 #102b2988; }
+.fishing-dialog.cast-meter-overlay { inset: auto 12px 12px auto; transform: none; width: min(255px, calc(100% - 24px)); max-height: none; overflow: visible; padding: 5px; border-width: 2px; box-shadow: 3px 3px 0 #102b2988; }
+.cast-meter-overlay .cast-aim-layout { min-height: 154px; gap: 5px; padding: 3px 7px; }
+.cast-meter-overlay .cast-meter { flex-basis: 78px; }
+.cast-meter-overlay .cast-meter-readout strong { font-size: 16px; }
+.cast-meter-overlay .cast-meter-readout small { font-size: 9px; }
+.fishing-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 2px solid #9aa68a; padding-bottom: 9px; }
+.fishing-heading span { color: #667b62; font-size: 9px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.fishing-heading h2 { margin: 2px 0 0; font: bold clamp(20px, 4vw, 27px) Georgia, serif; }
+.fishing-dialog button { min-height: 38px; border: 2px solid #91a184; border-radius: 3px; background: #f9f3df; color: #263e38; font-size: 12px; font-weight: 750; cursor: pointer; }
+.fishing-dialog button:disabled { opacity: .45; }
+.fishing-back { padding: 5px 9px; }
+.fishing-prompt { margin: 12px 0; font-size: 13px; }
+.cast-aim-layout { display: flex; align-items: center; gap: 18px; min-height: 170px; padding: 8px 14px; background: #dce2c9; border: 2px solid #a2ae91; }
+.cast-meter { display: flex; flex: 0 0 88px; flex-direction: column; align-items: center; justify-content: space-between; gap: 4px; height: 150px; padding: 4px !important; border: 0 !important; background: transparent !important; }
+.cast-meter-caption { color: #657761; font-size: 8px; font-weight: 900; letter-spacing: .08em; }
+.cast-meter-track { position: relative; width: 32px; height: 112px; border: 3px solid #526d5d; border-radius: 5px; background: linear-gradient(90deg, #abc0a1, #e7e4c9 50%, #abc0a1); box-shadow: inset 0 0 0 2px #eae4cf; }
+.cast-meter-tick { position: absolute; left: -5px; right: -5px; display: flex; align-items: center; height: 14px; transform: translateY(-50%); border-top: 1px solid #70816d; }
+.cast-meter-tick b { position: absolute; left: -20px; color: #7a8770; font-size: 8px; font-weight: 700; }
+.cast-meter-tick.is-unavailable { opacity: .2; }
+.cast-meter-tick.is-current { border-color: #be9143; }
+.cast-meter-tick.is-current b { color: #795b27; font-size: 10px; font-weight: 900; }
+.cast-meter-pointer { position: absolute; z-index: 1; left: -9px; right: -9px; height: 5px; transform: translateY(-50%); transition: top .1s linear; background: #bd5944; box-shadow: 0 1px 0 #fff0ce; }
+.cast-meter-pointer b { position: absolute; right: -12px; top: -5px; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-right: 9px solid #bd5944; }
+.cast-meter-readout { display: grid; gap: 5px; }
+.cast-meter-readout span { color: #71806d; font-size: 8px; font-weight: 900; letter-spacing: .14em; }
+.cast-meter-readout strong { font: bold 20px Georgia, serif; color: #315b51; }
+.cast-meter-readout small { color: #667b62; font-size: 11px; }
+.fishing-choice-list button { display: grid; gap: 3px; justify-items: start; padding: 9px; text-align: left; }
+.fishing-choice-list span { color: #667b62; font-size: 10px; }
+.fishing-tip { margin: 10px 0; color: #667b62; font-size: 11px; }
+.fishing-primary { min-width: 118px; padding: 7px 12px; background: #315b51 !important; border-color: #24483f !important; color: #fff7dd !important; }
+.fishing-primary kbd, .fishing-reel kbd { margin-left: 8px; font-size: 9px; opacity: .8; }
+.fishing-choice-list { display: grid; gap: 7px; }
+.fishing-choice-list button { grid-template-columns: 1fr; width: 100%; }
+.fishing-choice-list strong { font-size: 13px; }
+.fishing-wait, .fishing-hook, .fishing-fight { padding-top: 16px; text-align: center; }
+.cast-animation { padding-top: 5px; }
+.cast-scene { position: relative; height: 160px; overflow: hidden; border: 2px solid #a2ae91; background: linear-gradient(#c4d3bc 0 59%, #9fc0ae 59% 63%, #628f8b 63% 100%); image-rendering: pixelated; }
+.cast-water-lane { position: absolute; left: 25%; right: 3%; top: 62%; height: 42px; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 2px solid #bedbd0; }
+.cast-water-lane i { position: relative; border-right: 1px dashed #b5d0bf77; background: repeating-linear-gradient(0deg, transparent 0 7px, #b2d0c055 7px 9px); }
+.cast-water-lane i.is-landing { background: repeating-linear-gradient(0deg, #a8d7ce88 0 3px, #76aaa488 3px 7px); }
+.cast-fisher { position: absolute; z-index: 1; left: 8%; bottom: 22%; width: 19px; height: 35px; }
+.cast-fisher::before { content: ''; position: absolute; left: 4px; top: 0; width: 12px; height: 12px; background: #e2b68c; box-shadow: 0 -4px 0 #805238, 0 2px 0 #573a30; }
+.cast-fisher::after { content: ''; position: absolute; left: 5px; top: 13px; width: 11px; height: 15px; background: #477464; box-shadow: -4px 14px 0 -2px #514b3d, 5px 14px 0 -2px #514b3d; }
+.cast-fisher i { position: absolute; z-index: 2; left: 14px; top: 10px; width: 37px; height: 2px; transform: rotate(-23deg); transform-origin: left; background: #76583c; }
+.cast-fisher b { position: absolute; z-index: 2; left: 48px; top: -3px; width: 1px; height: 64px; transform: rotate(-7deg); transform-origin: top; background: #f3e8b9; }
+.cast-flying-lure { position: absolute; z-index: 3; left: 25%; top: 46%; width: 7px; height: 7px; background: #d54b37; border: 2px solid #f0dcaa; image-rendering: pixelated; }
+.cast-animation .cast-flying-lure { animation: cast-arc .85s cubic-bezier(.2,.65,.45,1) both; }
+@keyframes cast-arc { 0% { left: 25%; top: 46%; transform: rotate(0deg); } 55% { left: var(--cast-mid); top: 14%; transform: rotate(100deg); } 100% { left: var(--cast-end); top: 63%; transform: rotate(190deg); } }
+.cast-splash { position: absolute; z-index: 2; left: var(--cast-end); top: 66%; width: 6px; height: 4px; opacity: 0; border: 2px solid #def3d8; border-radius: 50%; transform: translate(-50%, -50%); }
+.cast-animation .cast-splash { animation: cast-splash .5s .7s ease-out both; }
+@keyframes cast-splash { 0% { opacity: 1; width: 5px; height: 3px; } 100% { opacity: 0; width: 38px; height: 18px; } }
+.fishing-wait strong { display: block; margin: 10px 0; font-size: 14px; }
+.fishing-wait p { color: #667b62; font-size: 11px; }
+.fishing-lure { display: block; color: #4d8290; font-size: 34px; animation: lure-bob .8s ease-in-out infinite alternate; }
+@keyframes lure-bob { to { transform: translateY(7px) rotate(12deg); } }
+.fishing-meter { height: 13px; overflow: hidden; border: 2px solid #83937b; background: #d2d7c2; }
+.fishing-meter i { display: block; height: 100%; width: 0; background: #4e9178; transition: width .1s linear; }
+.fishing-meter .fishing-sink-meter { width: 100%; background: #4e8291; transform-origin: left; animation: sink-progress linear forwards; }
+@keyframes sink-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.fishing-hook p { font-size: 17px; font-weight: 800; }
+.fishing-bite-mark { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #c35f45; color: #fff5dd; font-size: 27px; animation: bite-flash .45s steps(2) infinite; }
+@keyframes bite-flash { 50% { transform: scale(1.15); } }
+.fishing-hook small, .fishing-fight small { display: block; margin-top: 10px; color: #667b62; font-size: 10px; }
+.fishing-gauge-label { display: flex; justify-content: space-between; margin: 10px 0 4px; font-size: 11px; }
+.tension-meter i { background: #d7a342; }
+.fishing-reel { width: 100%; margin-top: 13px; background: #d2dec4 !important; }
+.fishing-reel.is-reeling { background: #b2c8a2 !important; }
+.fishing-saving { padding: 22px 0; text-align: center; }
+@media (max-width: 767px) { .fishing-dialog { width: min(520px, calc(100% - 20px)); max-height: calc(100% - 20px); border-width: 3px; padding: 13px; }.fishing-dialog.cast-meter-overlay { inset: auto 10px 10px auto; width: min(245px, calc(100% - 20px)); padding: 4px; border-width: 2px; }.fishing-prompt { font-size: 12px; }.cast-aim-layout { min-height: 150px; gap: 14px; padding: 6px 10px; }.cast-meter { height: 138px; }.cast-meter-track { height: 102px; }.cast-meter-readout strong { font-size: 17px; }.cast-scene { height: 140px; } }
+@media (prefers-reduced-motion: reduce) { .fishing-lure, .fishing-bite-mark { animation: none; } }
+
+/* Field guide / collection journal. Desktop keeps a master-detail view; phones use one full-width page at a time. */
+.fish-book-dialog { inset: 0; gap: 10px; }
+.fish-book-progress { flex: 0 0 auto; display: grid; gap: 5px; }
+.fish-progress-labels { display: flex; justify-content: space-between; color: #5c6b5a; font-size: 10px; }
+.fish-progress-labels strong { color: #263e38; }
+.fish-progress-track { position: relative; height: 8px; overflow: hidden; border: 1px solid #8c9a7d; border-radius: 5px; background: #d3d8c2; }
+.fish-progress-track span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; }
+.fish-progress-caught { background: #315b51; }
+.fish-book-layout { display: grid; grid-template-columns: minmax(225px, .82fr) minmax(0, 1.6fr); gap: 14px; flex: 1; min-height: 0; }
+.fish-list, .fish-details { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.fish-list { order: 0; padding: 6px; border: 1px solid #a8b095; background: #d8ddc7; }
+.fish-list button { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; min-height: 54px; margin-bottom: 4px; padding: 5px 8px; border: 1px solid transparent; border-radius: 3px; background: #f7f2de; color: #263e38; text-align: left; }
+.fish-list button[aria-selected="true"] { border-color: #9b7a3d; outline: 2px solid #315b51; outline-offset: -2px; background: #315b51; color: #fff7dd; }
+.fish-list button:focus-visible { outline: 3px solid #bd8c35; outline-offset: 1px; }
+.fish-list-art { display: grid; place-items: center; width: 46px; height: 36px; overflow: hidden; border: 1px solid #b8bea4; background: #ece8d1; }
+.fish-list-art .fish-image, .fish-list-art .fish-image-placeholder { width: 100%; height: 100%; object-fit: contain; }
+.fish-list-question { font: bold 24px Georgia, serif; color: #74816a; }
+.fish-list-name { min-width: 0; overflow-wrap: anywhere; font-size: 13px; font-weight: 800; }
+.fish-list-name small { display: block; overflow: hidden; color: inherit; font-size: 9px; font-weight: 400; opacity: .82; text-overflow: ellipsis; }
+.fish-status-pair { display: flex; gap: 5px; align-items: center; }
+.fish-status-mark { display: grid; justify-items: center; gap: 1px; width: 34px; color: #89917f; opacity: .34; }
+.fish-status-mark svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.fish-status-mark small { font-size: 7px; line-height: 1; }
+.fish-status-pair.state-seen .fish-status-mark:first-child, .fish-status-pair.state-caught .fish-status-mark { color: #d7e5ba; opacity: 1; }
+.fish-details { order: 1; padding: 12px; border: 1px solid #a8b095; background: #f7f2de; font-size: 13px; line-height: 1.45; }
+.fish-details:focus-visible { outline: 2px solid #315b51; outline-offset: -2px; }
+.fish-detail-page { display: grid; gap: 12px; max-width: 850px; margin: 0 auto; }
+.fish-detail-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.fish-detail-title h3 { margin: 0; font: bold 25px Georgia, serif; }
+.fish-detail-title p { margin: 3px 0 0; font-size: 12px; }
+.fish-scientific { font-style: italic; }
+.fish-state-chip { flex: 0 0 auto; padding: 4px 8px; border: 1px solid #a8b095; border-radius: 12px; color: #536b5a; font-size: 10px; font-weight: 800; }
+.caught-chip { display: flex; align-items: center; gap: 4px; background: #dce5cf; color: #315b51; }
+.caught-chip svg { width: 12px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fish-art-stage { display: grid; place-items: center; width: 100%; aspect-ratio: 3 / 2; max-height: min(34vh, 280px); overflow: hidden; border: 2px solid #a8b095; background-color: #e5e6d1; background-image: linear-gradient(45deg, #dfe1cb 25%, transparent 25%), linear-gradient(-45deg, #dfe1cb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #dfe1cb 75%), linear-gradient(-45deg, transparent 75%, #dfe1cb 75%); background-size: 12px 12px; background-position: 0 0, 0 6px, 6px -6px, -6px 0; }
+.fish-art-stage .fish-image { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges; }
+.fish-art-stage.undiscovered { background: #e9e5ce; background-image: radial-gradient(#cbd1b9 1px, transparent 1px); background-size: 8px 8px; }
+.fish-question { display: grid; place-items: center; width: 76px; height: 76px; border: 2px solid #73816b; background: #f7f2de; box-shadow: 4px 4px 0 #b5bea6; color: #536b5a; font: bold 52px Georgia, serif; }
+.fish-locked-copy { margin: 0; color: #5e6c59; font-size: 12px; }
+.fish-weight-range { margin: -3px 0 0; color: #315b51; font-size: 17px; font-weight: 900; }
+.fish-description { margin: -5px 0 0; }
+.fish-journal-section { padding-top: 10px; border-top: 1px solid #a8b095; }
+.fish-journal-section h4 { margin: 0 0 8px; color: #536b5a; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.fish-catch-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 0; }
+.fish-catch-stats > div { display: grid; gap: 2px; padding: 8px 5px; border: 1px solid #bdc3ab; background: #ecebd6; text-align: center; }
+.fish-catch-stats dd { margin: 0; color: #263e38; font-size: clamp(12px, 4.5vw, 17px); font-weight: 900; }
+.fish-catch-stats dt { color: #62715d; font-size: 9px; }
+.fish-catch-stats .personal-record { border-color: #ad955d; background: #f1e8c9; }
+.fish-catch-stats .personal-record dd { color: #795f2c; }
+.personal-record dt { display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
+.fish-record-icon { width: 13px; height: 13px; fill: none; stroke: #9a783b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.fish-locations ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.fish-locations li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid #a8b095; background: #e5e7d2; color: #3f5f51; font-size: 11px; }
+.location-status { display: inline-flex; align-items: center; gap: 4px; color: #315b51; }
+.location-status svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.fish-locations p { margin: 0; color: #687761; }
+.fish-book-footer { display: flex; justify-content: space-between; gap: 8px; flex: 0 0 auto; color: #66745f; font-size: 10px; }
+.fish-mobile-back, .fish-controls-mobile { display: none; }
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
+  .fish-book-dialog { gap: 8px; padding: 12px; }
+  .fish-book-dialog .dialog-heading { gap: 8px; padding-bottom: 7px; }
+  .fish-book-dialog .dialog-heading h2 { font-size: 21px; }
+  .fish-book-dialog .dialog-heading p { max-width: 250px; font-size: 10px; line-height: 1.25; }
+  .fish-book-dialog .dialog-heading > button { display: none; }
+  .fish-book-layout { display: block; }
+  .fish-book-dialog.is-mobile-list .fish-details, .fish-book-dialog.is-mobile-detail .fish-list { display: none; }
+  .fish-book-dialog.is-mobile-list .fish-list, .fish-book-dialog.is-mobile-detail .fish-details { display: block; width: 100%; height: 100%; }
+  .fish-list { padding: 5px; }
+  .fish-list button { grid-template-columns: 46px minmax(0, 1fr) auto; gap: 7px; min-height: 52px; padding: 5px 7px; }
+  .fish-details { padding: 12px; }
+  .fish-mobile-back { display: inline-flex; align-items: center; justify-self: start; min-height: 32px; padding: 4px 7px; border: 1px solid #a8b095; background: #ecebd6; color: #315b51; font-size: 11px; font-weight: 800; }
+  .fish-detail-page { gap: 11px; }
+  .fish-detail-title h3 { font-size: 23px; }
+  .fish-art-stage { width: 100%; height: auto; aspect-ratio: 3 / 2; max-height: none; }
+  .fish-question { width: 64px; height: 64px; font-size: 44px; }
+  .fish-book-footer { font-size: 9px; }
+  .fish-controls-desktop { display: none; }
+  .fish-controls-mobile { display: inline; }
+}
+@media (max-width: 1023px) and (max-height: 500px) {
+  .fish-book-dialog { gap: 4px; padding: 5px 12px; }
+  .fish-book-dialog .dialog-heading { padding-bottom: 3px; }
+  .fish-book-dialog .dialog-heading h2 { font-size: 17px; }
+  .fish-book-dialog .dialog-heading p { font-size: 8px; }
+  .fish-progress-labels { font-size: 8px; }
+  .fish-progress-track { height: 5px; }
+  .fish-list button { min-height: 40px; padding: 3px 6px; }
+  .fish-art-stage { aspect-ratio: 2.3 / 1; }
+  .fish-detail-page { gap: 6px; }
+  .fish-detail-title h3 { font-size: 18px; }
+  .fish-weight-range { font-size: 14px; }
+  .fish-description, .fish-locked-copy { font-size: 10px; }
+}

@@ -1,0 +1,160 @@
+/* Godt Haill: shared UI materials. World pixels and game layout live in game-base.css. */
+:root {
+  --brand-bg: #071e33;
+  --brand-panel: #0d2941;
+  --brand-raised: #14364e;
+  --brand-border: #31516a;
+  --brand-text: #f5ead5;
+  --brand-muted: #b0c3cd;
+  --brand-gold: #edc68a;
+  --brand-sea: #80c7d3;
+  color-scheme: dark;
+  color: var(--brand-text);
+  background: var(--brand-bg);
+}
+button { cursor: pointer; }
+button:disabled { cursor: default; }
+.menu-icon { width: 22px; height: 22px; flex: 0 0 auto; }
+.game-logo { display: block; height: auto; object-fit: contain; max-width: 100%; }
+.brand-app { min-height: 100svh; background: radial-gradient(ellipse at 45% 35%, #102e48 0, #071e33 65%); color: var(--brand-text); }
+.app-shell { display: flex; flex-direction: column; min-height: 100svh; max-width: 1180px; margin: auto; padding: 0 36px; }
+.app-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 88px; border-bottom: 1px solid #b0c3cd20; }
+.brand-home { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 750; letter-spacing: -.03em; border-radius: 8px; }
+.header-logo { width: 100px; border-radius: 8px; }
+.header-note { display: flex; align-items: center; gap: 10px; color: var(--brand-muted); font-size: 12px; }
+.header-note .menu-icon { width: 18px; color: var(--brand-sea); }
+.app-nav { display: flex; align-items: center; gap: 8px; }
+.app-nav > button { padding: 9px 12px; border-radius: 9px; font-size: 13px; color: var(--brand-muted); min-height: 44px; }
+.app-nav > button:hover, .app-nav > button[aria-current="page"] { background: #80c7d315; color: var(--brand-text); }
+.app-nav > button:last-child { border: 1px solid var(--brand-border); }
+.app-footer { display: flex; justify-content: space-between; padding: 22px 0; border-top: 1px solid #b0c3cd20; color: var(--brand-muted); font-size: 11px; letter-spacing: .03em; }
+.app-footer span:first-child { font-weight: 750; color: var(--brand-gold); }
+.login-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); align-items: center; gap: 42px; flex: 1; padding: 56px 0 70px; }
+.login-hero { text-align: center; min-width: 0; }
+.start-kicker { color: var(--brand-gold); font-size: 10px; font-weight: 700; letter-spacing: .19em; }
+.login-logo { width: 100%; margin: 12px auto 20px; border-radius: 20px; }
+.login-copy { font-size: 17px; line-height: 1.65; color: var(--brand-muted); }
+.login-features { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 20px; margin-top: 22px; font-size: 10px; color: var(--brand-muted); }
+.login-features span::before { content: ''; display: inline-block; width: 4px; height: 4px; margin-right: 7px; border-radius: 50%; background: var(--brand-gold); vertical-align: middle; }
+.login-card { padding: 34px; border: 1px solid var(--brand-border); border-radius: 22px; background: linear-gradient(145deg, #14344c, #0b253c); box-shadow: 0 24px 64px #020e1b50; }
+.login-card h2 { margin-top: 10px; font-size: 28px; font-weight: 720; line-height: 1.15; letter-spacing: -.04em; }
+.login-description { margin-top: 12px; font-size: 13px; line-height: 1.6; color: var(--brand-muted); }
+.ui-input { display: block; margin-top: 8px; width: 100%; min-height: 48px; padding: 12px 14px; background: #061d31; border: 1px solid var(--brand-border); border-radius: 10px; color: var(--brand-text); outline: none; }
+.ui-input:focus { border-color: var(--brand-sea); box-shadow: 0 0 0 3px #80c7d320; }
+.brand-primary { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; padding: 12px 16px; border-radius: 10px; background: var(--brand-gold); color: #162a38; font-size: 14px; font-weight: 750; }
+.brand-primary:hover:not(:disabled) { background: #f6d7a5; }
+.brand-primary:disabled { opacity: .45; }
+.auth-links { display: flex; flex-wrap: wrap; gap: 12px 22px; margin-top: 22px; font-size: 12px; color: var(--brand-sea); }
+.brand-app button:focus-visible, .start-screen button:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 4px; }
+
+.start-screen { padding: 32px 0 40px; }
+.start-card { width: min(100%, 760px); padding: 0; border: 0; background: transparent; color: var(--brand-text); box-shadow: none; }
+.start-logo { width: min(100%, 660px); margin: 10px auto 12px; border-radius: 20px; }
+.start-copy { color: var(--brand-muted); line-height: 1.6; }
+.start-actions { max-width: 420px; margin: 26px auto 0; gap: 12px; }
+.start-button { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 56px; border: 1px solid var(--brand-border); border-radius: 12px; background: var(--brand-panel); color: var(--brand-text); box-shadow: none; font-size: 14px; font-weight: 700; }
+.start-button span { display: inline; margin: 0; font-size: inherit; font-weight: inherit; opacity: 1; }
+.start-button .start-button-copy { display: grid; gap: 3px; text-align: left; }
+.start-button-copy small { font-size: 11px; font-weight: 450; }
+.start-button-primary { min-height: 68px; background: var(--brand-gold); color: #172c3b; border-color: var(--brand-gold); }
+.start-button:hover:not(:disabled), .start-button:focus-visible { background: var(--brand-raised); }
+.start-button-primary:hover:not(:disabled), .start-button-primary:focus-visible { background: #f6d7a5; }
+.start-footnote { display: flex; justify-content: center; align-items: center; gap: 7px; color: var(--brand-muted); }
+.start-footnote .menu-icon { width: 14px; height: 14px; color: var(--brand-sea); }
+.start-status { color: var(--brand-muted); }
+.start-error, .dialog-error { color: #ffd0c4; background: #703c373b; border: 1px solid #b86d5d; border-radius: 8px; }
+.start-retry { color: var(--brand-sea); }
+.start-confirm-backdrop { background: #030f20c9; backdrop-filter: blur(8px); }
+.start-confirm { padding: 28px; border: 1px solid var(--brand-border); border-radius: 18px; background: var(--brand-panel); color: var(--brand-text); box-shadow: 0 24px 80px #0006; }
+.start-confirm h2 { font: 700 24px/1.2 ui-sans-serif, system-ui, sans-serif; letter-spacing: -.03em; }
+.start-confirm > p:not(.start-kicker):not(.start-error) { color: var(--brand-muted); }
+.start-button-danger { border-color: #b76d5b; background: #923e35; }
+.start-button-danger:hover:not(:disabled), .start-button-danger:focus-visible { background: #ab4b41; }
+
+.game-menu, .pocket-dialog, .fishing-dialog { color: var(--brand-text); background: linear-gradient(135deg, #0c2941f7, #061c30fc); border: 1px solid var(--brand-border); box-shadow: inset 0 1px #ffffff08; }
+.game-menu { backdrop-filter: blur(10px); }
+.game-menu-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--brand-border); }
+.game-menu-heading > div > span, .fishing-heading span { color: var(--brand-gold); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+.game-menu-heading h2, .dialog-heading h2, .fishing-heading h2 { font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 730; letter-spacing: -.04em; }
+.pause-logo { width: 145px; border-radius: 8px; }
+.equipment-card { color: var(--brand-text); background: var(--brand-panel); border: 1px solid var(--brand-border); border-radius: 14px; box-shadow: none; }
+.equipment-portrait, .menu-coins { border-color: var(--brand-border); }
+.equipment-card dt, .game-menu-list button small, .game-menu-hint { color: var(--brand-muted); }
+.menu-coins { color: var(--brand-gold); }
+.game-menu-list button { color: var(--brand-text); background: var(--brand-raised); border: 1px solid var(--brand-border); border-radius: 12px; box-shadow: none; min-height: 64px; }
+.game-menu-list button:hover, .game-menu-list button:focus-visible { background: #1b425d; outline: 2px solid var(--brand-gold); }
+.menu-symbol { display: grid; place-items: center; color: var(--brand-sea); }
+.dialog-heading, .fishing-heading { border-bottom: 1px solid var(--brand-border); }
+.dialog-heading p { color: var(--brand-muted); }
+.pocket-dialog button, .fishing-dialog button { border: 1px solid var(--brand-border); border-radius: 8px; background: var(--brand-raised); color: var(--brand-text); }
+.game-frame [data-nav-active="true"], .game-frame button:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 1px; }
+.dialog-tabs button[aria-selected="true"], .item-actions button, .wardrobe-footer button:last-child { background: var(--brand-gold); color: #172c3b; border-color: var(--brand-gold); }
+.inventory-item, .fish-entry { background: var(--brand-panel); border: 1px solid var(--brand-border); border-radius: 12px; }
+.inventory-item h3 span, .inventory-item p, .dialog-footer, .dialog-empty { color: var(--brand-muted); }
+.wardrobe-preview { background: #163b51; border: 1px solid var(--brand-border); border-radius: 12px; }
+.world-message { border: 1px solid #69869b; border-radius: 12px; background: #0b263df5; color: var(--brand-text); box-shadow: 0 12px 32px #020e1b50; }
+.context-action, .game-hud-button { border: 1px solid var(--brand-border); background: #0d2941ed; color: var(--brand-text); border-radius: 8px; }
+.place-notice { background: #0b263dee; border-color: var(--brand-gold); }.place-notice span { color: var(--brand-muted); }
+
+/* Collection pages keep their original list/detail navigation and pixel artwork. */
+.fish-progress-labels, .fish-book-footer, .fish-locked-copy, .fish-locations p { color: var(--brand-muted); }
+.fish-progress-labels strong, .fish-catch-stats dd { color: var(--brand-text); }
+.fish-progress-track { background: #071d31; border-color: var(--brand-border); }
+.fish-progress-caught { background: var(--brand-gold); }
+.fish-list, .fish-details { background: var(--brand-panel); border: 1px solid var(--brand-border); border-radius: 12px; }
+.fish-list button { background: var(--brand-raised); color: var(--brand-text); border-radius: 8px; }
+.fish-list button[aria-selected="true"] { background: #245168; border-color: var(--brand-gold); color: var(--brand-text); outline-color: var(--brand-gold); }
+.fish-list-art { background: #092338; border-color: var(--brand-border); border-radius: 6px; }
+.fish-list-question, .fish-status-mark { color: var(--brand-muted); }
+.fish-status-pair.state-seen .fish-status-mark:first-child, .fish-status-pair.state-caught .fish-status-mark { color: var(--brand-sea); }
+.fish-detail-title h3, .fish-entry h3 { font-family: ui-sans-serif, system-ui, sans-serif; letter-spacing: -.03em; }
+.fish-state-chip { color: var(--brand-muted); border-color: var(--brand-border); }
+.caught-chip { background: #80c7d318; color: var(--brand-sea); }
+.fish-art-stage { border: 1px solid var(--brand-border); border-radius: 10px; background-color: #12334a; background-image: linear-gradient(45deg, #16394f 25%, transparent 25%), linear-gradient(-45deg, #16394f 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #16394f 75%), linear-gradient(-45deg, transparent 75%, #16394f 75%); }
+.fish-art-stage.undiscovered { background-color: #0a2238; background-image: radial-gradient(#31516a 1px, transparent 1px); }
+.fish-question { border: 1px solid var(--brand-border); border-radius: 14px; background: var(--brand-raised); color: var(--brand-muted); box-shadow: none; }
+.fish-weight-range, .fish-catch-stats .personal-record dd { color: var(--brand-gold); }
+.fish-journal-section { border-color: var(--brand-border); }
+.fish-journal-section h4, .fish-catch-stats dt { color: var(--brand-muted); }
+.fish-catch-stats > div, .fish-locations li { background: var(--brand-raised); border-color: var(--brand-border); border-radius: 8px; color: var(--brand-text); }
+.fish-catch-stats .personal-record { background: #edc68a12; border-color: #edc68a60; }
+.location-status { color: var(--brand-sea); }
+.fish-details:focus-visible { outline-color: var(--brand-gold); }
+.fishing-dialog { border-radius: 16px; }
+.fishing-heading, .fishing-meter { border-color: var(--brand-border); }
+.fishing-wait p, .fishing-hook small, .fishing-fight small, .fishing-choice-list span, .fishing-tip { color: var(--brand-muted); }
+.fishing-primary { background: var(--brand-gold) !important; border-color: var(--brand-gold) !important; color: #172c3b !important; }
+.fishing-reel { background: var(--brand-raised) !important; }.fishing-reel.is-reeling { background: #245168 !important; }
+.account-page .text-cyan-300 { color: var(--brand-sea); }
+.account-page .bg-cyan-300 { background: var(--brand-gold); }
+.account-page input, .account-page textarea { background: #061d31; border-color: var(--brand-border); border-radius: 10px; }
+.account-page form, .account-page article { background: var(--brand-panel); border-color: var(--brand-border); }
+
+/* Keep the input geometry, world viewport and safe areas; update their materials. */
+.handheld-controls { border-top-color: var(--brand-border); background: linear-gradient(130deg, #10334c, #071d31); box-shadow: inset 0 1px #ffffff15; border-radius: 0; }
+.handheld-brand { color: var(--brand-muted); }.handheld-brand i { background: var(--brand-sea); box-shadow: 0 0 5px #80c7d360; }
+.handheld-key > span { color: var(--brand-muted); }
+.handheld-key .pocket-menu, .handheld-key .pocket-action { background: var(--brand-raised); border-color: var(--brand-border); color: var(--brand-text); box-shadow: 0 4px 0 #03111e; }
+.handheld-key .pocket-action { background: var(--brand-gold); color: #172c3b; border-color: #b58b54; }
+.dpad button, .dpad-center { background: #15364c; color: var(--brand-text); }
+.dpad button[data-held="true"] { background: #28546b; }
+.speaker-grille i { background: #061526; box-shadow: 0 1px #31516a; }
+@media (max-width: 767px) {
+  .app-shell { padding: 0 20px; }.app-header { min-height: 72px; }.brand-home { font-size: 15px; gap: 6px; }.header-logo { width: 72px; }.header-note { font-size: 10px; gap: 6px; }
+  .app-nav { gap: 3px; }.app-nav > button { padding: 6px 8px; font-size: 11px; }.brand-home:has(+ .app-nav) > span { display: none; }
+  .login-layout { grid-template-columns: 1fr; gap: 28px; padding: 28px 0 36px; }.login-logo { max-width: 500px; margin-bottom: 12px; }.login-copy { font-size: 14px; }.login-features { gap: 8px 14px; font-size: 9px; margin-top: 12px; }.login-card { width: min(100%, 460px); margin: auto; padding: 26px; }
+  .start-screen { padding: 26px 0; }.start-kicker { font-size: 9px; }.start-logo { margin: 14px auto; }.start-copy { font-size: 12px; }.start-actions { margin-top: 22px; }.start-confirm-actions { gap: 10px; }
+  .game-menu { padding: 12px; }.pause-logo { width: 98px; }.game-menu-heading { gap: 8px; padding-bottom: 6px; margin-bottom: 12px; }.game-menu-heading h2 { font-size: 22px; }.game-menu-heading > div > span { font-size: 8px; }
+  .game-menu-list button { min-height: 48px; border-radius: 9px; }.game-menu-list button strong { font-size: 12px; }.menu-symbol .menu-icon { width: 18px; height: 18px; }
+  .equipment-card { border-radius: 10px; }.pocket-dialog { border: 0; }.pocket-dialog button { min-height: 36px; }
+}
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
+  .game-active .app-header { min-height: 56px; }.game-active .app-header .header-logo { width: 66px; }.game-active .app-nav > button:first-child { display: none; }.game-active .app-footer { display: none; }
+}
+@media (max-width: 1023px) and (max-height: 500px) {
+  .game-menu-heading { padding-bottom: 4px; margin-bottom: 8px; }.pause-logo { width: 74px; }.game-menu-heading h2 { font-size: 20px; }.game-menu-list button { min-height: 40px; padding: 8px; }.game-menu-hint { margin-top: 8px; }
+  .pocket-dialog button { min-height: 28px; }.fishing-dialog { border-radius: 10px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .start-button, .brand-primary, .app-nav button, .game-menu-list button { transition: background-color .15s, border-color .15s; }
+}

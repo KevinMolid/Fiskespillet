@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { GameLogo } from '../GameLogo'
+import { MenuIcon } from '../MenuIcon'
 
 type Props = {
   hasSave: boolean
@@ -34,20 +36,19 @@ export function StartMenu({ hasSave, ready, pending = false, error = '', onConti
 
   return <section className="start-screen" aria-label="Oppstartsmeny">
     <section className="start-card" aria-labelledby="start-title">
-      <div className="start-emblem" aria-hidden="true">🎣</div>
-      <p className="start-kicker">ET EVENTYR VED VANNKANTEN</p>
-      <h1 id="start-title">Fiskespill</h1>
+      <p className="start-kicker">VELKOMMEN TIL VANNKANTEN</p>
+      <GameLogo className="start-logo" priority />
+      <h1 id="start-title" className="sr-only">Godt Haill</h1>
       <p className="start-copy">Kast snøret, utforsk bygda og fyll fiskeboken.</p>
       {pending ? <p role="status" className="start-status">Sjekker lagret spill …</p> : <div className="start-actions">
         <button className="start-button start-button-primary" onClick={onContinue} disabled={!ready || !hasSave}>
-          Fortsett spill
-          <span>{hasSave ? 'Fortsett der du slapp' : 'Ingen lagring ennå'}</span>
+          <MenuIcon name="arrow" /><span className="start-button-copy"><strong>Fortsett spill</strong><small>{hasSave ? 'Fortsett der du slapp' : 'Ingen lagring ennå'}</small></span>
         </button>
-        <button ref={newGameButton} className="start-button" onClick={startNewGame} disabled={!ready}>Nytt spill</button>
+        <button ref={newGameButton} className="start-button" onClick={startNewGame} disabled={!ready}><MenuIcon name="plus" /><span>Nytt spill</span></button>
       </div>}
       {error && !confirmReset && <p role="alert" className="start-error">{error}</p>}
       {!ready && !pending && <button className="start-retry" onClick={onRetry}>Prøv å sjekke lagringen igjen</button>}
-      <p className="start-footnote">Spillet lagres automatisk.</p>
+      <p className="start-footnote"><MenuIcon name="save" /> Spillet lagres automatisk.</p>
     </section>
 
     {confirmReset && <div className="start-confirm-backdrop">

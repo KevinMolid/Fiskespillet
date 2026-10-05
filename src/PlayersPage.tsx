@@ -46,7 +46,7 @@ export default function PlayersPage({ onBack }: { onBack: () => void }) {
     return () => { active = false }
   }, [])
 
-  return <div className="mx-auto w-full max-w-3xl py-10">
+  return <div className="account-page mx-auto w-full max-w-3xl py-10">
     <button onClick={onBack} className="mb-6 text-sm text-cyan-300 hover:underline">← Tilbake</button>
     <h1 className="text-3xl font-bold">Spillere</h1>
     <p className="mt-2 text-slate-400">Profiler som andre innloggede spillere kan se.</p>
