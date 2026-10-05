@@ -1,7 +1,7 @@
 import { NPCS, type NpcDefinition } from './npcs'
 import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTER, STANDARD_CHARACTERS } from './characters'
 import { createCharacterImage, preloadCharacter, setCharacterDirection } from './characterRendering'
-import { characterWalkStep } from './characterAnimation'
+import { characterWalkStep, nextPlayerWalkStep, PLAYER_WALK_SETTLE_MS } from './characterAnimation'
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorGround, drawOutdoorObject, isOutdoorObject, isRaisedDecoration } from './outdoorTiles'
 import { drawIndoorGround, drawIndoorObject, isIndoorObject } from './indoorTiles'
@@ -33,7 +33,8 @@ export class WorldScene extends Phaser.Scene {
   private nextWaterSignAt = 0
   private keys?: Record<string, Phaser.Input.Keyboard.Key>
   private moving = false
-  private playerWalkStarted = 0
+  private playerWalkFrame: 1 | 2 = 2
+  private playerWalkUntil = 0
   private fishing = false
   private uiBlocked = false
   private nextMove = 0
@@ -120,7 +121,8 @@ export class WorldScene extends Phaser.Scene {
       return
     }
     this.moving = true
-    this.playerWalkStarted = this.time.now
+    this.playerWalkFrame = nextPlayerWalkStep(this.playerWalkFrame)
+    this.playerWalkUntil = 0
     this.drawPlayer()
     this.tweens.add({
       targets: this.player,
@@ -130,6 +132,7 @@ export class WorldScene extends Phaser.Scene {
       ease: 'Linear',
       onComplete: () => {
         this.moving = false
+        this.playerWalkUntil = this.time.now + PLAYER_WALK_SETTLE_MS
         this.position = { ...this.position, x, y }
         this.drawPlayer()
         const target = stepTransition(this.position) ?? edgeTransition(this.position)
@@ -185,6 +188,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private enterMap(destination: Position) {
+    this.playerWalkUntil = 0
     this.position = destination
     this.drawMap()
     this.setCameraBounds()
@@ -323,9 +327,9 @@ export class WorldScene extends Phaser.Scene {
     // Facing persists in Position, even after stopping or a blocked move.
     // Every direction within the character format shares origin/scale.
     if (!this.playerImage) return
-    const progress = (this.time.now - this.playerWalkStarted) / 115
+    const walking = !this.uiBlocked && !this.fishing && (this.moving || this.time.now < this.playerWalkUntil)
     setCharacterDirection(this.playerImage, PLAYER_CHARACTER, this.position.facing,
-      characterWalkStep(this.moving, progress))
+      walking ? this.playerWalkFrame : 0)
   }
 }
 

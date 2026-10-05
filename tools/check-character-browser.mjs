@@ -4,6 +4,7 @@ import { mkdir } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href)
 const browser = await chromium.launch({ headless: true, channel: 'msedge' })
+const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5173'
 await mkdir('output/character-review', { recursive: true })
 try {
   for (const mode of ['desktop', 'mobile', 'canvas']) {
@@ -18,7 +19,7 @@ try {
       assert(body.includes('__characterTest'))
       await route.fulfill({ response, body })
     })
-    await page.goto('http://127.0.0.1:5173/tools/game-preview.html')
+    await page.goto(`${base}/tools/game-preview.html`)
     await page.waitForFunction(() => window.__characterTest?.scene.playerImage)
     const results = await page.evaluate(async () => {
       const { NPCS } = await import('/src/game/npcs.ts')
@@ -69,6 +70,8 @@ try {
       scene.move('right')
     })
     await page.waitForTimeout(450)
+    await page.evaluate(() => window.__characterTest.scene.move('right'))
+    await page.waitForTimeout(450)
     const samples = await page.evaluate(() => window.__gaitSamples)
     assert(samples.some(s => s.player === 'player-right-walk-1'))
     assert(samples.some(s => s.player === 'player-right-walk-2'))
@@ -76,8 +79,30 @@ try {
     assert(samples.some(s => s.oda === 'oda-right-walk-1'))
     assert(samples.some(s => s.oda === 'oda-right-walk-2'))
     assert.equal(samples.at(-1).oda, 'oda-right')
+    // Continuous keyboard walking must bridge the inter-tile pause without an
+    // idle flash; release still settles back into the correct facing idle.
+    await page.evaluate(async () => {
+      const { scene } = window.__characterTest
+      const { MAPS, isWalkable } = await import('/src/game/world.ts')
+      const map=MAPS.havn
+      let start
+      for (let y=3;y<map.tiles.length-3&&!start;y++) for (let x=3;x<map.tiles[0].length-8&&!start;x++) {
+        if (Array.from({length:7},(_,i)=>isWalkable(map.tiles[y][x+i])).every(Boolean) && !scene.residents.some(n=>n.y===y&&n.x>=x&&n.x<=x+6)) start={mapId:'havn',x,y,facing:'right'}
+      }
+      scene.enterMap(start); window.__gaitSamples=[]
+    })
+    await page.locator('.game-frame').focus()
+    await page.keyboard.down('ArrowRight')
+    await page.waitForTimeout(480)
+    const held = await page.evaluate(() => window.__gaitSamples.map(sample=>sample.player))
+    await page.keyboard.up('ArrowRight')
+    await page.waitForTimeout(260)
+    const fromFirstStep=held.slice(held.findIndex(key=>key.includes('-walk-')))
+    assert(fromFirstStep.some(key=>key==='player-right-walk-1') && fromFirstStep.some(key=>key==='player-right-walk-2'))
+    assert(fromFirstStep.every(key=>key.includes('-walk-')), 'No idle flash during continuous walking')
+    assert.equal(await page.evaluate(()=>window.__characterTest.scene.playerImage.texture.key),'player-right')
     await page.locator('.game-frame').screenshot({ path: `output/character-review/world-${mode}.png` })
-    await page.goto('http://127.0.0.1:5173/tools/character-preview.html')
+    await page.goto(`${base}/tools/character-preview.html`)
     await page.waitForSelector('.card img')
     assert.equal(await page.locator('.card').count(), 9)
     for (const direction of ['down', 'right', 'up', 'left']) {

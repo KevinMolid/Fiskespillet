@@ -22,7 +22,8 @@ for id in IDS:
    assert np.all(alpha[0]==0) and np.all(alpha[-1]==0) and np.all(alpha[:,0]==0) and np.all(alpha[:,-1]==0),file
    assert image.getbbox()[3]==ground,file
    if step:
-    assert np.array_equal(rgba[:round(32*unit)],idle[:round(32*unit)]), 'Head and shoulders must be exact idle pixels'
+    fixed_head=26 if id=='player' else 32
+    assert np.array_equal(rgba[:round(fixed_head*unit)],idle[:round(fixed_head*unit)]), 'Head must be exact idle pixels; player sleeves articulate below it'
     pose=rig[id][direction]['poses'][str(step)]
     assert pose['forwardLeg']==('left' if step==1 else 'right')
     assert pose['forwardArm']==('right' if step==1 else 'left')

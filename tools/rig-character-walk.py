@@ -8,6 +8,7 @@ import json
 import hashlib
 import numpy as np
 from PIL import Image, ImageFilter
+from player_walk_rig import rig_player
 
 ROOT = Path(__file__).resolve().parents[1]
 IDS = ['player', 'kevin', 'mor', 'far', 'oda', 'magnus', 'bendik', 'nils', 'morten']
@@ -68,6 +69,8 @@ def transform_part(part,pivot,bottom,dx=0):
         (1,-shear,shear*pivot,0,1/scale,pivot-pivot/scale),resample=Image.Resampling.NEAREST)
 
 def rig(id,direction):
+    if id == 'player':
+        return rig_player(direction)
     directory=ROOT/'src/assets/characters'/id
     path=directory/f'{direction}.png'
     image=Image.open(path).convert('RGBA')
