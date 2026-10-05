@@ -1,4 +1,4 @@
-type Icon = 'bag' | 'book' | 'arrow' | 'plus' | 'save' | 'wave'
+type Icon = 'bag' | 'book' | 'arrow' | 'plus' | 'save' | 'wave' | 'menu' | 'close'
 
 export function MenuIcon({ name }: { name: Icon }) {
   return <svg className="menu-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -8,5 +8,7 @@ export function MenuIcon({ name }: { name: Icon }) {
     {name === 'plus' && <path d="M12 5v14M5 12h14" />}
     {name === 'save' && <><path d="m6 12 4 4 8-8" /><circle cx="12" cy="12" r="10" /></>}
     {name === 'wave' && <><path d="M2 9c3-5 5 5 10 0s7 5 10 0M2 16c3-5 5 5 10 0s7 5 10 0" /></>}
+    {name === 'menu' && <path d="M4 6h16M4 12h16M4 18h16" />}
+    {name === 'close' && <path d="m6 6 12 12M18 6 6 18" />}
   </svg>
 }

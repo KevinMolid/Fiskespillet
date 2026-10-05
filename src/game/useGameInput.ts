@@ -88,7 +88,7 @@ export function useGameInput(options: Options) {
     const arrows: Record<string, Direction> = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }
     function keydown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null
-      if (target?.isContentEditable || target?.closest('input, textarea, select') || event.ctrlKey || event.metaKey || event.altKey) return
+      if (target?.isContentEditable || target?.closest('input, textarea, select, .app-header') || event.ctrlKey || event.metaKey || event.altKey) return
       const current = latest.current
       const inFrame = target && current.frame.current?.contains(target)
       if (!current.modal && target?.closest('button, a') && !inFrame) return

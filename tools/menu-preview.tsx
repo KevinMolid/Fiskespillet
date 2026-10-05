@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { GameLogo } from '../src/GameLogo'
+import { AppHeader } from '../src/AppHeader'
+import { AppFooter } from '../src/AppFooter'
 import { StartMenu } from '../src/game/StartMenu'
 import { GameMenu } from '../src/game/GameMenu'
 import { InventoryDialog, ShopDialog, WardrobeDialog } from '../src/game/GameDialogs'
@@ -19,9 +20,13 @@ function Preview() {
   const [view, setView] = useState<View>(Object.hasOwn(views, requested) ? requested : 'start')
   const [hasSave, setHasSave] = useState(params.get('saved') !== '0')
   const [look, setLook] = useState(DEFAULT_APPEARANCE)
+  const [accountVisible, setAccountVisible] = useState(true)
+  const [navigation, setNavigation] = useState('')
   const close = () => setView('pause')
   return <main className="brand-app"><div className={`app-shell${view !== 'start' ? ' game-active' : ''}`}>
-    <header className="app-header"><button className="brand-home" onClick={() => setView('start')} aria-label="Godt Haill – hjem"><GameLogo className="header-logo" variant="header" /></button><details className="menu-preview-tools"><summary>Vis menyer · lokal test</summary><nav>{Object.entries(views).map(([id, name]) => <button key={id} onClick={() => setView(id as View)}>{name}</button>)}</nav></details></header>
+    <AppHeader account={accountVisible ? { name: 'Spiller' } : undefined} page={navigation === 'Spillere' ? 'players' : 'home'} onHome={() => { setView('start'); setNavigation('') }} onProfile={() => setNavigation('Min profil')} onPlayers={() => setNavigation('Spillere')} onLogout={() => { setAccountVisible(false); setNavigation('Logget ut i lokal test') }} />
+    <details className="menu-preview-tools"><summary>Vis menyer · lokal test</summary><nav>{Object.entries(views).map(([id, name]) => <button key={id} onClick={() => setView(id as View)}>{name}</button>)}</nav></details>
+    {navigation && <p role="status" className="text-sm py-2">{navigation}</p>}
     <div className="flex-1">
       {view === 'start' ? <StartMenu hasSave={hasSave} ready onContinue={close} onNewGame={() => { setHasSave(false); close() }} onRetry={() => {}} />
       : <div className="game-shell"><div className="game-frame relative aspect-[3/2] w-full overflow-hidden rounded-xl">
@@ -32,7 +37,7 @@ function Preview() {
         {view === 'wardrobe' && <WardrobeDialog appearance={look} pending={false} onPreview={setLook} onSave={close} onClose={close} />}
       </div><MobileControls context={view} onDirection={() => {}} onAction={() => { if (document.activeElement instanceof HTMLButtonElement) document.activeElement.click() }} onMenu={close} actionLabel="Velg" disabled={false} actionDisabled={false} /></div>}
     </div>
-    <footer className="app-footer"><span>Godt Haill</span><span>Bare ett kast til.</span></footer>
+    <AppFooter />
   </div></main>
 }
 const root = createRoot(document.querySelector('#root')!)

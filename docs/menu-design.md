@@ -7,6 +7,14 @@ The supplied transparent RGBA logos are copied byte-for-byte to
 `variant="header"`, with accessible alt text and explicit aspect ratio. There
 is no separate title text in the header. No artwork is generated or edited.
 
+`AppHeader.tsx` keeps the logo as the game/home navigation and the profile
+avatar as its own control. A hamburger disclosure contains Players and Log
+out using the existing callbacks. It supports native button/Tab navigation,
+Escape with focus restoration, and outside-click/focus dismissal. Header key
+events are kept separate from world/pause input in `useGameInput.ts`.
+`AppFooter.tsx` shows “Godt Haill Bare ett kast til” together and credits
+“Et spill av Molid Digital”; it wraps on narrow screens.
+
 The login hero reads “Norges sykeste fiskespill”. The opening menu uses the
 full logo without the previous welcome/description paragraphs or continue
 subtitle. Its two single-line buttons are at most 300 px wide and 44 px high,

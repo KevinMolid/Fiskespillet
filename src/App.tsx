@@ -10,7 +10,8 @@ import PlayersPage from './PlayersPage'
 import { hasExistingGame, resetGameData } from './game/persistence'
 import { StartMenu } from './game/StartMenu'
 import { GameLogo } from './GameLogo'
-import { MenuIcon } from './MenuIcon'
+import { AppHeader } from './AppHeader'
+import { AppFooter } from './AppFooter'
 
 const GamePage = lazy(() => import('./game/GamePage'))
 
@@ -189,20 +190,7 @@ function App() {
   return (
     <main className="brand-app">
       <div className={`app-shell ${user && page === 'home' && gameStart === 'playing' ? 'game-active' : ''}`}>
-        <header className="app-header">
-          <button onClick={() => setPage('home')} className="brand-home" aria-label="Godt Haill – hjem"><GameLogo className="header-logo" variant="header" /></button>
-          {user ? <nav className="app-nav" aria-label="Hovedmeny">
-            <button onClick={() => setPage('home')} aria-current={page === 'home' ? 'page' : undefined}>Spill</button>
-            <button onClick={() => setPage('profile')} className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-white/10" aria-label="Åpne min profil">
-              <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-cyan-300/15">
-                {profile?.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : '🎣'}
-              </span>
-              <span className="hidden max-w-36 truncate sm:block">{profile?.username || user.email}</span>
-            </button>
-            <button onClick={() => setPage('players')} aria-current={page === 'players' ? 'page' : undefined}>Spillere</button>
-            <button onClick={logout} disabled={busy}>Logg ut</button>
-          </nav> : <span className="header-note"><MenuIcon name="wave" /> Et fiskeeventyr</span>}
-        </header>
+        <AppHeader account={user ? { name: profile?.username || user.email || 'Spiller', avatar: profile?.avatar } : undefined} page={page} busy={busy} onHome={() => setPage('home')} onProfile={() => setPage('profile')} onPlayers={() => setPage('players')} onLogout={() => void logout()} />
         {user && page === 'players' ? <div className="flex-1"><PlayersPage onBack={() => setPage('home')} /></div>
         : user && page === 'profile' ? <div className="flex-1">
           {profileIssue && <p role="alert" className="mt-6 rounded-lg bg-rose-400/10 p-3 text-sm text-rose-200">{profileIssue}</p>}
@@ -250,7 +238,7 @@ function App() {
                 </>}
           </div>
         </section>}
-        <footer className="app-footer"><span>Godt Haill</span><span>Bare ett kast til.</span></footer>
+        <AppFooter />
       </div>
     </main>
   )
