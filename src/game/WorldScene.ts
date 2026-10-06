@@ -48,6 +48,7 @@ export class WorldScene extends Phaser.Scene {
   private fishing = false
   private aimingCast = false
   private castingForward = false
+  private fishingRelaxed = false
   private uiBlocked = false
   private nextMove = 0
   private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container; image?: Phaser.GameObjects.Image; walkStarted?: number }[] = []
@@ -213,6 +214,7 @@ export class WorldScene extends Phaser.Scene {
     this.fishing = false
     this.aimingCast = false
     this.castingForward = false
+    this.fishingRelaxed = false
     this.playerWalkUntil = 0
     this.drawPlayer()
     this.clearCastSequence()
@@ -285,6 +287,11 @@ export class WorldScene extends Phaser.Scene {
     if (!this.fishing || !this.player) return
     const target = castTargets(this.position).find(value => value.steps === steps)
     if (!target) return
+    // Landing is the pose boundary; retain this stance through every fish phase.
+    this.castingForward = false
+    this.aimingCast = false
+    this.fishingRelaxed = true
+    this.drawPlayer()
     this.clearCastSplash()
     const x = target.x * TILE_SIZE + TILE_SIZE / 2
     const y = target.y * TILE_SIZE + TILE_SIZE / 2
@@ -344,6 +351,7 @@ export class WorldScene extends Phaser.Scene {
     this.lureShadow?.destroy()
     this.lureShadow = undefined
     this.castingForward = false
+    this.fishingRelaxed = false
     const resolve = this.castDone
     this.castDone = undefined
     resolve?.(false)
@@ -533,7 +541,7 @@ export class WorldScene extends Phaser.Scene {
     if (!this.playerImage) return
     const walking = !this.uiBlocked && !this.fishing && (this.moving || this.time.now < this.playerWalkUntil)
     setCharacterDirection(this.playerImage, PLAYER_CHARACTER, this.position.facing,
-      walking ? this.playerWalkFrame : 0, this.castingForward ? 'castForward' : this.aimingCast ? 'castAim' : undefined)
+      walking ? this.playerWalkFrame : 0, this.castingForward ? 'castForward' : this.aimingCast ? 'castAim' : this.fishingRelaxed ? 'fishingIdle' : undefined)
   }
 }
 

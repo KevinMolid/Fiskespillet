@@ -1,0 +1,10 @@
+{
+  "canvas": {
+    "width": 2048,
+    "height": 1536
+  },
+  "groundAnchor": {
+    "x": 1024,
+    "y": 1524
+  }
+}

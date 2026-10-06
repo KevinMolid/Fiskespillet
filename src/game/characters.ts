@@ -1,6 +1,7 @@
 import pixelPlayerStandard from './pixel-player-standard.json'
 import playerCastAimStandard from './player-cast-aim-standard.json'
 import playerCastForwardStandard from './player-cast-forward-standard.json'
+import playerFishingIdleStandard from './player-fishing-idle-standard.json'
 import playerDown from '../assets/characters/player/down.png'
 import playerUp from '../assets/characters/player/up.png'
 import playerLeft from '../assets/characters/player/left.png'
@@ -10,7 +11,7 @@ import type { NpcId } from './npcs'
 import type { Direction } from './world'
 
 export type CharacterSprites = { down: string; up: string; left: string; right: string }
-export type CharacterPose = 'castAim' | 'castForward'
+export type CharacterPose = 'castAim' | 'castForward' | 'fishingIdle'
 // Formats carry shared canvas/anchor/scale rules, never per-direction offsets.
 export type CharacterFormat = {
   canvas: { width: number; height: number }
@@ -34,6 +35,13 @@ const idleAssets = import.meta.glob<string>('../assets/characters/*/{down,up,lef
 const walkAssets = import.meta.glob<string>('../assets/characters/*/*-walk-*.png', { eager: true, query: '?url', import: 'default' })
 const castAimAssets = import.meta.glob<string>('../assets/characters/player/*-cast-aim.png', { eager: true, query: '?url', import: 'default' })
 const castForwardAssets = import.meta.glob<string>('../assets/characters/player/*-cast-forward.png', { eager: true, query: '?url', import: 'default' })
+const fishingIdleAssets = import.meta.glob<string>('../assets/characters/player/*-fishing-idle.png', { eager: true, query: '?url', import: 'default' })
+
+function fishingIdleSprite(direction: Direction) {
+  const url = fishingIdleAssets[`../assets/characters/player/${direction}-fishing-idle.png`]
+  if (!url) throw new Error(`Missing player relaxed fishing pose: ${direction}`)
+  return url
+}
 
 function castAimSprite(direction: Direction) {
   const url = castAimAssets[`../assets/characters/player/${direction}-cast-aim.png`]
@@ -71,6 +79,9 @@ export const PLAYER_CHARACTER: StandardCharacter = {
     sprites: { down: castForwardSprite('down'), up: castForwardSprite('up'), left: castForwardSprite('left'), right: castForwardSprite('right') },
     format: { ...pixelPlayerStandard, canvas: playerCastForwardStandard.canvas, groundAnchor: playerCastForwardStandard.groundAnchor, filter: 'nearest' },
     rodTip: playerCastForwardStandard.rodTip,
+  }, fishingIdle: {
+    sprites: { down: fishingIdleSprite('down'), up: fishingIdleSprite('up'), left: fishingIdleSprite('left'), right: fishingIdleSprite('right') },
+    format: { ...pixelPlayerStandard, ...playerFishingIdleStandard, filter: 'nearest' },
   } },
 }
 
@@ -90,5 +101,5 @@ export const NPC_CHARACTERS: Record<NpcId, StandardCharacter> = {
 export const KEVIN_CHARACTER = NPC_CHARACTERS.kevin
 export const STANDARD_CHARACTERS = [PLAYER_CHARACTER, ...Object.values(NPC_CHARACTERS)]
 export function characterTextureKey(character: StandardCharacter, direction: Direction, step = 0, pose?: CharacterPose) {
-  return `${character.id}-${direction}${pose === 'castAim' ? '-cast-aim' : pose === 'castForward' ? '-cast-forward' : step ? `-walk-${step}` : ''}`
+  return `${character.id}-${direction}${pose === 'castAim' ? '-cast-aim' : pose === 'castForward' ? '-cast-forward' : pose === 'fishingIdle' ? '-fishing-idle' : step ? `-walk-${step}` : ''}`
 }

@@ -33,9 +33,12 @@ Sequence:
    arc toward the exact tile selected by `castTargets`. Flight duration is
    700 + 140 × number of tiles milliseconds (840–1400 ms).
 4. At landing: destroy flight graphics and show the existing 900 ms splash on
-   that actual tile. Keep the forward pose until the splash completes.
-5. Resolve the sequence promise, restore idle, and start the six-second depth
+   that actual tile. Switch immediately to the relaxed `fishingIdle` pose.
+5. Resolve the sequence promise, keep the relaxed pose, and start the six-second depth
    meter using a fresh timestamp. Time spent casting cannot cause a bottom snag.
+6. Keep the relaxed pose through depth, retrieval, strike and fight, including
+   saving the outcome. `finishFishing()` restores normal idle and its original
+   anchor. See `player-fishing-idle.md` for the directional artwork and format.
 
 Four-tile example: 1260 ms flight + 900 ms splash = 2160 ms before depth starts.
 No separate animation window. Existing fishing controls and input lock prevent

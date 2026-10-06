@@ -78,7 +78,7 @@ try {
       if(capture) await page.locator('.game-frame').screenshot({path:`output/fishing-review/flight-${mode}.png`})
       await page.clock.runFor(760)
       assert(!await page.evaluate(()=>window.__fishingTest.scene.castFlight))
-      assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down-cast-forward','Hold forward pose through splash')
+      assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down-fishing-idle','Switch to relaxed fishing at landing, while the splash is still active')
       assert.equal(await page.getByRole('dialog',{name:'Fiskedybde'}).count(),0,'Depth waits for the splash to finish')
       const landing=await page.evaluate(()=>{
         const s=window.__fishingTest.scene,g=s.castSplash
@@ -91,7 +91,7 @@ try {
       await page.clock.runFor(950)
       await page.getByRole('dialog',{name:'Fiskedybde'}).waitFor()
       assert(!await page.evaluate(()=>window.__fishingTest.scene.castFlight||window.__fishingTest.scene.castSplash))
-      assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down')
+      assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down-fishing-idle','Keep relaxed pose during depth selection')
       assert(Number(await page.getByRole('meter',{name:'Synkende agn'}).getAttribute('aria-valuenow'))<10,'The six-second sinking clock starts after animation, not at launch')
       return landing
     }
@@ -99,6 +99,7 @@ try {
       if(mobile) await page.getByRole('button',{name:'Velg',exact:true}).last().tap()
       else await page.keyboard.press('e')
       await page.getByRole('dialog',{name:'Innsveiving',exact:true}).waitFor()
+      assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down-fishing-idle','Keep relaxed pose during retrieval')
     }
     const tap = async()=>{
       if(mobile) await page.getByRole('button',{name:'Sveiv',exact:true}).last().tap()
@@ -170,10 +171,12 @@ try {
     await page.evaluate(()=>{Math.random=()=>0})
     await tap();await page.clock.runFor(300)
     await page.getByRole('button',{name:/Gi tilslag/}).first().waitFor()
+    assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down-fishing-idle','Keep relaxed pose while waiting for the strike')
     assert.equal(await page.evaluate(()=>window.__conditions.depth),'midwater')
     const biteShadow=await shadow()
     await page.keyboard.press('e')
     await page.getByRole('meter',{name:'Fangstfremdrift',exact:true}).waitFor()
+    assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down-fishing-idle','Keep relaxed pose during the fish fight')
     await page.locator('.game-frame').screenshot({path:`output/fishing-review/fight-${mode}.png`})
     for(let i=0;i<150&&!await page.evaluate(()=>window.__encounters);i++) {
       if(await page.locator('.fishing-fight-status').textContent().then(text=>text.includes('roer'))) await tap()
@@ -181,6 +184,7 @@ try {
     }
     assert.equal(await page.evaluate(()=>window.__encounters),1,'The same tapping system can land a fish')
     assert(!await shadow(),'Successful fishing cleans up the water shadow')
+    assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down','Successful fishing restores normal idle')
     assert(biteShadow.progress>0)
 
     // Both end layers remain selectable, but hitting the absolute deadline fails.
@@ -211,12 +215,14 @@ try {
     assert.equal(await page.evaluate(()=>window.__baitUses),1,'Returning the hook without fish uses exactly one bait')
     assert.equal(await page.evaluate(()=>window.__encounters||0),0)
     assert(!await shadow())
+    assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down','No-bite fishing restores normal idle')
     await open();await castFour()
     await page.clock.fastForward(6100)
     await page.getByText(/Kroken satte seg fast i bunnen/).waitFor()
     assert.equal(await page.getByRole('dialog',{name:'Fiskedybde'}).count(),0)
     assert.equal(await page.evaluate(()=>window.__baitUses),1,'RAF and deadline races consume exactly one bait')
     assert.equal(await page.evaluate(()=>window.__encounters||0),0,'Snagging cannot award fish, coins or discoveries')
+    assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down','Bottom snag restores normal idle')
     await page.clock.fastForward(10000)
     assert.equal(await page.evaluate(()=>window.__baitUses),1)
     assert(!await page.evaluate(()=>window.__fishingTest.scene.castSplash),'Finished casts clean up the world effect')
@@ -256,16 +262,27 @@ try {
         s.setCastAim(true)
         for(const target of castTargets(source)) {
           s.showCastSplash(target.steps)
+          if(image.texture.key!==`player-${facing}-fishing-idle`) throw new Error('Incorrect relaxed pose facing at landing')
           const g=s.castSplash
           results.push({facing,steps:target.steps,x:g.x,y:g.y,expectedX:target.x*TILE_SIZE+TILE_SIZE/2,expectedY:target.y*TILE_SIZE+TILE_SIZE/2})
         }
         const last=s.castSplash;s.showCastSplash(99)
         if(s.castSplash!==last) throw new Error('Invalid cast replaced a valid splash')
+        if(image.width!==2048||image.height!==1536||image.originX!==.5||image.originY!==1524/1536||image.scaleX!==.05||image.scaleY!==.05||image.texture.source[0].scaleMode!==1) throw new Error('Relaxed pose format or nearest filtering changed')
+        const relaxedMask=document.createElement('canvas');relaxedMask.width=image.width;relaxedMask.height=image.height
+        const relaxedCtx=relaxedMask.getContext('2d');relaxedCtx.drawImage(image.texture.source[0].image,0,0)
+        const relaxedPixels=relaxedCtx.getImageData(0,0,image.width,image.height).data
+        let relaxedSole=0
+        for(let i=3;i<relaxedPixels.length;i+=4) if(relaxedPixels[i]!==0&&relaxedPixels[i]!==255) throw new Error('Relaxed pose contains semi-transparent pixels')
+        for(let y=image.height-1;y>=0&&!relaxedSole;y--) for(let x=0;x<image.width;x++) if(relaxedPixels[(y*image.width+x)*4+3]){relaxedSole=y+1;break}
+        if(relaxedSole!==1524||image.y+(relaxedSole-image.originY*image.height)*image.scaleY!==14) throw new Error('Relaxed pose feet moved')
+        if(JSON.stringify(s.position)!==JSON.stringify(idlePosition)) throw new Error('Relaxed pose moved world position')
         for(const progress of [0,.5,1]) {
           s.setRetrieveProgress(5,progress)
           const distance=5+( .7-5)*progress,g=s.lureShadow
           const dx={up:0,down:0,left:-1,right:1}[facing],dy={up:-1,down:1,left:0,right:0}[facing]
           if(Math.abs(g.x-(s.player.x+dx*distance*TILE_SIZE))>.001||Math.abs(g.y-(s.player.y+dy*distance*TILE_SIZE))>.001) throw new Error('Wrong shadow position for '+facing)
+          if(image.texture.key!==`player-${facing}-fishing-idle`) throw new Error('Retrieval changed relaxed pose')
         }
         s.finishFishing()
         if(s.castSplash||s.lureShadow) throw new Error('Water effect cleanup failed')
@@ -291,6 +308,6 @@ try {
     for(const shot of directional) {assert.equal(shot.x,shot.expectedX);assert.equal(shot.y,shot.expectedY)}
     assert.deepEqual(errors,[])
     await context.close()
-    console.log(`${mode}: cast/depth sequence, live tap speed, single keyboard/touch pulses, hook shadow in four directions, early/mid/late bites, landing/no-bite/snag and one-bait outcomes passed.`)
+    console.log(`${mode}: cast/depth sequence, relaxed pose from landing through fishing in four directions, live tap speed, single keyboard/touch pulses, hook shadow, early/mid/late bites, landing/no-bite/snag and one-bait outcomes passed.`)
   }
 } finally {await browser.close()}
