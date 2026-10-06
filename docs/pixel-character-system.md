@@ -64,6 +64,18 @@ pose across the existing 30 ms keyboard gap, then returns to idle. Opening a UI,
 fishing and map transitions clear this visual continuation. Movement still uses
 the original 115 ms tween and 145 ms keyboard cadence.
 
+The shared `WorldScene.move` command turns in place when the requested direction
+differs from saved facing. It updates the saved facing and interaction UI without
+starting a movement tween or checking a map transition. A second input in the
+same direction walks normally; holding continues after the usual repeat delay.
+Fresh keyboard presses bypass the repeat cooldown, so a quick second tap is
+not lost. Mobile direction controls use the same scene command. Existing movement,
+fishing and modal guards still apply before turning.
+
+Menu/wardrobe SVG portraits retain `fisherSprite.fisherPixels` and its editable
+palette. This is separate from the world's fixed PNG character assets; the unused
+canvas portrait experiment is not part of the runtime.
+
 `WorldScene.ts` uses existing player 115 ms / NPC 300 ms movement tweens and existing
 NPC routes/look timers. Stationary NPCs still stand still, but all have complete
 walking assets for future routes. No collision/map/dialogue/gameplay data changed.
@@ -82,6 +94,10 @@ Validation:
 - `check-character-standard.py`: 108 PNGs, alpha, ground, unchanged idle/head,
   actual alternating boot pixels, anatomical forearm projection, Magnus traits.
 - `check-character-animation.mjs`: gait phases, idle reset and consecutive steps.
+- `check-turn-before-move.mjs`: real keyboard/touch taps, rapid second taps,
+  holding/release, blocked input, collision, map exits and fishing after turning.
+- `check-fisher.mjs`: the menu/wardrobe export and all 1200 palette/direction/pose
+  combinations; its esbuild bundle includes a PNG loader for world dependencies.
 - `check-player-walk.py`: actual hand and shoulder pixels articulate in every
   view; profile knees bend forward, segment lengths stay fixed and boots stay whole.
 - `check-character-browser.mjs`: all NPC views/poses, retained objects, actual

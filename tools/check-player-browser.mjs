@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright')
 const browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' })
+const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5173'
 const errors = []
 try {
   for (const mode of ['desktop', 'mobile', 'canvas']) {
@@ -27,7 +28,7 @@ try {
       assert(body.includes('window.__playerTest'), 'Scene instrumentation must match the served module')
       await route.fulfill({ response, body })
     })
-    await page.goto('http://127.0.0.1:5173/tools/game-preview.html')
+    await page.goto(`${base}/tools/game-preview.html`)
     await page.waitForFunction(() => window.__playerTest?.scene.playerImage?.texture.key === 'player-down')
     const state = () => page.evaluate(() => {
       const { scene, game } = window.__playerTest
@@ -178,6 +179,7 @@ try {
     }
     await page.evaluate(() => window.__playerTest.scene.setUiBlocked(false))
     await page.evaluate(() => window.__playerTest.scene.move('left'))
+    await page.evaluate(() => window.__playerTest.scene.move('left'))
     assert.equal((await state()).position.x, 15, 'Kevin still blocks his original tile, independent of artwork')
     await page.locator('.game-frame').focus()
     await page.keyboard.press('Space')
@@ -188,11 +190,14 @@ try {
     // Blocked movement must face the wall, without moving the feet or camera target.
     await page.evaluate(() => window.__playerTest.scene.enterMap({ mapId: 'havn', x: 1, y: 16, facing: 'down' }))
     await page.evaluate(() => window.__playerTest.scene.move('left'))
+    await page.evaluate(() => window.__playerTest.scene.move('left'))
     await page.waitForTimeout(180)
     const blocked = await state()
     assert.equal(blocked.position.x, 1); assert.equal(blocked.texture, 'player-left')
     assert.equal(blocked.x, 48); assert.equal(blocked.y, 528)
     assert(blocked.width > 32, 'Visual overlap extends beyond the collision tile')
+    await page.evaluate(() => window.__playerTest.scene.move('up'))
+    assert.equal((await state()).position.y, 16, 'First input only turns toward the wall-side path')
     await page.evaluate(() => window.__playerTest.scene.move('up'))
     await page.waitForTimeout(180)
     assert.equal((await state()).position.y, 15, 'Can walk alongside a wall despite overlapping visual bounds')

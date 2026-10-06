@@ -98,6 +98,8 @@ Thigh/shin/boot layers overlap at the joints to avoid transparent cracks.
   DPR 3 and Canvas; gameplay checks passed controls, collision, camera, map/door/
   stair transitions, interaction/fishing direction, NPC dialogue and layout.
 - TypeScript, Vite build and gait tests passed in the isolated review copy with
-  the published `fisherSprite.ts`. The working copy has a pre-existing unrelated
-  missing `fisherPixels` export used by `FisherPortrait.tsx`; it was preserved.
+  the published `fisherSprite.ts`. At this checkpoint the working copy had an
+  unrelated missing `fisherPixels` export used by `FisherPortrait.tsx`.
+  On 2026-10-06 the unused local canvas draft was backed up and the published
+  palette implementation restored; typecheck/build now pass in the workspace too.
   Build retains its existing large-chunk warning. No lint script is configured.

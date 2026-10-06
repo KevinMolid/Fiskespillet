@@ -1,8 +1,9 @@
 import { build } from 'esbuild'
 import assert from 'node:assert/strict'
 
-const bundle = await build({ entryPoints: ['src/game/fisherSprite.ts'], bundle: true, write: false, platform: 'node', format: 'esm' })
+const bundle = await build({ entryPoints: ['src/game/fisherSprite.ts'], bundle: true, write: false, platform: 'node', format: 'esm', loader: { '.png': 'dataurl' } })
 const { fisherPixels } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
+assert.equal(typeof fisherPixels, 'function', 'Menu/wardrobe portraits require the fisherPixels export')
 const directions = ['down', 'up', 'left', 'right']
 for (const direction of directions) {
   for (let shirt = 0; shirt < 5; shirt++) for (let hair = 0; hair < 5; hair++) for (let skin = 0; skin < 4; skin++) {

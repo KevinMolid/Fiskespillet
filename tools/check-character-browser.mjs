@@ -61,7 +61,7 @@ try {
     }
     await page.evaluate(() => {
       const { scene, game } = window.__characterTest
-      scene.enterMap({ mapId: 'havn', x: 15, y: 12, facing: 'down' })
+      scene.enterMap({ mapId: 'havn', x: 15, y: 12, facing: 'right' })
       scene.setUiBlocked(false)
       window.__gaitSamples = []
       game.events.on('postrender', () => window.__gaitSamples.push({ player: scene.playerImage.texture.key,

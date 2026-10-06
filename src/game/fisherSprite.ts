@@ -1,6 +1,7 @@
 import { HAIR_COLORS, SHIRT_COLORS, SKIN_COLORS, type Appearance, type Direction } from './world'
 
-// Original 18 × 22 pixel silhouettes; the same artwork powers Phaser and UI previews.
+// Palette-based 18 × 22 portraits for the menu and wardrobe SVG previews.
+// World characters use the PNG registry in characters.ts instead.
 const FRONT = [
   '      ######      ',
   '     #hhhhhh#     ',

@@ -83,13 +83,24 @@ export class WorldScene extends Phaser.Scene {
     this.drawPlayer()
     for (const n of this.residents) this.drawResident(n)
     this.updateWaterSigns(time)
-    if (!this.keys || this.moving || this.fishing || this.uiBlocked || time < this.nextMove) return
+    if (!this.keys) return
     const key = this.keys
-    const direction: Direction | null =
-      key.UP.isDown || key.W.isDown ? 'up'
-        : key.DOWN.isDown || key.S.isDown ? 'down'
-          : key.LEFT.isDown || key.A.isDown ? 'left'
-            : key.RIGHT.isDown || key.D.isDown ? 'right' : null
+    let direction: Direction | null = null
+    let pressed = false
+    for (const [facing, arrow, letter] of [
+      ['up', key.UP, key.W], ['down', key.DOWN, key.S],
+      ['left', key.LEFT, key.A], ['right', key.RIGHT, key.D],
+    ] as const) {
+      // Consume every press, including when movement/UI blocks input. Fresh
+      // taps need not wait for the hold-repeat timer and can last one frame.
+      const arrowPressed = Phaser.Input.Keyboard.JustDown(arrow)
+      const letterPressed = Phaser.Input.Keyboard.JustDown(letter)
+      if (!direction && (arrow.isDown || letter.isDown || arrowPressed || letterPressed)) {
+        direction = facing
+        pressed = arrowPressed || letterPressed
+      }
+    }
+    if (this.moving || this.fishing || this.uiBlocked || (time < this.nextMove && !pressed)) return
     if (direction) {
       this.move(direction)
       this.nextMove = time + 145
@@ -98,12 +109,18 @@ export class WorldScene extends Phaser.Scene {
 
   move(direction: Direction) {
     if (this.moving || this.fishing || this.uiBlocked || !this.player) return
+    if (direction !== this.position.facing) {
+      this.position = { ...this.position, facing: direction }
+      this.playerWalkUntil = 0
+      this.drawPlayer()
+      this.callbacks.onPosition({ ...this.position }, false)
+      return
+    }
     const delta = {
       up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0],
     }[direction]
     const x = this.position.x + delta[0]
     const y = this.position.y + delta[1]
-    this.position = { ...this.position, facing: direction }
     this.drawPlayer()
     const tile = MAPS[this.position.mapId].tiles[y]?.[x]
     if (!tile) {
