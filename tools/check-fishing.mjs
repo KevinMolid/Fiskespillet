@@ -5,7 +5,7 @@ const bundle = await build({
   stdin: { contents: "export * from './src/game/fishing'; export { MAPS } from './src/game/world'", resolveDir: process.cwd() },
   bundle: true, write: false, platform: 'node', format: 'esm', loader: { '.png': 'dataurl' },
 })
-const { MAPS, castTargets, advanceFight, fishingConditions, FISHING_ZONE_NAMES } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
+const { MAPS, castTargets, advanceFight, fishingConditions, FISHING_ZONE_NAMES, sinkingState, SINK_DURATION_MS } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
 
 assert.equal(FISHING_ZONE_NAMES.havn, 'Bryggehavn')
 assert.equal(FISHING_ZONE_NAMES.skogstjern, 'Skogstjernet')
@@ -23,6 +23,8 @@ for (const map of Object.values(MAPS)) {
       for (const target of targets) {
         const dx = facing === 'left' ? -1 : facing === 'right' ? 1 : 0
         const dy = facing === 'up' ? -1 : facing === 'down' ? 1 : 0
+        assert.equal(target.x, x + dx * target.steps)
+        assert.equal(target.y, y + dy * target.steps)
         assert.equal(map.tiles[y + dy * target.steps]?.[x + dx * target.steps], 'water', 'cast stays on water')
         totalTargets++
       }
@@ -31,10 +33,24 @@ for (const map of Object.values(MAPS)) {
 }
 assert(totalTargets > 10, 'both fishing maps should offer castable water tiles')
 assert(fullLengthSpots > 0, 'some shore positions should support all five cast lengths')
-const sample = { id: 1, castLength: 'short', label: 'Kort', steps: 1, feature: 'reeds', featureName: 'sivkant', description: 'Ved sivet' }
+const sample = { id: 1, castLength: 'short', label: 'Kort', steps: 1, x: 1, y: 1, feature: 'reeds', featureName: 'sivkant', description: 'Ved sivet' }
 assert.deepEqual(fishingConditions('worm', sample, 'bottom', 'slow'), {
   bait: 'worm', castLength: 'short', feature: 'reeds', depth: 'bottom', retrieve: 'slow',
 })
+
+assert.equal(sinkingState(0).progress, 0, 'Bait starts at the top')
+assert.equal(sinkingState(800).depth, 'surface')
+assert.equal(sinkingState(2400).depth, 'midwater')
+assert.equal(sinkingState(SINK_DURATION_MS - 1).depth, 'bottom')
+assert(!sinkingState(SINK_DURATION_MS - 1).snagged, 'Bottom-feeding fish remain reachable before the deadline')
+assert(sinkingState(SINK_DURATION_MS).snagged, 'Reaching the bottom fails the cast')
+assert(sinkingState(SINK_DURATION_MS * 2).snagged, 'Delayed/background input cannot rescue a snagged cast')
+assert.equal(sinkingState(SINK_DURATION_MS * 2).progress, 1)
+for(let ms=0, previous=-1;ms<=SINK_DURATION_MS;ms+=100) {
+  const state=sinkingState(ms)
+  assert(state.progress>=previous,'Depth cannot bounce upward like the length meter')
+  previous=state.progress
+}
 
 let fight = { tension: 36, progress: 0, elapsedMs: 0, pulling: false }
 let outcome = null
@@ -55,4 +71,4 @@ for (let tick = 0; tick < 220 && !outcome; tick++) {
 }
 assert.equal(outcome, 'escaped', 'holding the reel against a very strong fish should break the line')
 assert(fight.tension >= 100)
-console.log(`Fishing: ${totalTargets} valid cast targets, condition mapping, and fight outcomes passed.`)
+console.log(`Fishing: ${totalTargets} actual landing coordinates, timed depth/bottom failure, condition mapping, and fight outcomes passed.`)

@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { rollFish, type FishingDepth, type FishSpecies, type RetrieveSpeed } from './fish'
-import { advanceFight, castTargets, fishingConditions, FISHING_ZONE_NAMES, type FightState } from './fishing'
+import { advanceFight, castTargets, fishingConditions, FISHING_ZONE_NAMES, SINK_DURATION_MS, sinkingState, type FightState } from './fishing'
 import type { BaitId } from './items'
 import type { Position } from './world'
 
-type EscapeReason = 'no-bite' | 'missed-hook' | 'line-broken'
+type EscapeReason = 'no-bite' | 'missed-hook' | 'line-broken' | 'bottom-snag'
 export type FishingFinish =
   | { type: 'landed'; species: FishSpecies; grams: number; bait: BaitId }
   | { type: 'escaped'; reason: EscapeReason; bait: BaitId }
@@ -13,23 +13,18 @@ type Props = {
   zoneId: string
   bait: BaitId
   onCommit: () => void
+  onCast: (steps: number) => void
   onFinish: (result: FishingFinish) => void
   registerReelControl: (control: { start: () => boolean; stop: () => void } | null) => void
 }
-type Phase = 'aim' | 'casting' | 'depth' | 'sinking' | 'retrieve' | 'waiting' | 'hook' | 'fight' | 'resolving'
-
-const DEPTHS: { id: FishingDepth; name: string; wait: number; help: string }[] = [
-  { id: 'surface', name: 'Overflaten', wait: 0, help: 'Sveiv inn med en gang' },
-  { id: 'midwater', name: 'Mellomvann', wait: 800, help: 'La sluken synke litt' },
-  { id: 'bottom', name: 'Bunnen', wait: 1600, help: 'La sluken synke dypt' },
-]
+type Phase = 'aim' | 'depth' | 'retrieve' | 'waiting' | 'hook' | 'fight' | 'resolving'
 const SPEEDS: { id: RetrieveSpeed; name: string; help: string }[] = [
   { id: 'slow', name: 'Sakte', help: 'Følg sluken rolig inn' },
   { id: 'steady', name: 'Jevnt', help: 'Hold en stødig fart' },
   { id: 'fast', name: 'Raskt', help: 'Sveiv sluken raskt inn' },
 ]
 
-export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, registerReelControl }: Props) {
+export function FishingDialog({ position, zoneId, bait, onCommit, onCast, onFinish, registerReelControl }: Props) {
   const targets = useMemo(() => castTargets(position), [position])
   const [targetStep, setTargetStep] = useState(targets[0]?.steps ?? 1)
   const target = targets.find(value => value.steps === targetStep) ?? targets[0]
@@ -37,14 +32,18 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, regi
   const meterStepRef = useRef(target?.steps ?? 1)
   const meterDirection = useRef(1)
   const [phase, setPhase] = useState<Phase>('aim')
+  const phaseRef = useRef<Phase>('aim')
   const [depth, setDepth] = useState<FishingDepth>('surface')
-  const [sinkMs, setSinkMs] = useState(0)
+  const [sinkProgress, setSinkProgress] = useState(0)
+  const sinkStarted = useRef(0)
   const [fish, setFish] = useState<ReturnType<typeof rollFish> | null>(null)
   const [fight, setFight] = useState<FightState>({ tension: 36, progress: 0, elapsedMs: 0, pulling: false })
   const [reeling, setReeling] = useState(false)
   const reelingRef = useRef(false)
   const fightRef = useRef(fight)
   const completed = useRef(false)
+
+  function changePhase(value: Phase) { phaseRef.current = value; setPhase(value) }
 
   useEffect(() => { reelingRef.current = reeling }, [reeling])
   useEffect(() => { fightRef.current = fight }, [fight])
@@ -73,7 +72,7 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, regi
     completed.current = true
     reelingRef.current = false
     setReeling(false)
-    setPhase('resolving')
+    changePhase('resolving')
     onFinish(result)
   }
 
@@ -83,56 +82,68 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, regi
 
   function cast() {
     const selected = targets.find(value => value.steps === meterStepRef.current)
-    if (!selected || phase !== 'aim') return
+    if (!selected || phaseRef.current !== 'aim') return
     setTargetStep(selected.steps)
+    sinkStarted.current = performance.now()
+    setSinkProgress(0)
+    changePhase('depth')
     onCommit()
-    setPhase('casting')
+    onCast(selected.steps)
   }
 
   function aimAtPointer(event: ReactPointerEvent<HTMLButtonElement>) {
     if (!targets.length) return
     const rect = event.currentTarget.querySelector('.cast-meter-track')?.getBoundingClientRect() ?? event.currentTarget.getBoundingClientRect()
     const ratio = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
-    const step = Math.round(targets[0].steps + (targets[targets.length - 1].steps - targets[0].steps) * (1 - ratio))
+    // The track always displays 1..5, even where land limits available casts.
+    const step = Math.round(1 + 4 * (1 - ratio))
     const nearest = targets.reduce((best, value) => Math.abs(value.steps - step) < Math.abs(best.steps - step) ? value : best, targets[0])
     meterStepRef.current = nearest.steps
     setMeterStep(nearest.steps)
   }
 
-  function chooseDepth(value: typeof DEPTHS[number]) {
-    setDepth(value.id)
-    setSinkMs(value.wait)
-    if (!value.wait) setPhase('retrieve')
-    else setPhase('sinking')
+  function chooseDepth() {
+    if (phaseRef.current !== 'depth' || completed.current) return
+    const state = sinkingState(performance.now() - sinkStarted.current)
+    if (state.snagged) { escape('bottom-snag'); return }
+    setDepth(state.depth)
+    changePhase('retrieve')
   }
 
   function startRetrieve(speed: RetrieveSpeed) {
-    if (!target) return
+    if (!target || phaseRef.current !== 'retrieve') return
     const conditions = fishingConditions(bait, target, depth, speed)
     const rolled = rollFish(zoneId, bait, Math.random, conditions)
     setFish(rolled)
     if (!rolled) { escape('no-bite'); return }
-    setPhase('waiting')
+    changePhase('waiting')
   }
 
   function hook() {
-    if (phase !== 'hook') return
+    if (phaseRef.current !== 'hook') return
     setFight({ tension: 36, progress: 0, elapsedMs: 0, pulling: false })
-    setPhase('fight')
+    changePhase('fight')
   }
 
   useEffect(() => {
-    if (phase === 'casting') {
-      const timer = window.setTimeout(() => setPhase('depth'), 1300)
-      return () => window.clearTimeout(timer)
-    }
-    if (phase === 'sinking') {
-      const timer = window.setTimeout(() => setPhase('retrieve'), sinkMs)
-      return () => window.clearTimeout(timer)
+    if (phase === 'depth') {
+      let frame = 0
+      const tick = () => {
+        if (phaseRef.current !== 'depth' || completed.current) return
+        const state = sinkingState(performance.now() - sinkStarted.current)
+        setSinkProgress(state.progress)
+        if (state.snagged) escape('bottom-snag')
+        else frame = requestAnimationFrame(tick)
+      }
+      frame = requestAnimationFrame(tick)
+      const timer = window.setTimeout(() => {
+        if (phaseRef.current === 'depth') escape('bottom-snag')
+      }, Math.max(0, SINK_DURATION_MS - (performance.now() - sinkStarted.current)))
+      return () => { cancelAnimationFrame(frame); window.clearTimeout(timer) }
     }
     if (phase === 'waiting') {
       const timer = window.setTimeout(() => {
-        if (fish?.bites) setPhase('hook')
+        if (fish?.bites) changePhase('hook')
         else escape('no-bite')
       }, 1100)
       return () => window.clearTimeout(timer)
@@ -151,11 +162,11 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, regi
       }, 100)
       return () => window.clearInterval(timer)
     }
-  }, [phase, fish, sinkMs])
+  }, [phase, fish])
 
   const progressWidth = phase === 'fight' ? `${Math.min(100, fight.progress)}%` : undefined
 
-  const castMeter = <div className="cast-aim-layout">
+  if (phase === 'aim') return <section className="fishing-dialog cast-meter-overlay" role="dialog" aria-modal="true" aria-label="Kastelengde">
     <button className="cast-meter" data-autofocus disabled={!target} aria-label={`Kast ${meterStep} rute${meterStep === 1 ? '' : 'r'} fram. Trykk for å kaste.`} onPointerDown={aimAtPointer} onClick={cast}>
       <span className="cast-meter-caption">LANGT</span>
       <span className="cast-meter-track">
@@ -164,37 +175,23 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onFinish, regi
       </span>
       <span className="cast-meter-caption">KORT</span>
     </button>
-    <div className="cast-meter-readout"><span>KASTELENGDE</span><strong>{target?.label ?? 'Kort'} · {meterStep} {meterStep === 1 ? 'rute' : 'ruter'}</strong><small>{target?.featureName ?? 'Vannkanten'}</small></div>
-  </div>
+  </section>
 
-  if (phase === 'aim') return <section className="fishing-dialog cast-meter-overlay" role="dialog" aria-modal="true" aria-label="Kastelengde">
-    {castMeter}
+  if (phase === 'depth') return <section className="fishing-dialog cast-meter-overlay" role="dialog" aria-modal="true" aria-label="Fiskedybde">
+    <button className="cast-meter depth-meter" data-autofocus aria-label="Stopp synkingen og velg dybde" onClick={chooseDepth}>
+      <span className="cast-meter-caption">GRUNT</span>
+      <span className="cast-meter-track" role="meter" aria-label="Synkende agn" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(sinkProgress * 100)}>
+        {[1,2,3,4,5].map(step => <i key={step} className="cast-meter-tick is-available" style={{ top: `${(step - 1) * 25}%` }}><b>{step}</b></i>)}
+        <i className="cast-meter-pointer" style={{ top: `${sinkProgress * 100}%` }} aria-hidden="true"><b /></i>
+      </span>
+      <span className="cast-meter-caption">DYPT</span>
+    </button>
   </section>
 
   return <section className="fishing-dialog" role="dialog" aria-modal="true" aria-labelledby="fishing-title">
     <header className="fishing-heading">
-      <div><span>FISKE · {FISHING_ZONE_NAMES[zoneId] ?? 'VANNKANTEN'}</span><h2 id="fishing-title">{phase === 'casting' ? 'Kastet flyr' : phase === 'hook' ? 'Napp!' : phase === 'fight' ? 'Kjør fisken' : phase === 'resolving' ? 'Fisketuren' : 'Fisking'}</h2></div>
+      <div><span>FISKE · {FISHING_ZONE_NAMES[zoneId] ?? 'VANNKANTEN'}</span><h2 id="fishing-title">{phase === 'hook' ? 'Napp!' : phase === 'fight' ? 'Kjør fisken' : phase === 'resolving' ? 'Fisketuren' : 'Fisking'}</h2></div>
     </header>
-
-    {phase === 'casting' && <div className="cast-animation" role="status" aria-label={`Agnet lander ${targetStep} ruter ut i vannet`}>
-      <p className="fishing-prompt">Du kaster {target?.label.toLowerCase()} · {targetStep} {targetStep === 1 ? 'rute' : 'ruter'} fram</p>
-      <div className="cast-scene" style={{ '--cast-end': `${25 + 72 * ((targetStep - .5) / 5)}%`, '--cast-mid': `${25 + 72 * ((targetStep - .5) / 5) * .55}%` } as CSSProperties}>
-        <div className="cast-fisher" aria-hidden="true"><i /><b /><span /></div>
-        <div className="cast-water-lane" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => <i key={index} className={index + 1 === targetStep ? 'is-landing' : ''} />)}</div>
-        <i className="cast-flying-lure" aria-hidden="true" />
-        <i className="cast-splash" aria-hidden="true" />
-      </div>
-      <p className="fishing-tip">Plask! Agnet landet ved {target?.featureName}.</p>
-    </div>}
-
-    {phase === 'depth' && <>
-      <p className="fishing-prompt">La sluken synke til riktig dybde før du sveiver inn.</p>
-      <div className="fishing-choice-list">
-        {DEPTHS.map(option => <button key={option.id} data-autofocus={option.id === 'surface' || undefined} onClick={() => chooseDepth(option)}><strong>{option.name}</strong><span>{option.help}</span></button>)}
-      </div>
-    </>}
-
-    {phase === 'sinking' && <div className="fishing-wait" role="status"><span className="fishing-lure" aria-hidden="true">◆</span><strong>Sluken synker mot {depth === 'bottom' ? 'bunnen' : 'mellomvannet'} …</strong><div className="fishing-meter"><i className="fishing-sink-meter" style={{ animationDuration: `${sinkMs}ms` }} /></div></div>}
 
     {phase === 'retrieve' && <>
       <p className="fishing-prompt">Hvordan vil du sveive inn?</p>

@@ -144,6 +144,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
         }
         casting.current = true
         fishingCommitted.current = false
+        world.setCastAim(true)
         setResult(null)
         setError('')
         setSignMessage(null)
@@ -235,10 +236,12 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
         setInventory(nextInventory)
         const text = outcome.reason === 'no-bite'
           ? 'Ingen napp denne gangen. Agnet er brukt.'
+          : outcome.reason === 'bottom-snag'
+            ? 'Kroken satte seg fast i bunnen. Kastet mislyktes, og agnet er brukt.'
           : outcome.reason === 'missed-hook'
             ? 'Du reagerte litt for sent. Fisken slapp unna, og agnet er brukt.'
             : 'Snøret røk. Fisken slapp unna, og agnet er brukt.'
-        setSignMessage({ title: outcome.reason === 'no-bite' ? 'Ingen napp' : 'Fisken slapp unna', text })
+        setSignMessage({ title: outcome.reason === 'no-bite' ? 'Ingen napp' : outcome.reason === 'bottom-snag' ? 'Kroken sitter fast' : 'Fisken slapp unna', text })
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Fisketuren kunne ikke lagres. Prøv igjen.')
@@ -317,7 +320,8 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       {showWardrobe && <WardrobeDialog appearance={draftLook} pending={savingLook} onPreview={previewLook} onSave={() => void confirmLook()} onClose={closeWardrobe} />}
       {showBook && <FishBookDialog book={book} onClose={closeBook} registerMenuBack={registerFishBookMenuBack} />}
       {fishingSession && <FishingDialog position={fishingSession.position} zoneId={fishingSession.zoneId} bait={fishingSession.bait}
-        onCommit={() => { fishingCommitted.current = true }} onFinish={outcome => void finishFishingSession(outcome)}
+        onCast={steps => scene.current?.showCastSplash(steps)}
+        onCommit={() => { fishingCommitted.current = true; scene.current?.setCastAim(false) }} onFinish={outcome => void finishFishingSession(outcome)}
         registerReelControl={registerReelControl} />}
     </div>
 

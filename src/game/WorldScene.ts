@@ -2,6 +2,7 @@ import { NPCS, type NpcDefinition } from './npcs'
 import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTER, STANDARD_CHARACTERS } from './characters'
 import { createCharacterImage, preloadCharacter, setCharacterDirection } from './characterRendering'
 import { characterWalkStep, nextPlayerWalkStep, PLAYER_WALK_SETTLE_MS } from './characterAnimation'
+import { castTargets } from './fishing'
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorGround, drawOutdoorObject, isOutdoorObject, isRaisedDecoration } from './outdoorTiles'
 import { drawIndoorGround, drawIndoorObject, isIndoorObject } from './indoorTiles'
@@ -31,11 +32,15 @@ export class WorldScene extends Phaser.Scene {
   private environmentObjects?: Phaser.GameObjects.Group
   private waterSigns?: Phaser.GameObjects.Group
   private nextWaterSignAt = 0
+  private castSplash?: Phaser.GameObjects.Graphics
+  private castSplashTween?: Phaser.Tweens.Tween
+  private castCameraShifted = false
   private keys?: Record<string, Phaser.Input.Keyboard.Key>
   private moving = false
   private playerWalkFrame: 1 | 2 = 2
   private playerWalkUntil = 0
   private fishing = false
+  private aimingCast = false
   private uiBlocked = false
   private nextMove = 0
   private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container; image?: Phaser.GameObjects.Image; walkStarted?: number }[] = []
@@ -52,6 +57,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   create() {
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.clearCastSplash(); this.restoreCastCamera() })
     this.cameras.main.setZoom(this.viewportZoom)
     this.game.canvas.style.imageRendering = 'pixelated'
     this.cameras.main.setBackgroundColor('#183a36')
@@ -160,7 +166,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   action() {
-    if (this.moving || this.fishing || this.uiBlocked) return
+    if (this.moving || this.fishing || this.uiBlocked || !this.player) return
     const target = interactionAhead(this.position)
     const resident = this.npcAhead()
     if (resident) {
@@ -198,6 +204,77 @@ export class WorldScene extends Phaser.Scene {
 
   finishFishing() {
     this.fishing = false
+    this.aimingCast = false
+    this.playerWalkUntil = 0
+    this.drawPlayer()
+    this.clearCastSplash()
+    this.restoreCastCamera()
+  }
+
+  setCastAim(active: boolean) {
+    this.aimingCast = active && this.fishing
+    if (this.aimingCast) this.playerWalkUntil = 0
+    this.drawPlayer()
+  }
+
+  showCastSplash(steps: number) {
+    if (!this.fishing || !this.player) return
+    const target = castTargets(this.position).find(value => value.steps === steps)
+    if (!target) return
+    this.clearCastSplash()
+    const x = target.x * TILE_SIZE + TILE_SIZE / 2
+    const y = target.y * TILE_SIZE + TILE_SIZE / 2
+    const camera = this.cameras.main
+    const view = camera.worldView
+    const margin = 20
+    if (x < view.left + margin || x > view.right - margin || y < view.top + margin || y > view.bottom - margin) {
+      // Keep as much of the player/landing span as fits, but make the splash
+      // visible even on a very short landscape viewport. World positions stay fixed.
+      const halfWidth = Math.max(0, view.width / 2 - margin)
+      const halfHeight = Math.max(0, view.height / 2 - margin)
+      const centerX = Phaser.Math.Clamp((this.player.x + x) / 2, x - halfWidth, x + halfWidth)
+      const centerY = Phaser.Math.Clamp((this.player.y + y) / 2, y - halfHeight, y + halfHeight)
+      camera.stopFollow()
+      camera.pan(centerX, centerY, 180, 'Sine.easeOut', true)
+      this.castCameraShifted = true
+    }
+    const splash = this.add.graphics().setPosition(x, y).setDepth(y + 1).setName('cast-splash')
+      .setData({ tileX: target.x, tileY: target.y, steps })
+    this.castSplash = splash
+    const draw = (progress: number) => {
+      splash.clear()
+      splash.lineStyle(2, 0xe3f7ee, .9 * (1 - progress))
+      splash.strokeEllipse(0, 0, 10 + progress * 24, 5 + progress * 11)
+      splash.lineStyle(1, 0xa5dce8, .65 * (1 - progress))
+      splash.strokeEllipse(0, 1, 5 + progress * 17, 3 + progress * 7)
+      splash.fillStyle(0xf2fff4, 1 - progress)
+      for (const side of [-1, 1]) {
+        splash.fillRect(Math.round(side * (3 + progress * 9)), Math.round(-2 - Math.sin(progress * Math.PI) * 10), 2, 3)
+        splash.fillRect(Math.round(side * (1 + progress * 5)), Math.round(-5 - Math.sin(progress * Math.PI) * 6), 2, 2)
+      }
+    }
+    draw(0)
+    this.castSplashTween = this.tweens.addCounter({ from: 0, to: 1, duration: 900, ease: 'Sine.easeOut',
+      onUpdate: tween => draw(tween.getValue() ?? 0),
+      onComplete: () => { splash.destroy(); if (this.castSplash === splash) { this.castSplash = undefined; this.castSplashTween = undefined } },
+    })
+  }
+
+  private clearCastSplash() {
+    this.castSplashTween?.stop()
+    this.castSplashTween = undefined
+    this.castSplash?.destroy()
+    this.castSplash = undefined
+  }
+
+  private restoreCastCamera() {
+    if (!this.castCameraShifted) return
+    const camera = this.cameras?.main
+    if (camera && this.player) {
+      camera.panEffect.reset()
+      camera.startFollow(this.player, true, .18, .18)
+    }
+    this.castCameraShifted = false
   }
 
   setUiBlocked(blocked: boolean) {
@@ -221,6 +298,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private drawMap() {
+    this.clearCastSplash()
+    this.restoreCastCamera()
     this.waterSigns?.clear(true, true)
     this.waterSigns?.destroy(true)
     this.waterSigns = undefined
@@ -346,7 +425,7 @@ export class WorldScene extends Phaser.Scene {
     if (!this.playerImage) return
     const walking = !this.uiBlocked && !this.fishing && (this.moving || this.time.now < this.playerWalkUntil)
     setCharacterDirection(this.playerImage, PLAYER_CHARACTER, this.position.facing,
-      walking ? this.playerWalkFrame : 0)
+      walking ? this.playerWalkFrame : 0, this.aimingCast ? 'castAim' : undefined)
   }
 }
 

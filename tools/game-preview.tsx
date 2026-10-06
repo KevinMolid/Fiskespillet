@@ -42,6 +42,12 @@ const services: GameServices = {
     return snapshot()
   },
   digForWorms: async () => ({ inventory: snapshot(), amount: 2 }),
+  consumeBait: async (_uid, bait) => {
+    if (inventory.equippedBait !== bait || !(inventory.bag[bait] ?? 0)) throw new Error('Du har ikke lenger valgt agn i sekken.')
+    inventory.bag[bait] = (inventory.bag[bait] ?? 0) - 1
+    if (!inventory.bag[bait]) { delete inventory.bag[bait]; inventory.equippedBait = null }
+    return snapshot()
+  },
   recordEncounter: async (_uid, speciesId, grams, caught, bait, locationId) => {
     if (!(inventory.bag[bait] ?? 0)) throw new Error('Tomt for agn.')
     inventory.bag[bait] = (inventory.bag[bait] ?? 0) - 1

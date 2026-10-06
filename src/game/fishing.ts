@@ -6,6 +6,8 @@ export type CastTarget = {
   castLength: CastLength
   label: string
   steps: number
+  x: number
+  y: number
   feature: FishingFeature
   featureName: string
   description: string
@@ -52,6 +54,8 @@ export function castTargets(position: Position): CastTarget[] {
     return {
       ...option,
       id: option.steps,
+      x,
+      y,
       feature,
       featureName: feature === 'reeds' ? 'sivkant' : feature === 'rocky' ? 'stein' : feature === 'dock' ? 'bryggekant' : 'åpent vann',
       description: `Ute ved ${feature === 'reeds' ? 'sivet' : feature === 'rocky' ? 'steinene' : feature === 'dock' ? 'brygga' : 'åpent vann'}`,
@@ -61,6 +65,13 @@ export function castTargets(position: Position): CastTarget[] {
 
 export function fishingConditions(bait: FishingConditions['bait'], target: CastTarget, depth: FishingDepth, retrieve: RetrieveSpeed): FishingConditions {
   return { bait, castLength: target.castLength, feature: target.feature, depth, retrieve }
+}
+
+// One continuous descent: choose a fishing layer before the hook hits bottom.
+export const SINK_DURATION_MS = 6000
+export function sinkingState(elapsedMs: number): { progress: number; depth: FishingDepth; snagged: boolean } {
+  const progress = Math.max(0, Math.min(1, elapsedMs / SINK_DURATION_MS))
+  return { progress, depth: progress < .28 ? 'surface' : progress < .7 ? 'midwater' : 'bottom', snagged: progress >= 1 }
 }
 
 export type FightState = { tension: number; progress: number; elapsedMs: number; pulling: boolean }
