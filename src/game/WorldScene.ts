@@ -2,7 +2,7 @@ import { NPCS, type NpcDefinition } from './npcs'
 import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTER, STANDARD_CHARACTERS } from './characters'
 import { createCharacterImage, preloadCharacter, setCharacterDirection } from './characterRendering'
 import { characterWalkStep, nextPlayerWalkStep, PLAYER_WALK_SETTLE_MS } from './characterAnimation'
-import { castTargets } from './fishing'
+import { CAST_SPLASH_DURATION_MS, castFlightDuration, castTargets } from './fishing'
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorGround, drawOutdoorObject, isOutdoorObject, isRaisedDecoration } from './outdoorTiles'
 import { drawIndoorGround, drawIndoorObject, isIndoorObject } from './indoorTiles'
@@ -34,13 +34,19 @@ export class WorldScene extends Phaser.Scene {
   private nextWaterSignAt = 0
   private castSplash?: Phaser.GameObjects.Graphics
   private castSplashTween?: Phaser.Tweens.Tween
+  private castFlight?: Phaser.GameObjects.Graphics
+  private castFlightTween?: Phaser.Tweens.Tween
+  private castDone?: (finished: boolean) => void
+  private castSequenceId = 0
   private castCameraShifted = false
+  private castCameraZoom?: number
   private keys?: Record<string, Phaser.Input.Keyboard.Key>
   private moving = false
   private playerWalkFrame: 1 | 2 = 2
   private playerWalkUntil = 0
   private fishing = false
   private aimingCast = false
+  private castingForward = false
   private uiBlocked = false
   private nextMove = 0
   private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container; image?: Phaser.GameObjects.Image; walkStarted?: number }[] = []
@@ -57,7 +63,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   create() {
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.clearCastSplash(); this.restoreCastCamera() })
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.clearCastSequence(); this.restoreCastCamera() })
     this.cameras.main.setZoom(this.viewportZoom)
     this.game.canvas.style.imageRendering = 'pixelated'
     this.cameras.main.setBackgroundColor('#183a36')
@@ -205,9 +211,10 @@ export class WorldScene extends Phaser.Scene {
   finishFishing() {
     this.fishing = false
     this.aimingCast = false
+    this.castingForward = false
     this.playerWalkUntil = 0
     this.drawPlayer()
-    this.clearCastSplash()
+    this.clearCastSequence()
     this.restoreCastCamera()
   }
 
@@ -217,27 +224,70 @@ export class WorldScene extends Phaser.Scene {
     this.drawPlayer()
   }
 
-  showCastSplash(steps: number) {
+  playCast(steps: number): Promise<boolean> {
+    if (!this.fishing || !this.player || !castTargets(this.position).some(target => target.steps === steps)) return Promise.resolve(false)
+    this.clearCastSequence()
+    const sequence = this.castSequenceId
+    this.aimingCast = false
+    this.castingForward = true
+    this.drawPlayer()
+    const target = castTargets(this.position).find(value => value.steps === steps)!
+    const x = target.x * TILE_SIZE + TILE_SIZE / 2
+    const y = target.y * TILE_SIZE + TILE_SIZE / 2
+    this.frameCast(x, y)
+    const pose = PLAYER_CHARACTER.poses!.castForward!
+    const tip = pose.rodTip![this.position.facing]
+    // Attachment pixels belong to the artwork, never to collision/world position.
+    const startX = this.player.x + (tip.x - pose.format.groundAnchor.x) * pose.format.renderScale
+    const startY = this.player.y + CHARACTER_GROUND_OFFSET_Y + (tip.y - pose.format.groundAnchor.y) * pose.format.renderScale
+    const flight = this.add.graphics().setDepth(this.player.y + 1).setName('cast-flight')
+      .setData({ startX, startY, targetX: x, targetY: y, steps })
+    this.castFlight = flight
+    const draw = (progress: number) => {
+      const lureX = Phaser.Math.Linear(startX, x, progress)
+      const lureY = Phaser.Math.Linear(startY, y, progress) - Math.sin(progress * Math.PI) * (24 + steps * 5)
+      flight.setData({ progress, lureX, lureY }).clear()
+      flight.lineStyle(1, 0xf1e7c8, .9)
+      flight.beginPath().moveTo(startX, startY)
+      for (let i = 1; i <= 12; i++) {
+        const t = i / 12
+        flight.lineTo(Math.round(Phaser.Math.Linear(startX, lureX, t)),
+          Math.round(Phaser.Math.Linear(startY, lureY, t) + Math.sin(t * Math.PI) * 5 * progress))
+      }
+      flight.strokePath()
+      flight.fillStyle(0xf8f2d8).fillRect(Math.round(lureX) - 1, Math.round(lureY) - 2, 3, 3)
+      flight.fillStyle(0xc95439).fillRect(Math.round(lureX) - 1, Math.round(lureY) + 1, 3, 2)
+    }
+    draw(0)
+    return new Promise(resolve => {
+      this.castDone = resolve
+      this.castFlightTween = this.tweens.addCounter({ from: 0, to: 1, duration: castFlightDuration(steps), ease: 'Sine.easeOut',
+        onUpdate: tween => draw(tween.getValue() ?? 0),
+        onComplete: () => {
+          flight.destroy()
+          this.castFlight = undefined
+          this.castFlightTween = undefined
+          if (sequence !== this.castSequenceId) return
+          this.showCastSplash(steps, () => {
+            if (sequence !== this.castSequenceId) return
+            this.castingForward = false
+            this.drawPlayer()
+            this.castDone = undefined
+            resolve(true)
+          })
+        },
+      })
+    })
+  }
+
+  showCastSplash(steps: number, onComplete?: () => void) {
     if (!this.fishing || !this.player) return
     const target = castTargets(this.position).find(value => value.steps === steps)
     if (!target) return
     this.clearCastSplash()
     const x = target.x * TILE_SIZE + TILE_SIZE / 2
     const y = target.y * TILE_SIZE + TILE_SIZE / 2
-    const camera = this.cameras.main
-    const view = camera.worldView
-    const margin = 20
-    if (x < view.left + margin || x > view.right - margin || y < view.top + margin || y > view.bottom - margin) {
-      // Keep as much of the player/landing span as fits, but make the splash
-      // visible even on a very short landscape viewport. World positions stay fixed.
-      const halfWidth = Math.max(0, view.width / 2 - margin)
-      const halfHeight = Math.max(0, view.height / 2 - margin)
-      const centerX = Phaser.Math.Clamp((this.player.x + x) / 2, x - halfWidth, x + halfWidth)
-      const centerY = Phaser.Math.Clamp((this.player.y + y) / 2, y - halfHeight, y + halfHeight)
-      camera.stopFollow()
-      camera.pan(centerX, centerY, 180, 'Sine.easeOut', true)
-      this.castCameraShifted = true
-    }
+    this.frameCast(x, y)
     const splash = this.add.graphics().setPosition(x, y).setDepth(y + 1).setName('cast-splash')
       .setData({ tileX: target.x, tileY: target.y, steps })
     this.castSplash = splash
@@ -254,10 +304,46 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     draw(0)
-    this.castSplashTween = this.tweens.addCounter({ from: 0, to: 1, duration: 900, ease: 'Sine.easeOut',
+    this.castSplashTween = this.tweens.addCounter({ from: 0, to: 1, duration: CAST_SPLASH_DURATION_MS, ease: 'Sine.easeOut',
       onUpdate: tween => draw(tween.getValue() ?? 0),
-      onComplete: () => { splash.destroy(); if (this.castSplash === splash) { this.castSplash = undefined; this.castSplashTween = undefined } },
+      onComplete: () => {
+        splash.destroy()
+        if (this.castSplash === splash) { this.castSplash = undefined; this.castSplashTween = undefined }
+        onComplete?.()
+      },
     })
+  }
+
+  private frameCast(x: number, y: number) {
+    if (!this.player || !this.playerImage || this.castCameraShifted) return
+    const camera = this.cameras.main
+    const view = camera.worldView
+    const margin = 20
+    if (x < view.left + margin || x > view.right - margin || y < view.top + margin || y > view.bottom - margin) {
+      // Frame both the forward pose and landing point, including short landscape
+      // screens. A temporary zoom changes only the view, never world coordinates.
+      const bounds = this.playerImage.getBounds()
+      const left = Math.min(bounds.left, x - 16) - margin, right = Math.max(bounds.right, x + 16) + margin
+      const top = Math.min(bounds.top, y - 16) - margin, bottom = Math.max(bounds.bottom, y + 16) + margin
+      const fit = Math.min(1, view.width / (right - left), view.height / (bottom - top))
+      camera.stopFollow()
+      if (fit < 1) { this.castCameraZoom = this.viewportZoom; camera.zoomTo(camera.zoom * fit, 180, 'Sine.easeOut', true) }
+      camera.pan((left + right) / 2, (top + bottom) / 2, 180, 'Sine.easeOut', true)
+      this.castCameraShifted = true
+    }
+  }
+
+  private clearCastSequence() {
+    this.castSequenceId++
+    this.castFlightTween?.stop()
+    this.castFlightTween = undefined
+    this.castFlight?.destroy()
+    this.castFlight = undefined
+    this.clearCastSplash()
+    this.castingForward = false
+    const resolve = this.castDone
+    this.castDone = undefined
+    resolve?.(false)
   }
 
   private clearCastSplash() {
@@ -272,9 +358,12 @@ export class WorldScene extends Phaser.Scene {
     const camera = this.cameras?.main
     if (camera && this.player) {
       camera.panEffect.reset()
+      camera.zoomEffect.reset()
+      if (this.castCameraZoom !== undefined) camera.setZoom(this.viewportZoom)
       camera.startFollow(this.player, true, .18, .18)
     }
     this.castCameraShifted = false
+    this.castCameraZoom = undefined
   }
 
   setUiBlocked(blocked: boolean) {
@@ -298,7 +387,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private drawMap() {
-    this.clearCastSplash()
+    this.clearCastSequence()
     this.restoreCastCamera()
     this.waterSigns?.clear(true, true)
     this.waterSigns?.destroy(true)
@@ -425,7 +514,7 @@ export class WorldScene extends Phaser.Scene {
     if (!this.playerImage) return
     const walking = !this.uiBlocked && !this.fishing && (this.moving || this.time.now < this.playerWalkUntil)
     setCharacterDirection(this.playerImage, PLAYER_CHARACTER, this.position.facing,
-      walking ? this.playerWalkFrame : 0, this.aimingCast ? 'castAim' : undefined)
+      walking ? this.playerWalkFrame : 0, this.castingForward ? 'castForward' : this.aimingCast ? 'castAim' : undefined)
   }
 }
 

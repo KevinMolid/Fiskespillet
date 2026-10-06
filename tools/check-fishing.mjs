@@ -5,7 +5,13 @@ const bundle = await build({
   stdin: { contents: "export * from './src/game/fishing'; export { MAPS } from './src/game/world'", resolveDir: process.cwd() },
   bundle: true, write: false, platform: 'node', format: 'esm', loader: { '.png': 'dataurl' },
 })
-const { MAPS, castTargets, advanceFight, fishingConditions, FISHING_ZONE_NAMES, sinkingState, SINK_DURATION_MS } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
+const { MAPS, castTargets, advanceFight, fishingConditions, FISHING_ZONE_NAMES, sinkingState, SINK_DURATION_MS, castFlightDuration, CAST_SPLASH_DURATION_MS } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
+
+assert.equal(CAST_SPLASH_DURATION_MS,900)
+assert.equal(castFlightDuration(1),840)
+assert.equal(castFlightDuration(4),1260)
+assert.equal(castFlightDuration(5),1400)
+assert(castFlightDuration(5)>castFlightDuration(1))
 
 assert.equal(FISHING_ZONE_NAMES.havn, 'Bryggehavn')
 assert.equal(FISHING_ZONE_NAMES.skogstjern, 'Skogstjernet')

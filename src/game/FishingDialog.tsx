@@ -13,11 +13,11 @@ type Props = {
   zoneId: string
   bait: BaitId
   onCommit: () => void
-  onCast: (steps: number) => void
+  onCast: (steps: number) => Promise<boolean>
   onFinish: (result: FishingFinish) => void
   registerReelControl: (control: { start: () => boolean; stop: () => void } | null) => void
 }
-type Phase = 'aim' | 'depth' | 'retrieve' | 'waiting' | 'hook' | 'fight' | 'resolving'
+type Phase = 'aim' | 'casting' | 'depth' | 'retrieve' | 'waiting' | 'hook' | 'fight' | 'resolving'
 const SPEEDS: { id: RetrieveSpeed; name: string; help: string }[] = [
   { id: 'slow', name: 'Sakte', help: 'Følg sluken rolig inn' },
   { id: 'steady', name: 'Jevnt', help: 'Hold en stødig fart' },
@@ -42,6 +42,8 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onCast, onFini
   const reelingRef = useRef(false)
   const fightRef = useRef(fight)
   const completed = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
 
   function changePhase(value: Phase) { phaseRef.current = value; setPhase(value) }
 
@@ -84,11 +86,15 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onCast, onFini
     const selected = targets.find(value => value.steps === meterStepRef.current)
     if (!selected || phaseRef.current !== 'aim') return
     setTargetStep(selected.steps)
-    sinkStarted.current = performance.now()
-    setSinkProgress(0)
-    changePhase('depth')
+    changePhase('casting')
     onCommit()
-    onCast(selected.steps)
+    void onCast(selected.steps).then(finished => {
+      if (!finished || !mounted.current || completed.current || phaseRef.current !== 'casting') return
+      // Start sinking only after both world animations have actually finished.
+      sinkStarted.current = performance.now()
+      setSinkProgress(0)
+      changePhase('depth')
+    })
   }
 
   function aimAtPointer(event: ReactPointerEvent<HTMLButtonElement>) {
@@ -165,6 +171,9 @@ export function FishingDialog({ position, zoneId, bait, onCommit, onCast, onFini
   }, [phase, fish])
 
   const progressWidth = phase === 'fight' ? `${Math.min(100, fight.progress)}%` : undefined
+
+  // The cast lives in the world, with no animation panel or clickable choices.
+  if (phase === 'casting') return <span className="sr-only" role="status">Kaster ut snøret …</span>
 
   if (phase === 'aim') return <section className="fishing-dialog cast-meter-overlay" role="dialog" aria-modal="true" aria-label="Kastelengde">
     <button className="cast-meter" data-autofocus disabled={!target} aria-label={`Kast ${meterStep} rute${meterStep === 1 ? '' : 'r'} fram. Trykk for å kaste.`} onPointerDown={aimAtPointer} onClick={cast}>

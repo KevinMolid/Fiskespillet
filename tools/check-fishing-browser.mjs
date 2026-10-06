@@ -52,12 +52,48 @@ try {
       await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now()+2000)))
       await page.clock.runFor(50) // Settle Phaser's frame delta after pausing.
     }
-    const castFour = async ()=>{
+    const castFour = async (capture=false)=>{
       const track=await page.locator('.cast-meter-track').boundingBox()
       const x=track.x+track.width/2,y=track.y+track.height*.25
       if(mobile) await page.touchscreen.tap(x,y)
       else await page.mouse.click(x,y)
+      await page.getByText('Kaster ut snøret …',{exact:true}).waitFor()
+      assert.equal(await page.getByRole('dialog',{name:'Fiskedybde'}).count(),0,'Depth cannot start during flight')
+      assert.equal(await page.getByRole('dialog',{name:'Kastelengde'}).count(),0)
+      assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down-cast-forward')
+      assert(!await page.evaluate(()=>window.__fishingTest.scene.castSplash),'Splash waits for the lure to land')
+      const position=await page.evaluate(()=>({...window.__fishingTest.scene.position}))
+      await page.keyboard.press('e');await page.keyboard.press('Escape');await page.keyboard.press('ArrowRight')
+      await page.clock.runFor(600)
+      const flight=await page.evaluate(()=>{
+        const s=window.__fishingTest.scene,g=s.castFlight,p=s.playerImage
+        const tip=p.texture.key==='player-down-cast-forward'
+        return {data:Object.fromEntries(['startX','startY','targetX','targetY','steps','progress','lureX','lureY'].map(key=>[key,g.getData(key)])),commands:g.commandBuffer.length,tip,position:{...s.position}}
+      })
+      assert(flight.tip&&flight.commands>0&&flight.data.progress>0&&flight.data.progress<1)
+      assert.equal(flight.data.targetX,24*32+16);assert.equal(flight.data.targetY,29*32+16)
+      assert.notEqual(flight.data.lureY,flight.data.targetY,'Lure is still flying')
+      assert.deepEqual(flight.position,position,'Input during flight cannot move the player')
+      assert.equal(await page.getByRole('dialog',{name:'Fiskedybde'}).count(),0)
+      if(capture) await page.locator('.game-frame').screenshot({path:`output/fishing-review/flight-${mode}.png`})
+      await page.clock.runFor(760)
+      assert(!await page.evaluate(()=>window.__fishingTest.scene.castFlight))
+      assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down-cast-forward','Hold forward pose through splash')
+      assert.equal(await page.getByRole('dialog',{name:'Fiskedybde'}).count(),0,'Depth waits for the splash to finish')
+      const landing=await page.evaluate(()=>{
+        const s=window.__fishingTest.scene,g=s.castSplash
+        if(!g) throw new Error('Missing splash after line flight')
+        return {x:g.x,y:g.y,tileX:g.getData('tileX'),tileY:g.getData('tileY'),steps:g.getData('steps'),commands:g.commandBuffer.length,
+          playerX:s.player.x,playerY:s.player.y,inView:s.cameras.main.worldView.contains(g.x,g.y),playerInView:s.cameras.main.worldView.contains(s.player.x,s.player.y)}
+      })
+      assert(landing.inView&&landing.playerInView,'Both player and landing remain visible')
+      if(capture) await page.locator('.game-frame').screenshot({path:`output/fishing-review/splash-${mode}.png`})
+      await page.clock.runFor(950)
       await page.getByRole('dialog',{name:'Fiskedybde'}).waitFor()
+      assert(!await page.evaluate(()=>window.__fishingTest.scene.castFlight||window.__fishingTest.scene.castSplash))
+      assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down')
+      assert(Number(await page.getByRole('meter',{name:'Synkende agn'}).getAttribute('aria-valuenow'))<10,'The six-second sinking clock starts after animation, not at launch')
+      return landing
     }
     const selectDepth = async ()=>{
       if(mobile) await page.getByRole('button',{name:'Velg',exact:true}).last().tap()
@@ -83,27 +119,13 @@ try {
     assert.equal(clean.background,'rgba(0, 0, 0, 0)');assert.equal(clean.image,'none')
     assert.equal(clean.border,'0px');assert.equal(clean.shadow,'none');assert.equal(clean.outline,'none')
     await page.locator('.game-frame').screenshot({path:`output/fishing-review/length-${mode}.png`})
-    await castFour()
-    assert.equal(await page.evaluate(()=>window.__fishingTest.scene.playerImage.texture.key),'player-down','Casting releases the aiming pose')
-    const landing=await page.evaluate(()=>{
-      const s=window.__fishingTest.scene,g=s.castSplash
-      if(!g) throw new Error('Missing splash: '+JSON.stringify({fishing:s.fishing,position:s.position,objects:s.children.list.map(g=>g.name).filter(Boolean)}))
-      return {x:g.x,y:g.y,tileX:g.getData('tileX'),tileY:g.getData('tileY'),steps:g.getData('steps'),commands:g.commandBuffer.length,
-        playerX:s.player.x,playerY:s.player.y,position:{...s.position},inView:s.cameras.main.worldView.contains(g.x,g.y)}
-    })
+    const landing=await castFour(true)
     assert.equal(landing.steps,4);assert.equal(landing.tileX,24);assert.equal(landing.tileY,29)
     assert.equal(landing.x,landing.playerX);assert.equal(landing.y,landing.playerY+4*32)
     assert(landing.commands>0)
     assert.equal(await page.locator('.cast-animation,.cast-scene,.cast-meter-readout,.fishing-choice-list').count(),0)
     assert.equal(await page.getByRole('dialog',{name:'Fiskedybde'}).textContent().then(s=>s.replace(/\s/g,'')),'GRUNT12345DYPT')
     assert(Number(await page.getByRole('meter',{name:'Synkende agn'}).getAttribute('aria-valuenow'))<10)
-    await page.clock.runFor(220)
-    assert(await page.evaluate(()=>{
-      const s=window.__fishingTest.scene,g=s.castSplash
-      return s.cameras.main.worldView.contains(g.x,g.y)
-    }),'The actual splash is visible, including short landscape viewports')
-    await page.locator('.game-frame').screenshot({path:`output/fishing-review/splash-${mode}.png`})
-    console.log(`${mode}: four-tile splash initially in camera view: ${landing.inView}`)
     await page.clock.fastForward(2200)
     const sunk=Number(await page.getByRole('meter',{name:'Synkende agn'}).getAttribute('aria-valuenow'))
     assert(sunk>30&&sunk<65,'Depth moves down from the top over time')
@@ -180,6 +202,20 @@ try {
         s.finishFishing()
         if(s.castSplash) throw new Error('Splash cleanup failed')
         if(image.texture.key!==`player-${facing}`) throw new Error('Fishing finish left the casting pose active')
+        s.fishing=true
+        const interrupted=s.playCast(5)
+        if(image.texture.key!==`player-${facing}-cast-forward`) throw new Error('Incorrect forward pose facing')
+        if(image.originX!==.5||image.originY!==1524/1536||image.scaleX!==.05) throw new Error('Forward pose anchor/scale changed')
+        const forwardMask=document.createElement('canvas');forwardMask.width=image.width;forwardMask.height=image.height
+        const forwardCtx=forwardMask.getContext('2d');forwardCtx.drawImage(image.texture.source[0].image,0,0)
+        const pixels=forwardCtx.getImageData(0,0,forwardMask.width,forwardMask.height).data
+        let forwardSole=0
+        for(let y=forwardMask.height-1;y>=0&&!forwardSole;y--) for(let x=0;x<forwardMask.width;x++) if(pixels[(y*forwardMask.width+x)*4+3]>=128){forwardSole=y+1;break}
+        if(forwardSole!==1524) throw new Error('Forward pose actual soles moved')
+        s.finishFishing()
+        if(await interrupted) throw new Error('Interrupted cast reported a completed splash')
+        if(s.castFlight||s.castSplash||s.castFlightTween||s.castDone) throw new Error('Interrupted cast left an effect or promise alive')
+        if(image.texture.key!==`player-${facing}`) throw new Error('Interrupted forward pose not restored')
       }
       return results
     })
@@ -187,6 +223,6 @@ try {
     for(const shot of directional) {assert.equal(shot.x,shot.expectedX);assert.equal(shot.y,shot.expectedY)}
     assert.deepEqual(errors,[])
     await context.close()
-    console.log(`${mode}: four casting poses/foot anchors, aim/cast/cancel lifecycle, bare meters, actual water splash, depth choice, fishing continuation and single bait consumption passed.`)
+    console.log(`${mode}: four aim/forward poses and anchors, line-flight → splash → depth order, input lock, interruption cleanup, fishing and single bait consumption passed.`)
   }
 } finally {await browser.close()}

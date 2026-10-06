@@ -12,8 +12,10 @@ Production files:
 - `src/assets/characters/player/left-cast-aim.png`
 
 The pose is enabled after the rod/bait/zone checks succeed, when the length meter
-opens. Committing the cast immediately restores idle before the world splash and
-depth meter. Cancelling or finishing fishing also restores idle. The player's
+opens. Committing the cast switches to the forward pose during line flight and
+the world splash; idle returns when the depth meter opens. See
+`player-cast-sequence.md` for the forward assets and phase timing.
+Cancelling or finishing fishing also restores idle. The player's
 world position, collision, facing, depth and movement remain unchanged.
 
 Directional mapping and preloading use the existing character registry and

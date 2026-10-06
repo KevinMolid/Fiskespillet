@@ -69,6 +69,9 @@ export function fishingConditions(bait: FishingConditions['bait'], target: CastT
 
 // One continuous descent: choose a fishing layer before the hook hits bottom.
 export const SINK_DURATION_MS = 6000
+export const CAST_SPLASH_DURATION_MS = 900
+// Longer casts travel farther before landing; the depth timer starts afterwards.
+export function castFlightDuration(steps: number) { return 700 + Math.max(1, Math.min(5, steps)) * 140 }
 export function sinkingState(elapsedMs: number): { progress: number; depth: FishingDepth; snagged: boolean } {
   const progress = Math.max(0, Math.min(1, elapsedMs / SINK_DURATION_MS))
   return { progress, depth: progress < .28 ? 'surface' : progress < .7 ? 'midwater' : 'bottom', snagged: progress >= 1 }

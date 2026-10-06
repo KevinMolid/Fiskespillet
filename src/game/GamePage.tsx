@@ -320,8 +320,8 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       {showWardrobe && <WardrobeDialog appearance={draftLook} pending={savingLook} onPreview={previewLook} onSave={() => void confirmLook()} onClose={closeWardrobe} />}
       {showBook && <FishBookDialog book={book} onClose={closeBook} registerMenuBack={registerFishBookMenuBack} />}
       {fishingSession && <FishingDialog position={fishingSession.position} zoneId={fishingSession.zoneId} bait={fishingSession.bait}
-        onCast={steps => scene.current?.showCastSplash(steps)}
-        onCommit={() => { fishingCommitted.current = true; scene.current?.setCastAim(false) }} onFinish={outcome => void finishFishingSession(outcome)}
+        onCast={steps => scene.current?.playCast(steps) ?? Promise.resolve(false)}
+        onCommit={() => { fishingCommitted.current = true }} onFinish={outcome => void finishFishingSession(outcome)}
         registerReelControl={registerReelControl} />}
     </div>
 
