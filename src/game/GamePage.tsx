@@ -8,7 +8,7 @@ import { GameMenu } from './GameMenu'
 import { PlaceNotice } from './PlaceNotice'
 import { InventoryDialog, ShopDialog, WardrobeDialog } from './GameDialogs'
 import { MobileControls } from './MobileControls'
-import { FishingDialog, type FishingFinish } from './FishingDialog'
+import { FishingDialog, type FishingFinish, type ReelControl } from './FishingDialog'
 import { useGameInput } from './useGameInput'
 import { FISH_REWARDS, type BaitId } from './items'
 import { fishingOptions } from './fish'
@@ -26,8 +26,12 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const saveTimer = useRef<number | null>(null)
   const casting = useRef(false)
   const fishingCommitted = useRef(false)
-  const reelControl = useRef<{ start: () => boolean; stop: () => void } | null>(null)
-  const registerReelControl = useCallback((control: { start: () => boolean; stop: () => void } | null) => { reelControl.current = control }, [])
+  const reelControl = useRef<ReelControl | null>(null)
+  const [fishingActionLabel, setFishingActionLabel] = useState('Velg')
+  const registerReelControl = useCallback((control: ReelControl | null) => {
+    reelControl.current = control
+    setFishingActionLabel(control?.label ?? 'Velg')
+  }, [])
   const interacting = useRef(false)
   const [, refreshInteraction] = useState(0)
   const [position, setPosition] = useState<Position | null>(null)
@@ -212,7 +216,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   worldPosition.current = position
   const map = position ? MAPS[position.mapId] : null
   function closeFishingSession() {
-    reelControl.current?.stop()
+    reelControl.current = null
     fishingCommitted.current = false
     casting.current = false
     setFishingSession(null)
@@ -281,8 +285,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const input = useGameInput({ frame: gameFrame, context: inputContext, modal, locked: busy || inventoryPending || savingLook,
     move: direction => { if (!uiBlocked) scene.current?.move(direction) },
     action: () => { if (error || result || signMessage) dismissMessage(); else scene.current?.action() }, menu: menuControl,
-    holdStart: () => fishingSession ? (reelControl.current?.start() ?? false) : false,
-    holdEnd: () => reelControl.current?.stop(),
+    tapAction: () => fishingSession ? (reelControl.current?.tap() ?? false) : false,
   })
 
   return <div className="game-shell">
@@ -321,13 +324,14 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       {showBook && <FishBookDialog book={book} onClose={closeBook} registerMenuBack={registerFishBookMenuBack} />}
       {fishingSession && <FishingDialog position={fishingSession.position} zoneId={fishingSession.zoneId} bait={fishingSession.bait}
         onCast={steps => scene.current?.playCast(steps) ?? Promise.resolve(false)}
+        onLureProgress={(steps, progress) => scene.current?.setRetrieveProgress(steps, progress)}
         onCommit={() => { fishingCommitted.current = true }} onFinish={outcome => void finishFishingSession(outcome)}
         registerReelControl={registerReelControl} />}
     </div>
 
     <MobileControls context={inputContext} onDirection={input.direction} onAction={input.action}
-      onActionStart={() => fishingSession ? (reelControl.current?.start() ?? false) : false} onActionEnd={() => reelControl.current?.stop()} onMenu={input.menu}
-      actionLabel={modal ? 'Velg' : (error || result || signMessage) ? 'Videre' : actionLabel ?? ''}
+      onMenu={input.menu}
+      actionLabel={fishingSession ? fishingActionLabel : modal ? 'Velg' : (error || result || signMessage) ? 'Videre' : actionLabel ?? ''}
       disabled={!position || !inventory || busy || inventoryPending || savingLook}
       actionDisabled={!position || busy || inventoryPending || savingLook || (!modal && !actionLabel && !error && !result && !signMessage)} />
     <p className="desktop-control-hint mt-3 text-xs text-slate-400">Enter: spillmeny · Piltaster / WASD: bevegelse · E / mellomrom: handling · Esc: tilbake · Gå på dører og trapper for å bytte rom.</p>

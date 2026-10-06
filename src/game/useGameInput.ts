@@ -9,6 +9,7 @@ type Options = {
   locked: boolean
   move: (direction: Direction) => void
   action: () => void
+  tapAction?: () => boolean
   menu: () => void
   holdStart?: () => boolean
   holdEnd?: () => void
@@ -55,6 +56,7 @@ export function useGameInput(options: Options) {
   }
   function action() {
     if (latest.current.locked) return
+    if (latest.current.tapAction?.()) return
     if (!latest.current.modal) { latest.current.action(); return }
     const controls = buttons()
     const current = controls.includes(selected.current!) ? selected.current! : controls[0]

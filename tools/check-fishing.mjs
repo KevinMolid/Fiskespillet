@@ -5,7 +5,38 @@ const bundle = await build({
   stdin: { contents: "export * from './src/game/fishing'; export { MAPS } from './src/game/world'", resolveDir: process.cwd() },
   bundle: true, write: false, platform: 'node', format: 'esm', loader: { '.png': 'dataurl' },
 })
-const { MAPS, castTargets, advanceFight, fishingConditions, FISHING_ZONE_NAMES, sinkingState, SINK_DURATION_MS, castFlightDuration, CAST_SPLASH_DURATION_MS } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
+const { MAPS, castTargets, advanceFight, fishingConditions, FISHING_ZONE_NAMES, sinkingState, SINK_DURATION_MS, castFlightDuration, CAST_SPLASH_DURATION_MS, tapReel, advanceReel, retrieveSpeed, retrieveBiteOpportunity, retrieveTarget, RETRIEVE_SHORE_DISTANCE } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
+
+function retrieveAtCadence(interval, frameMs=20) {
+  let state={speed:0,remainingTiles:100}
+  for(let time=0;time<6000;time+=frameMs) {
+    if(time%interval===0) state=tapReel(state)
+    state=advanceReel(state,frameMs).state
+  }
+  return state
+}
+const slow=retrieveAtCadence(1000),fast=retrieveAtCadence(200)
+assert(fast.speed>slow.speed&&fast.remainingTiles<slow.remainingTiles,'Rapid taps reel faster and farther')
+const coarse=advanceReel({speed:.8,remainingTiles:10},1000).state
+let fine={speed:.8,remainingTiles:10}
+for(let i=0;i<100;i++) fine=advanceReel(fine,10).state
+assert(Math.abs(coarse.remainingTiles-fine.remainingTiles)<1e-9,'Distance is independent of frame size')
+assert.equal(advanceReel({speed:0,remainingTiles:4},10000).state.remainingTiles,4,'No taps means no automatic reeling')
+const coast=advanceReel({speed:.8,remainingTiles:4},10000).state
+assert.equal(coast.speed,0);assert(coast.remainingTiles>0&&coast.remainingTiles<4,'Pausing decays speed without silently finishing a cast')
+assert.equal(advanceReel({speed:1,remainingTiles:.05},1000).state.remainingTiles,0,'Hook stops at the shoreline')
+assert.equal(tapReel({speed:.95,remainingTiles:4}).speed,1)
+assert.deepEqual([retrieveSpeed(.1),retrieveSpeed(.5),retrieveSpeed(.9)],['slow','steady','fast'])
+assert.equal(retrieveBiteOpportunity(500,0),0)
+const whole=retrieveBiteOpportunity(1000,.5),half=retrieveBiteOpportunity(500,.5)
+assert(Math.abs(whole-(1-(1-half)**2))<1e-12,'Bite opportunities depend on elapsed reeling time, not frame count')
+assert(retrieveBiteOpportunity(250,.5)>0,'Bites remain possible throughout retrieval')
+// Resolve the actual starting-area map id without assuming its display name.
+const shorePosition=Object.values(MAPS).flatMap(map=>map.tiles.flatMap((row,y)=>row.map((_,x)=>({mapId:map.id,x,y,facing:'down'})))).find(position=>castTargets(position).length===5)
+assert(shorePosition)
+const original=castTargets(shorePosition)[4]
+assert.equal(retrieveTarget(shorePosition,original,original.steps-RETRIEVE_SHORE_DISTANCE).steps,5)
+assert.equal(retrieveTarget(shorePosition,original,0).steps,1,'Bite conditions follow the hook towards shore')
 
 assert.equal(CAST_SPLASH_DURATION_MS,900)
 assert.equal(castFlightDuration(1),840)

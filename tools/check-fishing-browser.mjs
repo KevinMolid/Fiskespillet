@@ -98,8 +98,17 @@ try {
     const selectDepth = async ()=>{
       if(mobile) await page.getByRole('button',{name:'Velg',exact:true}).last().tap()
       else await page.keyboard.press('e')
-      await page.getByText('Hvordan vil du sveive inn?',{exact:true}).waitFor()
+      await page.getByRole('dialog',{name:'Innsveiving',exact:true}).waitFor()
     }
+    const tap = async()=>{
+      if(mobile) await page.getByRole('button',{name:'Sveiv',exact:true}).last().tap()
+      else await page.keyboard.press('Space')
+    }
+    const speed = async()=>Number(await page.getByRole('meter',{name:'Sveivefart',exact:true}).getAttribute('aria-valuenow'))
+    const shadow = ()=>page.evaluate(()=>{
+      const s=window.__fishingTest.scene,g=s.lureShadow
+      return g?{x:g.x,y:g.y,progress:g.getData('progress'),distance:g.getData('distanceTiles'),commands:g.commandBuffer.length}:null
+    })
     await open()
     const aiming = await page.evaluate(() => {
       const s=window.__fishingTest.scene,i=s.playerImage
@@ -131,24 +140,77 @@ try {
     assert(sunk>30&&sunk<65,'Depth moves down from the top over time')
     await page.locator('.game-frame').screenshot({path:`output/fishing-review/depth-${mode}.png`})
     await selectDepth()
+    assert.equal(await page.getByText('Hvordan vil du sveive inn?',{exact:true}).count(),0)
+    assert.equal(await page.locator('.fishing-choice-list').count(),0)
+    assert.equal(await speed(),0)
+    const initialShadow=await shadow()
+    assert.equal(initialShadow.x,landing.x);assert.equal(initialShadow.y,landing.y);assert(initialShadow.commands>0)
     await page.clock.fastForward(6500)
-    assert.equal(await page.getByText('Hvordan vil du sveive inn?',{exact:true}).count(),1,'Stopping the meter cancels the snag deadline')
+    assert.equal(await speed(),0)
+    assert.deepEqual(await shadow(),initialShadow,'Without input the hook remains in the water')
     assert.equal(await page.evaluate(()=>window.__baitUses||0),0)
-    await page.getByRole('button',{name:/^Jevnt/}).click()
+    if(!mobile) {
+      await page.keyboard.down('Space')
+      assert.equal(await speed(),28,'One key press counts once')
+      for(let i=0;i<5;i++) await page.keyboard.down('Space')
+      assert.equal(await speed(),28,'Key autorepeat cannot become extra reel taps')
+      await page.keyboard.up('Space')
+    } else {await tap();assert.equal(await speed(),28,'Touch press/release/click counts only one reel tap')}
+    await page.clock.runFor(1000)
+    const slowSpeed=await speed(),slowShadow=await shadow()
+    assert(slowShadow.y<initialShadow.y)
+    for(let i=0;i<4;i++){await tap();await page.clock.runFor(100)}
+    assert(await speed()>slowSpeed,'Faster tapping raises the live speed meter')
+    assert((await shadow()).y<slowShadow.y,'Hook moves farther towards land')
+    await page.locator('.game-frame').screenshot({path:`output/fishing-review/retrieve-${mode}.png`})
+    await page.clock.runFor(4000)
+    assert.equal(await speed(),0,'A pause brings the reel to a stop')
+    const pausedShadow=await shadow();await page.clock.runFor(800)
+    assert.deepEqual(await shadow(),pausedShadow,'Stopped reeling keeps the hook stationary')
+    await page.evaluate(()=>{Math.random=()=>0})
+    await tap();await page.clock.runFor(300)
+    await page.getByRole('button',{name:/Gi tilslag/}).first().waitFor()
     assert.equal(await page.evaluate(()=>window.__conditions.depth),'midwater')
-    assert.equal(await page.evaluate(()=>window.__conditions.castLength),'long')
-    await page.clock.fastForward(1100)
-    await page.getByRole('button',{name:/Gi tilslag/}).waitFor()
+    const biteShadow=await shadow()
     await page.keyboard.press('e')
-    await page.getByRole('button',{name:/Hold inne for å sveive/}).waitFor()
+    await page.getByRole('meter',{name:'Fangstfremdrift',exact:true}).waitFor()
+    await page.locator('.game-frame').screenshot({path:`output/fishing-review/fight-${mode}.png`})
+    for(let i=0;i<150&&!await page.evaluate(()=>window.__encounters);i++) {
+      if(await page.locator('.fishing-fight-status').textContent().then(text=>text.includes('roer'))) await tap()
+      await page.clock.runFor(150)
+    }
+    assert.equal(await page.evaluate(()=>window.__encounters),1,'The same tapping system can land a fish')
+    assert(!await shadow(),'Successful fishing cleans up the water shadow')
+    assert(biteShadow.progress>0)
 
     // Both end layers remain selectable, but hitting the absolute deadline fails.
     for(const [elapsed,depth] of [[0,'surface'],[4800,'bottom']]) {
       await open();await castFour();await page.clock.fastForward(elapsed)
       await selectDepth()
-      await page.getByRole('button',{name:/^Jevnt/}).click()
+      await page.evaluate(()=>{Math.random=()=>0})
+      await tap();await page.clock.runFor(300)
+      await page.getByRole('button',{name:/Gi tilslag/}).first().waitFor()
       assert.equal(await page.evaluate(()=>window.__conditions.depth),depth)
     }
+    // No fish is chosen at depth selection: it can first bite in the middle or
+    // near shore after repeated earlier opportunities failed.
+    for(const progress of [.4,.78]) {
+      await open();await castFour();await selectDepth()
+      await page.evaluate(()=>{Math.random=()=>.99})
+      while((await shadow()).progress<progress){await tap();await page.clock.runFor(100)}
+      assert.equal(await page.getByRole('button',{name:/Gi tilslag/}).count(),0)
+      await page.evaluate(()=>{Math.random=()=>0})
+      await tap();await page.clock.runFor(300)
+      await page.getByRole('button',{name:/Gi tilslag/}).first().waitFor()
+      assert((await shadow()).progress>=progress,'Bites can start later in the actual retrieve')
+    }
+    await open();await castFour();await selectDepth()
+    await page.evaluate(()=>{Math.random=()=>.99})
+    for(let i=0;i<60&&await shadow();i++){await tap();await page.clock.runFor(100)}
+    await page.getByText(/Ingen napp denne gangen/).waitFor()
+    assert.equal(await page.evaluate(()=>window.__baitUses),1,'Returning the hook without fish uses exactly one bait')
+    assert.equal(await page.evaluate(()=>window.__encounters||0),0)
+    assert(!await shadow())
     await open();await castFour()
     await page.clock.fastForward(6100)
     await page.getByText(/Kroken satte seg fast i bunnen/).waitFor()
@@ -199,8 +261,14 @@ try {
         }
         const last=s.castSplash;s.showCastSplash(99)
         if(s.castSplash!==last) throw new Error('Invalid cast replaced a valid splash')
+        for(const progress of [0,.5,1]) {
+          s.setRetrieveProgress(5,progress)
+          const distance=5+( .7-5)*progress,g=s.lureShadow
+          const dx={up:0,down:0,left:-1,right:1}[facing],dy={up:-1,down:1,left:0,right:0}[facing]
+          if(Math.abs(g.x-(s.player.x+dx*distance*TILE_SIZE))>.001||Math.abs(g.y-(s.player.y+dy*distance*TILE_SIZE))>.001) throw new Error('Wrong shadow position for '+facing)
+        }
         s.finishFishing()
-        if(s.castSplash) throw new Error('Splash cleanup failed')
+        if(s.castSplash||s.lureShadow) throw new Error('Water effect cleanup failed')
         if(image.texture.key!==`player-${facing}`) throw new Error('Fishing finish left the casting pose active')
         s.fishing=true
         const interrupted=s.playCast(5)
@@ -223,6 +291,6 @@ try {
     for(const shot of directional) {assert.equal(shot.x,shot.expectedX);assert.equal(shot.y,shot.expectedY)}
     assert.deepEqual(errors,[])
     await context.close()
-    console.log(`${mode}: four aim/forward poses and anchors, line-flight → splash → depth order, input lock, interruption cleanup, fishing and single bait consumption passed.`)
+    console.log(`${mode}: cast/depth sequence, live tap speed, single keyboard/touch pulses, hook shadow in four directions, early/mid/late bites, landing/no-bite/snag and one-bait outcomes passed.`)
   }
 } finally {await browser.close()}

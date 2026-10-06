@@ -2,7 +2,7 @@ import { NPCS, type NpcDefinition } from './npcs'
 import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTER, STANDARD_CHARACTERS } from './characters'
 import { createCharacterImage, preloadCharacter, setCharacterDirection } from './characterRendering'
 import { characterWalkStep, nextPlayerWalkStep, PLAYER_WALK_SETTLE_MS } from './characterAnimation'
-import { CAST_SPLASH_DURATION_MS, castFlightDuration, castTargets } from './fishing'
+import { CAST_SPLASH_DURATION_MS, RETRIEVE_SHORE_DISTANCE, castFlightDuration, castTargets } from './fishing'
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorGround, drawOutdoorObject, isOutdoorObject, isRaisedDecoration } from './outdoorTiles'
 import { drawIndoorGround, drawIndoorObject, isIndoorObject } from './indoorTiles'
@@ -36,6 +36,7 @@ export class WorldScene extends Phaser.Scene {
   private castSplashTween?: Phaser.Tweens.Tween
   private castFlight?: Phaser.GameObjects.Graphics
   private castFlightTween?: Phaser.Tweens.Tween
+  private lureShadow?: Phaser.GameObjects.Graphics
   private castDone?: (finished: boolean) => void
   private castSequenceId = 0
   private castCameraShifted = false
@@ -340,10 +341,28 @@ export class WorldScene extends Phaser.Scene {
     this.castFlight?.destroy()
     this.castFlight = undefined
     this.clearCastSplash()
+    this.lureShadow?.destroy()
+    this.lureShadow = undefined
     this.castingForward = false
     const resolve = this.castDone
     this.castDone = undefined
     resolve?.(false)
+  }
+
+  setRetrieveProgress(steps: number, progress: number) {
+    if (!this.fishing || !this.player) return
+    const target = castTargets(this.position).find(value => value.steps === steps)
+    if (!target) return
+    const fraction = Phaser.Math.Clamp(progress, 0, 1)
+    const distance = Phaser.Math.Linear(steps, RETRIEVE_SHORE_DISTANCE, fraction)
+    const x = this.player.x + (target.x - this.position.x) / steps * distance * TILE_SIZE
+    const y = this.player.y + (target.y - this.position.y) / steps * distance * TILE_SIZE
+    if (!this.lureShadow) {
+      this.lureShadow = this.add.graphics().setName('lure-shadow')
+      this.lureShadow.fillStyle(0x103944, .6).fillEllipse(0, 0, 10, 5)
+      this.lureShadow.fillStyle(0x082731, .45).fillEllipse(0, 0, 4, 2)
+    }
+    this.lureShadow.setPosition(x, y).setDepth(y + .1).setData({ steps, progress: fraction, distanceTiles: distance })
   }
 
   private clearCastSplash() {

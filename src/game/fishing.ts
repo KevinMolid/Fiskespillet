@@ -77,19 +77,47 @@ export function sinkingState(elapsedMs: number): { progress: number; depth: Fish
   return { progress, depth: progress < .28 ? 'surface' : progress < .7 ? 'midwater' : 'bottom', snagged: progress >= 1 }
 }
 
+// Keep the whole 10 px hook shadow inside water beyond the half-tile bank edge.
+export const RETRIEVE_SHORE_DISTANCE = .7
+const REEL_DECAY_MS = 650
+const REEL_TAP_BOOST = .28
+const REEL_TILES_PER_SECOND = 1.35
+export type ReelState = { speed: number; remainingTiles: number }
+export function tapReel(state: ReelState): ReelState {
+  return { ...state, speed: Math.min(1, state.speed + REEL_TAP_BOOST) }
+}
+/** Integrate decaying reel momentum, independent of rendering frame rate. */
+export function advanceReel(state: ReelState, elapsedMs: number): { state: ReelState; averageSpeed: number } {
+  const ms = Math.max(0, elapsedMs)
+  const decay = Math.exp(-ms / REEL_DECAY_MS)
+  const integralMs = state.speed * REEL_DECAY_MS * (1 - decay)
+  const speed = state.speed * decay
+  return { state: { speed: speed < .005 ? 0 : speed,
+    remainingTiles: Math.max(0, state.remainingTiles - integralMs / 1000 * REEL_TILES_PER_SECOND) },
+    averageSpeed: ms ? integralMs / ms : state.speed }
+}
+export function retrieveSpeed(speed: number): RetrieveSpeed { return speed < .33 ? 'slow' : speed < .67 ? 'steady' : 'fast' }
+// Per-time opportunity, not a one-off roll when the depth is chosen.
+export function retrieveBiteOpportunity(elapsedMs: number, speed: number) {
+  return speed > .03 ? 1 - Math.exp(-.32 * Math.max(0, elapsedMs) / 1000) : 0
+}
+export function retrieveTarget(position: Position, original: CastTarget, remainingTiles: number) {
+  const steps = Math.max(1, Math.min(original.steps, Math.ceil(remainingTiles + RETRIEVE_SHORE_DISTANCE)))
+  return castTargets(position).find(target => target.steps === steps) ?? original
+}
+
 export type FightState = { tension: number; progress: number; elapsedMs: number; pulling: boolean }
 export type FightOutcome = 'landed' | 'escaped' | null
 
 /** A small, deterministic line-tension step so the minigame is straightforward to test. */
-export function advanceFight(state: FightState, reeling: boolean, fightStrength: number, stepMs = 100): { state: FightState; outcome: FightOutcome } {
+export function advanceFight(state: FightState, reeling: boolean | number, fightStrength: number, stepMs = 100): { state: FightState; outcome: FightOutcome } {
   const elapsedMs = state.elapsedMs + stepMs
   const pulling = elapsedMs % 2100 < 700
   const seconds = stepMs / 1000
-  const tensionChange = reeling
-    ? (pulling ? 21 * fightStrength : 1.2)
-    : (pulling ? -10 : -2.2)
+  const intensity = typeof reeling === 'boolean' ? Number(reeling) : Math.max(0, Math.min(1, reeling))
+  const tensionChange = intensity * (pulling ? 21 * fightStrength : 1.2) + (1 - intensity) * (pulling ? -10 : -2.2)
   const tension = Math.max(0, Math.min(100, state.tension + tensionChange * seconds))
-  const progress = Math.min(100, state.progress + (reeling ? (pulling ? 2.5 : 12.5) * seconds : 0))
+  const progress = Math.min(100, state.progress + intensity * (pulling ? 2.5 : 12.5) * seconds)
   const next = { tension, progress, elapsedMs, pulling }
   if (tension >= 100 || elapsedMs >= 22_000) return { state: next, outcome: 'escaped' }
   if (progress >= 100) return { state: next, outcome: 'landed' }
