@@ -2,8 +2,13 @@
 import assert from 'node:assert/strict'
 const bundle = await build({ stdin: { contents: `export * from './src/game/world'; export * from './src/game/npcs'; export * from './src/game/npcSprite'`, resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'esm', loader: { '.png': 'dataurl' } })
 const { NPCS, MAPS, isWalkable, npcPixels } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
-assert.equal(NPCS.length,8)
-assert.equal(new Set(NPCS.map(n=>n.id)).size,8)
+assert.equal(NPCS.length,9)
+assert.equal(new Set(NPCS.map(n=>n.id)).size,9)
+const marita=NPCS.find(n=>n.id==='marita')
+assert.equal(marita.mapId,'skogstjern')
+assert.deepEqual(marita.route,[[38,20]])
+assert.equal(MAPS.skogstjern.tiles[19][38],'water','Marita must stand directly beside the lake')
+assert(!NPCS.some(n=>n.id!=='marita'&&n.mapId===marita.mapId&&n.route.some(([x,y])=>x===38&&y===20)),'Marita cannot overlap another NPC route')
 for(const n of NPCS) {
  for(let i=0;i<n.route.length;i++) {
   const [x,y]=n.route[i],next=n.route[(i+1)%n.route.length]

@@ -93,10 +93,16 @@ function npcCharacter(id: NpcId): StandardCharacter {
     format: { ...npcStandard, filter: 'nearest' },
   }
 }
+// Marita stays at the shoreline and uses directional idle sprites.
+export const MARITA_CHARACTER: StandardCharacter = {
+  id: 'marita',
+  sprites: Object.fromEntries(CHARACTER_DIRECTIONS.map(direction => [direction, asset('marita', direction)])) as CharacterSprites,
+  format: { ...npcStandard, filter: 'nearest' },
+}
 export const NPC_CHARACTERS: Record<NpcId, StandardCharacter> = {
   mor: npcCharacter('mor'), far: npcCharacter('far'), kevin: npcCharacter('kevin'),
   oda: npcCharacter('oda'), magnus: npcCharacter('magnus'), bendik: npcCharacter('bendik'),
-  nils: npcCharacter('nils'), morten: npcCharacter('morten'),
+  nils: npcCharacter('nils'), morten: npcCharacter('morten'), marita: MARITA_CHARACTER,
 }
 export const KEVIN_CHARACTER = NPC_CHARACTERS.kevin
 export const STANDARD_CHARACTERS = [PLAYER_CHARACTER, ...Object.values(NPC_CHARACTERS)]

@@ -1,6 +1,7 @@
-import { STANDARD_CHARACTERS, type StandardCharacter } from '../src/game/characters'
+import { MARITA_CHARACTER, STANDARD_CHARACTERS, type StandardCharacter } from '../src/game/characters'
 import type { Direction } from '../src/game/world'
-const names: Record<string, string> = { player: 'Spiller', kevin: 'Kevin', mor: 'Mor', far: 'Far', oda: 'Oda', magnus: 'Magnus – kraftig og helt skallet', bendik: 'Bendik', nils: 'Nils', morten: 'Morten' }
+const names: Record<string, string> = { player: 'Spiller', kevin: 'Kevin', mor: 'Mor', far: 'Far', oda: 'Oda', magnus: 'Magnus – kraftig og helt skallet', bendik: 'Bendik', nils: 'Nils', morten: 'Morten', marita: 'Marita' }
+const reviewCharacters = [MARITA_CHARACTER, ...STANDARD_CHARACTERS.filter(character => character.id !== 'marita')]
 const grid = document.querySelector<HTMLDivElement>('#grid')!
 const direction = document.querySelector<HTMLSelectElement>('#direction')!
 const play = document.querySelector<HTMLButtonElement>('#play')!
@@ -20,18 +21,18 @@ function image(character: StandardCharacter, source: string) {
 function draw() {
   grid.replaceChildren()
   const facing = direction.value as Direction
-  for (const character of STANDARD_CHARACTERS) {
+  for (const character of reviewCharacters) {
     const card = document.createElement('article'); card.className = 'card'
     const title = document.createElement('h2'); title.textContent = names[character.id]; card.append(title)
     const poses = document.createElement('div'); poses.className = 'poses'
-    const sources = [character.sprites[facing], ...character.walk![facing]]
+    const sources = [character.sprites[facing], ...(character.walk?.[facing] ?? [])]
     sources.forEach((source, index) => {
       const column = document.createElement('div'); column.append(image(character, source))
       const label = document.createElement('div'); label.className = 'label'; label.textContent = ['Idle', 'Steg A', 'Steg B'][index]
       column.append(label); poses.append(column)
     })
     card.append(poses)
-    const live = image(character, sources[phase + 1]); live.classList.add('live'); live.dataset.character = character.id
+    const live = image(character, sources[phase + 1] ?? sources[0]); live.classList.add('live'); live.dataset.character = character.id
     card.append(live); grid.append(card)
   }
 }
@@ -41,8 +42,8 @@ setInterval(() => {
   if (!playing) return
   phase = 1 - phase
   for (const frame of document.querySelectorAll<HTMLElement>('.live')) {
-    const character = STANDARD_CHARACTERS.find(c => c.id === frame.dataset.character)!
-    frame.querySelector('img')!.src = character.walk![direction.value as Direction][phase]
+    const character = reviewCharacters.find(c => c.id === frame.dataset.character)!
+    frame.querySelector('img')!.src = character.walk?.[direction.value as Direction][phase] ?? character.sprites[direction.value as Direction]
   }
 }, 220)
 draw()

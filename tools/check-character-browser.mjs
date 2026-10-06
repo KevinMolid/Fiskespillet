@@ -23,6 +23,7 @@ try {
     await page.waitForFunction(() => window.__characterTest?.scene.playerImage)
     const results = await page.evaluate(async () => {
       const { NPCS } = await import('/src/game/npcs.ts')
+      const { NPC_CHARACTERS } = await import('/src/game/characters.ts')
       const { scene } = window.__characterTest
       scene.setUiBlocked(true)
       const result = []
@@ -33,7 +34,7 @@ try {
           const original = n.image
           for (const direction of ['down', 'right', 'up', 'left']) {
             n.facing = direction
-            for (const phase of [0, 1, 2]) {
+            for (const phase of NPC_CHARACTERS[definition.id].walk ? [0, 1, 2] : [0]) {
               n.moving = phase > 0; n.walkStarted = scene.time.now - (phase === 2 ? 225 : 25)
               scene.drawResident(n)
               const i = n.image
@@ -50,7 +51,10 @@ try {
       }
       return result
     })
-    assert.equal(results.length, 96)
+    assert.equal(results.length, await page.evaluate(async () => {
+      const { NPC_CHARACTERS } = await import('/src/game/characters.ts')
+      return Object.values(NPC_CHARACTERS).reduce((count, character) => count + 4 * (character.walk ? 3 : 1), 0)
+    }))
     for (const r of results) {
       assert.equal(r.texture, `${r.id}-${r.direction}${r.phase ? '-walk-' + r.phase : ''}`)
       assert(r.sameObject, 'Animation must retain the same image object')
@@ -102,9 +106,41 @@ try {
     assert(fromFirstStep.every(key=>key.includes('-walk-')), 'No idle flash during continuous walking')
     assert.equal(await page.evaluate(()=>window.__characterTest.scene.playerImage.texture.key),'player-right')
     await page.locator('.game-frame').screenshot({ path: `output/character-review/world-${mode}.png` })
+    const maritaPlacement = await page.evaluate(async () => {
+      const { scene } = window.__characterTest
+      const { MAPS } = await import('/src/game/world.ts')
+      scene.enterMap({ mapId: 'skogstjern', x: 38, y: 21, facing: 'up' })
+      scene.setUiBlocked(false)
+      const n = scene.residents.find(n => n.definition.id === 'marita')
+      if (!n) throw new Error('Marita was not spawned in area 2')
+      const before = { ...scene.position }
+      scene.move('up')
+      if (JSON.stringify(scene.position) !== JSON.stringify(before) || scene.moving) throw new Error('Player walked through Marita')
+      if (scene.npcAhead() !== n) throw new Error('Marita is not accessible for conversation')
+      return { x: n.x, y: n.y, shoreline: MAPS.skogstjern.tiles[n.y - 1][n.x], texture: n.image.texture.key,
+        ground: n.sprite.y + n.image.y + (60 - n.image.originY * n.image.height) * n.image.scaleY,
+        expectedGround: n.sprite.y + 14, depth: n.sprite.depth }
+    })
+    assert.equal(maritaPlacement.x,38);assert.equal(maritaPlacement.y,20)
+    assert.equal(maritaPlacement.shoreline,'water')
+    assert.equal(maritaPlacement.texture,'marita-down')
+    assert.equal(maritaPlacement.ground,maritaPlacement.expectedGround)
+    assert.equal(maritaPlacement.depth,20*32+16)
+    await page.locator('.game-frame').focus()
+    if(mobile) await page.getByRole('button',{name:'Snakk',exact:true}).last().tap()
+    else await page.keyboard.press('e')
+    await page.locator('.world-message').filter({hasText:'Marita'}).waitFor()
+    assert((await page.locator('.world-message').textContent()).includes('pause fra treningen'))
+    await page.locator('.game-frame').screenshot({path:`output/character-review/marita-world-${mode}.png`})
+    await page.getByRole('button',{name:'Videre ▼',exact:true}).click()
+    await page.locator('.world-message').waitFor({state:'hidden'})
+    await page.locator('.game-frame').focus()
+    if(mobile) await page.getByRole('button',{name:'Snakk',exact:true}).last().tap()
+    else await page.keyboard.press('e')
+    await page.locator('.world-message').filter({hasText:'Lykke til med fiskingen! Jeg blir her og nyter utsikten litt til.'}).waitFor()
     await page.goto(`${base}/tools/character-preview.html`)
     await page.waitForSelector('.card img')
-    assert.equal(await page.locator('.card').count(), 9)
+    assert.equal(await page.locator('.card').count(), 10)
     for (const direction of ['down', 'right', 'up', 'left']) {
       await page.locator('#direction').selectOption(direction)
       await page.waitForFunction(() => [...document.images].every(i => i.complete && i.naturalWidth > 0))
@@ -112,7 +148,7 @@ try {
       if (!mobile && mode !== 'canvas') await page.screenshot({ path: `output/character-review/${direction}.png`, fullPage: true })
     }
     assert.deepEqual(errors, [])
-    console.log(`${mode}: 8 NPCs × 4 directions × 3 poses, persistent rendering, ground/filter, actual player/NPC tween gait and review gallery passed.`)
+    console.log(`${mode}: all NPC directional poses, Marita shoreline placement/collision/conversation, persistent rendering, ground/filter, actual player/NPC tween gait and review gallery passed.`)
     await context.close()
   }
 } finally { await browser.close() }
