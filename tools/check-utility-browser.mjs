@@ -15,6 +15,7 @@ try {
     const page = await context.newPage(), errors=[]
     await page.clock.install()
     await page.addInitScript(()=>{
+      localStorage.setItem('fiskespillet-preview-sneakers', '1')
       window.__pointerEvents=[]
       for(const type of ['pointerdown','pointerup','pointercancel','lostpointercapture']) document.addEventListener(type,e=>window.__pointerEvents.push({type,id:e.pointerId,label:e.target.closest?.('button')?.getAttribute('aria-label')}),true)
     })

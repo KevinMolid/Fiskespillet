@@ -17,6 +17,7 @@ type Callbacks = {
   onPosition: (position: Position, transitioned: boolean) => void
   onFishing: () => void
   onSign: (sign: { title: string; text: string }) => void
+  onNpcTalk?: (npc: NpcDefinition, line: string) => void
   onWardrobe: () => void
   onDig: (spotId: string) => void
   onStorage: () => void
@@ -52,6 +53,7 @@ export class WorldScene extends Phaser.Scene {
   private fishingRelaxed = false
   private uiBlocked = false
   private utilityHeld = false
+  private canRun = false
   private touchDirection: Direction | null = null
   private nextMove = 0
   private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container; image?: Phaser.GameObjects.Image; walkStarted?: number }[] = []
@@ -190,7 +192,9 @@ export class WorldScene extends Phaser.Scene {
       const index = this.conversations.get(resident.definition.id) ?? 0
       this.conversations.set(resident.definition.id, index + 1)
       this.setUiBlocked(true)
-      this.callbacks.onSign({ title: resident.definition.name, text: resident.definition.lines[index % resident.definition.lines.length] })
+      const line = resident.definition.lines[index % resident.definition.lines.length]
+      if (this.callbacks.onNpcTalk) this.callbacks.onNpcTalk(resident.definition, line)
+      else this.callbacks.onSign({ title: resident.definition.name, text: line })
     }
     else if (target.npc) this.callbacks.onSign({ title: target.npc.name, text: target.npc.text })
     else if (target.tile === 'wardrobe') this.callbacks.onWardrobe()
@@ -415,9 +419,14 @@ export class WorldScene extends Phaser.Scene {
     this.nextMove = (this.time?.now ?? 0) + (turned ? timing.turnDelay : timing.touchRepeat)
   }
 
+  setCanRun(enabled: boolean) {
+    this.canRun = enabled
+    if (!enabled) this.setUtilityHeld(false)
+  }
+
   setUtilityHeld(active: boolean) {
     const wasHeld = this.utilityHeld
-    this.utilityHeld = active && !this.uiBlocked && !this.fishing
+    this.utilityHeld = active && this.canRun && !this.uiBlocked && !this.fishing
     // Switching speed while a direction remains held must take effect promptly.
     const timing = playerMovementTiming(this.utilityHeld)
     const now = this.time?.now ?? 0

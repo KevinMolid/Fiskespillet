@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, getDocs, writeBatch, runTransaction, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { FISH_REWARDS, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemId } from './items'
+import { FISH_REWARDS, hasRunningShoes, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemId } from './items'
 import { DIG_SPOTS, DEFAULT_APPEARANCE, FISH_BY_ID, isAppearance, isPosition, START, type Appearance, type Position } from './world'
 
 import { normalizeFishBookEntry, updateFishBookEntry, type FishBookEntry, type LegacyFishBookEntry } from './fishBook'
@@ -86,6 +86,20 @@ export async function loadInventory(uid: string): Promise<Inventory> {
   })
 }
 
+/** A permanent key item: concurrent conversations/reloads cannot award another pair. */
+export async function grantMaritaSneakers(uid: string): Promise<{ inventory: Inventory; received: boolean }> {
+  const ref = inventoryRef(uid)
+  return runTransaction(database(), async transaction => {
+    const snapshot = await transaction.get(ref)
+    if (!snapshot.exists()) throw new Error('Inventaret mangler.')
+    const inventory = inventoryData(snapshot)
+    if (hasRunningShoes(inventory)) return { inventory, received: false }
+    inventory.bag.sneakers = 1
+    transaction.set(ref, { ...inventory, updatedAt: serverTimestamp() })
+    return { inventory, received: true }
+  })
+}
+
 export async function setEquippedBait(uid: string, bait: BaitId | null): Promise<Inventory> {
   if (bait && !ITEM_BY_ID[bait]?.bait) throw new Error('Ukjent agn.')
   const ref = inventoryRef(uid)
@@ -120,6 +134,7 @@ export async function consumeBait(uid: string, bait: BaitId): Promise<Inventory>
 
 export async function transferItem(uid: string, itemId: ItemId, toStorage: boolean): Promise<Inventory> {
   if (!ITEM_BY_ID[itemId]) throw new Error('Ukjent gjenstand.')
+  if (ITEM_BY_ID[itemId].category === 'key') throw new Error('Nøkkelgjenstander beholdes i sekken.')
   const ref = inventoryRef(uid)
   return runTransaction(database(), async transaction => {
     const snapshot = await transaction.get(ref)

@@ -46,7 +46,7 @@ export function InventoryDialog({ inventory, chest, pending, error, onClose, onB
         <div><h3>{item.icon} {item.name} <span>×{inventory[location][item.id]}</span></h3><p>{item.description}</p></div>
         <div className="item-actions">
           {location === 'bag' && item.bait && <button disabled={pending} onClick={() => onBait(inventory.equippedBait === item.id ? null : item.id as BaitId)}>{inventory.equippedBait === item.id ? 'Ta av agn' : 'Velg agn'}</button>}
-          {chest && <button disabled={pending} onClick={() => onTransfer(item.id, location === 'bag')}>{location === 'bag' ? 'Legg i kiste' : 'Ta i sekk'}</button>}
+          {chest && item.category !== 'key' && <button disabled={pending} onClick={() => onTransfer(item.id, location === 'bag')}>{location === 'bag' ? 'Legg i kiste' : 'Ta i sekk'}</button>}
         </div>
       </article>)}
     </div>

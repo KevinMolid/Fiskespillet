@@ -68,7 +68,10 @@ service cloud.firestore {
 
       function validCounts(counts) {
         return counts is map
-          && counts.keys().hasOnly(['rod', 'shovel', 'worm', 'bread', 'corn', 'spinner'])
+          && counts.keys().hasOnly(['rod', 'shovel', 'worm', 'bread', 'corn', 'spinner', 'sneakers'])
+          && counts.get('sneakers', 0) is int
+          && counts.get('sneakers', 0) >= 0
+          && counts.get('sneakers', 0) <= 1
           && counts.get('rod', 0) is int
           && counts.get('rod', 0) >= 0
           && counts.get('rod', 0) <= 999
@@ -94,6 +97,7 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['bag', 'storage', 'equippedBait', 'coins', 'updatedAt'])
           && validCounts(request.resource.data.bag)
           && validCounts(request.resource.data.storage)
+          && request.resource.data.storage.get('sneakers', 0) == 0
           && request.resource.data.coins is int
           && request.resource.data.coins >= 0
           && request.resource.data.coins <= 1000000
@@ -104,8 +108,10 @@ service cloud.firestore {
       }
 
       allow get: if owner();
-      allow create: if owner() && validInventory() && request.resource.data.coins == 60;
-      allow update: if owner() && validInventory();
+      allow create: if owner() && validInventory() && request.resource.data.coins == 60
+        && request.resource.data.bag.get('sneakers', 0) == 0;
+      allow update: if owner() && validInventory()
+        && request.resource.data.bag.get('sneakers', 0) >= resource.data.bag.get('sneakers', 0);
       allow delete: if owner();
       allow list: if false;
     }

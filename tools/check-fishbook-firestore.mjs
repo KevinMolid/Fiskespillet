@@ -13,7 +13,7 @@ const { doc, setDoc, getDoc, Timestamp, serverTimestamp } = await import(firesto
 const env = await initializeTestEnvironment({ projectId: 'demo-fiskespillet', firestore: { host: '127.0.0.1', port: 8188, rules: readFileSync('firestore.rules', 'utf8') } })
 const bundle = await build({
   stdin: { contents: "export * from './src/game/persistence'", resolveDir: process.cwd() },
-  bundle: true, write: false, platform: 'node', format: 'esm',
+  bundle: true, write: false, platform: 'node', format: 'esm', loader: { '.png': 'dataurl' },
   plugins: [{ name: 'emulator-database', setup(b) {
     b.onResolve({ filter: /^firebase\/firestore$/ }, () => ({ path: firestoreUrl, external: true }))
     b.onResolve({ filter: /\/lib\/firebase$/ }, () => ({ path: 'db', namespace: 'test' }))
