@@ -284,8 +284,10 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   }
   const input = useGameInput({ frame: gameFrame, context: inputContext, modal, locked: busy || inventoryPending || savingLook,
     move: direction => { if (!uiBlocked) scene.current?.move(direction) },
+    moveHold: direction => { if (!uiBlocked || direction === null) scene.current?.setTouchDirection(direction) },
     action: () => { if (error || result || signMessage) dismissMessage(); else scene.current?.action() }, menu: menuControl,
     tapAction: () => fishingSession ? (reelControl.current?.tap() ?? false) : false,
+    utilityAllowed: Boolean(position && inventory && !uiBlocked), utility: active => scene.current?.setUtilityHeld(active),
   })
 
   return <div className="game-shell">
@@ -330,10 +332,13 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
     </div>
 
     <MobileControls context={inputContext} onDirection={input.direction} onAction={input.action}
+      onDirectionStart={input.directionStart} onDirectionEnd={input.directionEnd}
       onMenu={input.menu}
+      onUtilityStart={input.utilityStart} onUtilityEnd={input.utilityEnd} utilityHeld={input.utilityHeld}
+      utilityDisabled={uiBlocked || !inventory}
       actionLabel={fishingSession ? fishingActionLabel : modal ? 'Velg' : (error || result || signMessage) ? 'Videre' : actionLabel ?? ''}
       disabled={!position || !inventory || busy || inventoryPending || savingLook}
       actionDisabled={!position || busy || inventoryPending || savingLook || (!modal && !actionLabel && !error && !result && !signMessage)} />
-    <p className="desktop-control-hint mt-3 text-xs text-slate-400">Enter: spillmeny · Piltaster / WASD: bevegelse · E / mellomrom: handling · Esc: tilbake · Gå på dører og trapper for å bytte rom.</p>
+    <p className="desktop-control-hint mt-3 text-xs text-slate-400">Enter: spillmeny · Piltaster / WASD: bevegelse · Hold Shift: løp · E / mellomrom: handling · Esc: tilbake · Gå på dører og trapper for å bytte rom.</p>
   </div>
 }

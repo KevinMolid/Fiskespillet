@@ -2,6 +2,7 @@ import { NPCS, type NpcDefinition } from './npcs'
 import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTER, STANDARD_CHARACTERS } from './characters'
 import { createCharacterImage, preloadCharacter, setCharacterDirection } from './characterRendering'
 import { characterWalkStep, nextPlayerWalkStep, PLAYER_WALK_SETTLE_MS } from './characterAnimation'
+import { playerMovementTiming } from './playerMovement'
 import { CAST_SPLASH_DURATION_MS, RETRIEVE_SHORE_DISTANCE, castFlightDuration, castTargets } from './fishing'
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorGround, drawOutdoorObject, isOutdoorObject, isRaisedDecoration } from './outdoorTiles'
@@ -50,6 +51,8 @@ export class WorldScene extends Phaser.Scene {
   private castingForward = false
   private fishingRelaxed = false
   private uiBlocked = false
+  private utilityHeld = false
+  private touchDirection: Direction | null = null
   private nextMove = 0
   private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container; image?: Phaser.GameObjects.Image; walkStarted?: number }[] = []
   private conversations = new Map<string, number>()
@@ -114,10 +117,13 @@ export class WorldScene extends Phaser.Scene {
         pressed = arrowPressed || letterPressed
       }
     }
+    const keyboardDirection = Boolean(direction)
+    direction ??= this.touchDirection
     if (this.moving || this.fishing || this.uiBlocked || (time < this.nextMove && !pressed)) return
     if (direction) {
-      this.move(direction)
-      this.nextMove = time + 145
+      const turned = this.move(direction)
+      const timing = playerMovementTiming(this.utilityHeld)
+      this.nextMove = time + (turned ? timing.turnDelay : keyboardDirection ? timing.keyboardRepeat : timing.touchRepeat)
     }
   }
 
@@ -128,7 +134,8 @@ export class WorldScene extends Phaser.Scene {
       this.playerWalkUntil = 0
       this.drawPlayer()
       this.callbacks.onPosition({ ...this.position }, false)
-      return
+      // Walking can turn without stepping; running steps in the same input.
+      if (playerMovementTiming(this.utilityHeld).turnDelay > 0) return true
     }
     const delta = {
       up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0],
@@ -159,7 +166,7 @@ export class WorldScene extends Phaser.Scene {
       targets: this.player,
       x: x * TILE_SIZE + 16,
       y: y * TILE_SIZE + 16,
-      duration: 115,
+      duration: playerMovementTiming(this.utilityHeld).duration,
       ease: 'Linear',
       onComplete: () => {
         this.moving = false
@@ -196,6 +203,8 @@ export class WorldScene extends Phaser.Scene {
     else if (target.sign) this.callbacks.onSign(target.sign)
     else if (canFish(this.position)) {
       this.fishing = true
+      this.utilityHeld = false
+      this.touchDirection = null
       this.callbacks.onFishing()
     }
   }
@@ -395,6 +404,24 @@ export class WorldScene extends Phaser.Scene {
 
   setUiBlocked(blocked: boolean) {
     this.uiBlocked = blocked
+    if (blocked) { this.utilityHeld = false; this.touchDirection = null }
+  }
+
+  setTouchDirection(direction: Direction | null) {
+    this.touchDirection = direction && !this.uiBlocked && !this.fishing ? direction : null
+    if (!this.touchDirection) return
+    const turned = this.move(this.touchDirection)
+    const timing = playerMovementTiming(this.utilityHeld)
+    this.nextMove = (this.time?.now ?? 0) + (turned ? timing.turnDelay : timing.touchRepeat)
+  }
+
+  setUtilityHeld(active: boolean) {
+    const wasHeld = this.utilityHeld
+    this.utilityHeld = active && !this.uiBlocked && !this.fishing
+    // Switching speed while a direction remains held must take effect promptly.
+    const timing = playerMovementTiming(this.utilityHeld)
+    const now = this.time?.now ?? 0
+    this.nextMove = this.utilityHeld && !wasHeld ? now : Math.min(this.nextMove, now + (this.touchDirection ? timing.touchRepeat : timing.keyboardRepeat))
   }
 
   private enterMap(destination: Position) {

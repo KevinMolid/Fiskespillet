@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { nextControl } from './navigation'
 import type { Direction } from './world'
 
@@ -8,16 +8,45 @@ type Options = {
   modal: boolean
   locked: boolean
   move: (direction: Direction) => void
+  moveHold: (direction: Direction | null) => void
   action: () => void
   tapAction?: () => boolean
   menu: () => void
   holdStart?: () => boolean
   holdEnd?: () => void
+  utilityAllowed: boolean
+  utility: (active: boolean) => void
 }
 
 export function useGameInput(options: Options) {
   const latest = useRef(options)
   latest.current = options
+  const utilityKeys = useRef(new Set<string>())
+  const utilityPointer = useRef(false)
+  const [utilityHeld, setUtilityHeld] = useState(false)
+  function updateUtility() {
+    const active = latest.current.utilityAllowed && !latest.current.locked && (utilityKeys.current.size > 0 || utilityPointer.current)
+    setUtilityHeld(active)
+    latest.current.utility(active)
+  }
+  function clearUtility() {
+    utilityKeys.current.clear()
+    utilityPointer.current = false
+    updateUtility()
+  }
+  function utilityStart() {
+    if (!latest.current.utilityAllowed || latest.current.locked) return
+    utilityPointer.current = true
+    updateUtility()
+  }
+  function utilityEnd() { utilityPointer.current = false; updateUtility() }
+  function directionEnd() { latest.current.moveHold(null) }
+  function directionStart(value: Direction) {
+    if (latest.current.locked || latest.current.context !== 'world') return false
+    latest.current.moveHold(value)
+    return true
+  }
+  useEffect(() => { clearUtility(); directionEnd() }, [options.context, options.utilityAllowed, options.locked])
   const selected = useRef<HTMLButtonElement | null>(null)
   const selectedPoint = useRef({ x: 0, y: 0 })
   const buttons = () => Array.from(latest.current.frame.current?.querySelectorAll<HTMLButtonElement>('[role="dialog"] button:not(:disabled)') ?? []).filter(b => b.getClientRects().length > 0)
@@ -94,6 +123,14 @@ export function useGameInput(options: Options) {
       const current = latest.current
       const inFrame = target && current.frame.current?.contains(target)
       if (!current.modal && target?.closest('button, a') && !inFrame) return
+      if (event.key === 'Shift') {
+        if (current.utilityAllowed && !current.locked && !event.repeat) {
+          event.preventDefault()
+          utilityKeys.current.add(event.code || event.key)
+          updateUtility()
+        }
+        return
+      }
       if (!arrows[event.key] && !['Enter', 'Escape', 'e', 'E', ' ', 'Tab'].includes(event.key)) return
       // Desktop walking remains in Phaser's continuous key state.
       if (arrows[event.key] && !current.modal) return
@@ -112,9 +149,10 @@ export function useGameInput(options: Options) {
       else action()
     }
     function keyup(event: KeyboardEvent) {
+      if (event.key === 'Shift') { utilityKeys.current.delete(event.code || event.key); updateUtility() }
       if (['e', 'E', ' '].includes(event.key)) latest.current.holdEnd?.()
     }
-    function stopHold() { latest.current.holdEnd?.() }
+    function stopHold() { latest.current.holdEnd?.(); clearUtility(); directionEnd() }
     function focus(event: FocusEvent) {
       const target = event.target
       if (target instanceof HTMLButtonElement && latest.current.frame.current?.contains(target) && target.closest('[role="dialog"]')) {
@@ -124,8 +162,9 @@ export function useGameInput(options: Options) {
     window.addEventListener('keydown', keydown, true)
     window.addEventListener('keyup', keyup, true)
     window.addEventListener('blur', stopHold)
+    document.addEventListener('visibilitychange', stopHold)
     window.addEventListener('focusin', focus)
-    return () => { window.removeEventListener('keydown', keydown, true); window.removeEventListener('keyup', keyup, true); window.removeEventListener('blur', stopHold); window.removeEventListener('focusin', focus) }
+    return () => { stopHold(); window.removeEventListener('keydown', keydown, true); window.removeEventListener('keyup', keyup, true); window.removeEventListener('blur', stopHold); document.removeEventListener('visibilitychange', stopHold); window.removeEventListener('focusin', focus) }
   }, [])
-  return { direction, action, menu: () => { if (!latest.current.locked) latest.current.menu() } }
+  return { direction, directionStart, directionEnd, action, utilityStart, utilityEnd, utilityHeld, menu: () => { if (!latest.current.locked) latest.current.menu() } }
 }
