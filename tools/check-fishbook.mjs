@@ -9,6 +9,7 @@ const documents = new Map()
 const clone = value => structuredClone(value)
 let reads = 0
 let lists = 0
+let rejectBatch = false
 globalThis.__fishBookTestDb = {
   doc: (_db, ...parts) => parts.join('/'),
   collection: (_db, ...parts) => parts.join('/'),
@@ -23,7 +24,12 @@ globalThis.__fishBookTestDb = {
   setDoc: async (path, value) => documents.set(path, clone(value)),
   writeBatch: () => {
     const deletes = []
-    return { delete: path => deletes.push(path), commit: async () => deletes.forEach(path => documents.delete(path)) }
+    const writes = new Map()
+    return { delete: path => deletes.push(path), set: (path, value) => writes.set(path, clone(value)), commit: async () => {
+      if (rejectBatch) throw new Error('Offline batch failure')
+      deletes.forEach(path => documents.delete(path))
+      for (const [path, value] of writes) documents.set(path, value)
+    } }
   },
   runTransaction: async (_db, run) => {
     const writes = new Map()
@@ -46,7 +52,7 @@ const bundle = await build({
       : 'export const db = {}' }))
   } }],
 })
-const { FISH, FISH_BY_ID, weightRange, catchMilestone, normalizeFishBookEntry, recordEncounter, loadFishBook, hasExistingGame, resetGameData, FishDetails, FishBookDialog } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'))
+const { FISH, FISH_BY_ID, weightRange, catchMilestone, normalizeFishBookEntry, recordEncounter, loadFishBook, loadAppearance, saveAppearance, hasExistingGame, resetGameData, FishDetails, FishBookDialog } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'))
 // Fixture only: exercise the future multi-location case without changing game habitats.
 FISH_BY_ID.laks.habitats = [...FISH_BY_ID.laks.habitats, 'innsjø']
 const inventory = () => ({ bag: { rod: 1, worm: 30 }, storage: {}, coins: 60, equippedBait: 'worm' })
@@ -154,5 +160,22 @@ assert.equal(await hasExistingGame(uid), true, 'the start screen detects saved g
 await resetGameData(uid)
 assert.equal(await hasExistingGame(uid), false, 'a reset removes all saved game progress')
 assert.equal(documents.get('profiles/' + uid).username, 'Bevares', 'a reset preserves the player profile')
+for (const playerVariant of ['male', 'female']) {
+  await saveAppearance(uid, { shirt: 0, hair: 0, skin: 0, playerVariant })
+  assert.equal((await loadAppearance(uid)).playerVariant, playerVariant, 'Character choice persists per account')
+}
+documents.set('characterLooks/legacy', { shirt: 2, hair: 1, skin: 3 })
+assert.equal((await loadAppearance('legacy')).playerVariant, undefined, 'Old saves still load and can choose without a reset')
+await assert.rejects(saveAppearance(uid, { shirt: 0, hair: 0, skin: 0, playerVariant: 'invalid' }))
+documents.set('playerInventories/' + uid, inventory())
+const beforeReset = JSON.stringify([...documents])
+rejectBatch = true
+await assert.rejects(resetGameData(uid, { shirt: 0, hair: 0, skin: 0, playerVariant: 'female' }))
+assert.equal(JSON.stringify([...documents]), beforeReset, 'A failed new game cannot erase progress or change character')
+rejectBatch = false
+await resetGameData(uid, { shirt: 0, hair: 0, skin: 0, playerVariant: 'female' })
+assert.equal(documents.has('playerInventories/' + uid), false)
+assert.equal((await loadAppearance(uid)).playerVariant, 'female', 'Reset and new choice commit together')
+assert.equal(documents.get('profiles/' + uid).username, 'Bevares')
 console.log('Fish book: first catch, min/max milestones, ties, escaped fish, atomic writes, persistence, legacy upgrade, locations, image import, locked UI and game reset passed.')
 delete globalThis.__fishBookTestDb

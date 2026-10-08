@@ -28,7 +28,7 @@ function Preview() {
     <details className="menu-preview-tools"><summary>Vis menyer · lokal test</summary><nav>{Object.entries(views).map(([id, name]) => <button key={id} onClick={() => setView(id as View)}>{name}</button>)}</nav></details>
     {navigation && <p role="status" className="text-sm py-2">{navigation}</p>}
     <div className="flex-1">
-      {view === 'start' ? <StartMenu hasSave={hasSave} ready onContinue={close} onNewGame={() => { setHasSave(false); close() }} onRetry={() => {}} />
+      {view === 'start' ? <StartMenu hasSave={hasSave} ready onContinue={close} onNewGame={playerVariant => { setLook({ ...DEFAULT_APPEARANCE, playerVariant }); setHasSave(false); close() }} onRetry={() => {}} />
       : <div className="game-shell"><div className="game-frame relative aspect-[3/2] w-full overflow-hidden rounded-xl">
         {view === 'pause' && <GameMenu inventory={inventory} appearance={look} caughtSpecies={4} speciesCount={21} onBag={() => setView('bag')} onBook={() => setView('book')} onClose={() => setView('start')} />}
         {view === 'bag' && <InventoryDialog inventory={inventory} chest={false} pending={false} error="" onClose={close} onBait={() => {}} onTransfer={() => {}} />}

@@ -97,7 +97,28 @@ try {
   await assertSucceeds(setDoc(ref, secondLocation))
   entry = (await service.loadFishBook('a')).find(e => e.speciesId === 'mort')
   assert.deepEqual(entry.discoveredLocationIds, ['skogstjern', 'havn'])
-  console.log('Firestore emulator: real catch transactions, retries, re-login, legacy upgrade, owner isolation and security-rule rejection tests passed.')
+  service = await login('choice')
+  const choiceDb = env.authenticatedContext('choice').firestore()
+  const choiceRef = doc(choiceDb, 'characterLooks/choice')
+  const legacyLook = { shirt: 0, hair: 0, skin: 0, updatedAt: serverTimestamp() }
+  await assertSucceeds(setDoc(choiceRef, legacyLook))
+  assert.equal((await service.loadAppearance('choice')).playerVariant, undefined, 'Legacy appearance remains readable')
+  for (const playerVariant of ['male', 'female']) {
+    await service.saveAppearance('choice', { shirt: 0, hair: 0, skin: 0, playerVariant })
+    assert.equal((await service.loadAppearance('choice')).playerVariant, playerVariant)
+  }
+  await assertFails(setDoc(choiceRef, { ...legacyLook, playerVariant: 'invalid' }))
+  await assertFails(setDoc(choiceRef, { ...legacyLook, playerVariant: null }))
+  await assertFails(setDoc(choiceRef, { ...legacyLook, extra: true }))
+  await assertFails(setDoc(doc(env.authenticatedContext('other').firestore(), 'characterLooks/choice'), { ...legacyLook, playerVariant: 'male' }))
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'characterLooks/choice')))
+  await service.loadInventory('choice')
+  await service.savePosition('choice', { mapId: 'havn', x: 12, y: 16, facing: 'down' })
+  await service.resetGameData('choice', { shirt: 0, hair: 0, skin: 0, playerVariant: 'female' })
+  assert.equal((await service.loadAppearance('choice')).playerVariant, 'female')
+  assert.equal((await getDoc(doc(choiceDb, 'gameSaves/choice'))).exists(), false)
+  assert.equal((await getDoc(doc(choiceDb, 'playerInventories/choice'))).exists(), false)
+  console.log('Firestore emulator: catch transactions, legacy upgrade, owner isolation, character choice persistence, atomic reset and security-rule rejection tests passed.')
 } finally {
   await env.cleanup()
   delete globalThis.__fishBookEmulatorDb

@@ -145,7 +145,8 @@ service cloud.firestore {
 
       function validLook() {
         return request.resource.data.keys().hasAll(['shirt', 'hair', 'skin', 'updatedAt'])
-          && request.resource.data.keys().hasOnly(['shirt', 'hair', 'skin', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['shirt', 'hair', 'skin', 'playerVariant', 'updatedAt'])
+          && (!('playerVariant' in request.resource.data) || request.resource.data.playerVariant in ['male', 'female'])
           && request.resource.data.shirt is int && request.resource.data.shirt >= 0 && request.resource.data.shirt < 5
           && request.resource.data.hair is int && request.resource.data.hair >= 0 && request.resource.data.hair < 5
           && request.resource.data.skin is int && request.resource.data.skin >= 0 && request.resource.data.skin < 4

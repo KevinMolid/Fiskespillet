@@ -195,3 +195,19 @@ button:disabled { cursor: default; }
 @media (prefers-reduced-motion: no-preference) {
   .start-button, .brand-primary, .app-nav button, .game-menu-list button { transition: background-color .15s, border-color .15s; }
 }
+/* Character choice shares the game's navy/gold menus and pixel art renderer. */
+.character-select-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: #041522eb; overflow: auto; }
+.character-select { width: min(520px, 100%); max-height: 100%; overflow: auto; border: 1px solid #466779; border-radius: 20px; background: #0b2638; padding: 24px; color: #f8ecd3; box-shadow: 0 20px 60px #0005; }
+.character-select h2 { margin: 4px 0 6px; font-size: clamp(20px, 3vw, 28px); font-weight: 800; }
+.character-select > p:not(.start-kicker):not(.start-error) { color: #adc6d1; margin-bottom: 16px; }
+.character-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.character-choices button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; border: 2px solid #35586b; border-radius: 14px; background: #15384c; cursor: pointer; }
+.character-choices button[aria-pressed="true"] { border-color: #f5bd64; background: #24475b; }
+.character-choices img { height: 140px; max-width: 100%; object-fit: contain; image-rendering: pixelated; }
+.character-choices strong { font-size: 14px; }
+.character-choices span { font-size: 12px; color: #f5bd64; }
+.character-select-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.character-select button:focus-visible { outline: 3px solid #fff0c4; outline-offset: 3px; }
+.character-select button:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 480px) { .character-select { padding: 16px; } .character-choices img { height: 108px; } }
+@media (max-height: 500px) and (orientation: landscape) { .character-select { padding: 12px 20px; } .character-choices img { height: 86px; } .character-select > p:not(.start-kicker):not(.start-error) { margin-bottom: 8px; } .character-select-actions { margin-top: 10px; } }

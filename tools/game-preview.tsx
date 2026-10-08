@@ -3,7 +3,7 @@ import { NPCS } from '../src/game/npcs'
 import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import GamePage, { type GameServices } from '../src/game/GamePage'
-import { DEFAULT_APPEARANCE, START, type Position } from '../src/game/world'
+import { DEFAULT_APPEARANCE, START, isAppearance, type Appearance, type Position } from '../src/game/world'
 import type { FishBookEntry, Inventory } from '../src/game/persistence'
 import { Timestamp } from 'firebase/firestore'
 import { FISH_REWARDS, hasRunningShoes, ITEM_BY_ID, SHOP_PRICES } from '../src/game/items'
@@ -12,7 +12,12 @@ import '../src/style.css'
 // Dev-only services. Fish book fixtures persist locally, never to a real account.
 // The actual GamePage, dialogs and Phaser scene are exercised without account writes.
 let savedPosition = { ...START }
-let savedAppearance = { ...DEFAULT_APPEARANCE }
+const requestedCharacter = new URLSearchParams(location.search).get('character')
+let savedAppearance: Appearance = { ...DEFAULT_APPEARANCE, playerVariant: requestedCharacter === 'legacy' ? undefined : requestedCharacter === 'female' ? 'female' : 'male' }
+try {
+  const stored = JSON.parse(localStorage.getItem('fiskespillet-preview-character') ?? 'null')
+  if (!requestedCharacter && isAppearance(stored)) savedAppearance = stored
+} catch { /* Ignore invalid local test data. */ }
 let inventory: Inventory = { bag: { rod: 1, shovel: 1, bread: 3, worm: 5, corn: 2, spinner: 1 }, storage: { rod: 1, bread: 5, worm: 5 }, equippedBait: 'bread', coins: 60 }
 const snapshot = () => structuredClone(inventory)
 if (localStorage.getItem('fiskespillet-preview-sneakers') === '1') inventory.bag.sneakers = 1
@@ -33,7 +38,7 @@ const services: GameServices = {
     const output = document.querySelector('#preview-position')
     if (output) output.textContent = `${p.mapId}: ${p.x}, ${p.y} (${p.facing})`
   },
-  saveAppearance: async (_uid, a) => { savedAppearance = { ...a } },
+  saveAppearance: async (_uid, a) => { savedAppearance = { ...a }; localStorage.setItem('fiskespillet-preview-character', JSON.stringify(a)) },
   setEquippedBait: async (_uid, bait) => { inventory = { ...inventory, equippedBait: bait }; return snapshot() },
   transferItem: async (_uid, id, toStorage) => {
     if (ITEM_BY_ID[id].category === 'key') throw new Error('Nøkkelgjenstander beholdes i sekken.')

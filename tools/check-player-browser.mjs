@@ -7,6 +7,8 @@ import { pathToFileURL } from 'node:url'
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright')
 const browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' })
 const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5173'
+const variant = process.env.PLAYER_VARIANT === 'female' ? 'female' : 'male'
+const playerId = variant === 'female' ? 'player-female' : 'player'
 const errors = []
 try {
   for (const mode of ['desktop', 'mobile', 'canvas']) {
@@ -14,6 +16,7 @@ try {
     const context = await browser.newContext({ viewport: mobile ? { width: 390, height: 844 } : { width: 1280, height: 900 }, deviceScaleFactor: mobile ? 3 : 1, isMobile: mobile, hasTouch: mobile })
     const page = await context.newPage()
     page.on('pageerror', error => errors.push(error.message))
+    await page.routeWebSocket(/^ws:\/\/127\.0\.0\.1:/, () => {})
     await page.route(/\/tools\/game-preview\.tsx(?:\?.*)?$/, async route => {
       const response = await route.fetch()
       // Use the fixture's owned Sluk, which is valid for sea fishing at the pier.
@@ -28,8 +31,8 @@ try {
       assert(body.includes('window.__playerTest'), 'Scene instrumentation must match the served module')
       await route.fulfill({ response, body })
     })
-    await page.goto(`${base}/tools/game-preview.html`)
-    await page.waitForFunction(() => window.__playerTest?.scene.playerImage?.texture.key === 'player-down')
+    await page.goto(`${base}/tools/game-preview.html?character=${variant}`)
+    await page.waitForFunction(id => window.__playerTest?.scene.playerImage?.texture.key === `${id}-down`, playerId)
     const state = () => page.evaluate(() => {
       const { scene, game } = window.__playerTest
       const p = scene.player, i = scene.playerImage, c = scene.cameras.main
@@ -98,7 +101,7 @@ try {
       }
       await page.waitForTimeout(250)
       const stopped = await state()
-      assert.equal(stopped.texture, `player-${direction}`)
+      assert.equal(stopped.texture, `${playerId}-${direction}`)
       assert.equal(stopped.position.facing, direction)
       assert.equal(stopped.originY, stopped.soleY / 1184, `${direction}: origin excludes PNG bottom padding`)
       assert.equal(stopped.feetY, stopped.y + npcGroundOffset, `${direction}: measured player/NPC foot baseline matches`)
@@ -193,7 +196,7 @@ try {
     await page.evaluate(() => window.__playerTest.scene.move('left'))
     await page.waitForTimeout(180)
     const blocked = await state()
-    assert.equal(blocked.position.x, 1); assert.equal(blocked.texture, 'player-left')
+    assert.equal(blocked.position.x, 1); assert.equal(blocked.texture, `${playerId}-left`)
     assert.equal(blocked.x, 48); assert.equal(blocked.y, 528)
     assert(blocked.width > 32, 'Visual overlap extends beyond the collision tile')
     await page.evaluate(() => window.__playerTest.scene.move('up'))
@@ -241,7 +244,7 @@ try {
     // Direction determines fishing eligibility; action still opens the existing dialog.
     await page.getByText('Teststeder og posisjon', { exact: true }).click()
     await page.getByRole('button', { name: 'Fiske ved bryggen', exact: true }).click()
-    await page.waitForFunction(() => window.__playerTest.scene.position.x === 24 && window.__playerTest.scene.playerImage?.texture.key === 'player-down')
+    await page.waitForFunction(id => window.__playerTest.scene.position.x === 24 && window.__playerTest.scene.playerImage?.texture.key === `${id}-down`, playerId)
     const facing = await page.evaluate(async () => {
       const { canFish } = await import('/src/game/world.ts')
       const p=window.__playerTest.scene.position
@@ -269,7 +272,7 @@ try {
       await page.waitForTimeout(250)
     }
     await page.screenshot({ path: join(tmpdir(), `fiskespillet-player-${mode}.png`), fullPage: true })
-    console.log(`${mode}: pixel player 4 directions, common scale/PNG foot alignment, nearest filtering, all NPCs registered, Kevin blocking/conversation, movement, depth, camera, transitions, signs/fishing and layout passed.`)
+    console.log(`${mode}/${variant}: pixel player 4 directions, common scale/PNG foot alignment, nearest filtering, all NPCs registered, Kevin blocking/conversation, movement, depth, camera, transitions, signs/fishing and layout passed.`)
     await context.close()
   }
   assert.deepEqual(errors, [])

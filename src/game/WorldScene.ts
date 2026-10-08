@@ -1,5 +1,5 @@
 import { NPCS, type NpcDefinition } from './npcs'
-import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTER, STANDARD_CHARACTERS } from './characters'
+import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTERS, STANDARD_CHARACTERS, type StandardCharacter } from './characters'
 import { createCharacterImage, preloadCharacter, setCharacterDirection } from './characterRendering'
 import { nextCharacterWalkPhase, characterWalkTextureStep, CHARACTER_WALK_SETTLE_MS } from './characterAnimation'
 import { playerMovementTiming } from './playerMovement'
@@ -30,6 +30,7 @@ export class WorldScene extends Phaser.Scene {
   private callbacks: Callbacks
   private player?: Phaser.GameObjects.Container
   private playerImage?: Phaser.GameObjects.Image
+  private playerCharacter: StandardCharacter
   private viewportZoom = 1
   private terrain?: Phaser.GameObjects.Graphics
   private environmentObjects?: Phaser.GameObjects.Group
@@ -62,9 +63,10 @@ export class WorldScene extends Phaser.Scene {
   private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container; image?: Phaser.GameObjects.Image; walkStarted?: number; walkPhase: number; walkFrame: number; walkUntil: number }[] = []
   private conversations = new Map<string, number>()
 
-  constructor(position: Position, _appearance: Appearance, callbacks: Callbacks) {
+  constructor(position: Position, appearance: Appearance, callbacks: Callbacks) {
     super('world')
     this.position = { ...position }
+    this.playerCharacter = PLAYER_CHARACTERS[appearance.playerVariant ?? 'male']
     this.callbacks = callbacks
   }
 
@@ -83,7 +85,7 @@ export class WorldScene extends Phaser.Scene {
     const shadow = this.add.graphics()
     shadow.fillStyle(0x213e39, 0.24).fillEllipse(0, CHARACTER_GROUND_OFFSET_Y, 21, 5)
     this.player.add(shadow)
-    this.playerImage = createCharacterImage(this, PLAYER_CHARACTER, this.position.facing)
+    this.playerImage = createCharacterImage(this, this.playerCharacter, this.position.facing)
     this.player.add(this.playerImage)
     this.drawPlayer()
     this.setCameraBounds()
@@ -167,7 +169,7 @@ export class WorldScene extends Phaser.Scene {
       return
     }
     this.moving = true
-    const passingFrame = PLAYER_CHARACTER.walkPassingFrame?.[direction]
+    const passingFrame = this.playerCharacter.walkPassingFrame?.[direction]
     this.playerWalkPhase = nextCharacterWalkPhase(this.playerWalkPhase, passingFrame)
     this.playerWalkFrame = characterWalkTextureStep(this.playerWalkPhase, passingFrame)
     this.playerWalkUntil = 0
@@ -240,8 +242,8 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  setAppearance(_appearance: Appearance) {
-    // Preserve the wardrobe API/saved appearance; the POC uses the fixed reference art.
+  setAppearance(appearance: Appearance) {
+    this.playerCharacter = PLAYER_CHARACTERS[appearance.playerVariant ?? 'male']
     this.drawPlayer()
   }
 
@@ -278,7 +280,7 @@ export class WorldScene extends Phaser.Scene {
     const x = target.x * TILE_SIZE + TILE_SIZE / 2
     const y = target.y * TILE_SIZE + TILE_SIZE / 2
     this.frameCast(x, y)
-    const pose = PLAYER_CHARACTER.poses!.castForward!
+    const pose = this.playerCharacter.poses!.castForward!
     const tip = pose.rodTip![this.position.facing]
     // Attachment pixels belong to the artwork, never to collision/world position.
     const startX = this.player.x + (tip.x - pose.format.groundAnchor.x) * pose.format.renderScale
@@ -631,7 +633,7 @@ export class WorldScene extends Phaser.Scene {
     // Every direction within the character format shares origin/scale.
     if (!this.playerImage) return
     const walking = !this.uiBlocked && !this.fishing && (this.moving || this.time.now < this.playerWalkUntil)
-    setCharacterDirection(this.playerImage, PLAYER_CHARACTER, this.position.facing,
+    setCharacterDirection(this.playerImage, this.playerCharacter, this.position.facing,
       walking ? this.playerWalkFrame : 0, this.castingForward ? 'castForward' : this.aimingCast ? 'castAim' : this.fishingRelaxed ? 'fishingIdle' : undefined)
   }
 }

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { GameLogo } from '../GameLogo'
 import { MenuIcon } from '../MenuIcon'
+import { CharacterSelect } from './CharacterSelect'
+import type { PlayerVariant } from './world'
 
 type Props = {
   hasSave: boolean
@@ -8,12 +10,13 @@ type Props = {
   pending?: boolean
   error?: string
   onContinue: () => void
-  onNewGame: () => void
+  onNewGame: (variant: PlayerVariant) => void
   onRetry: () => void
 }
 
 export function StartMenu({ hasSave, ready, pending = false, error = '', onContinue, onNewGame, onRetry }: Props) {
   const [confirmReset, setConfirmReset] = useState(false)
+  const [choosingCharacter, setChoosingCharacter] = useState(false)
   const newGameButton = useRef<HTMLButtonElement>(null)
   const cancelButton = useRef<HTMLButtonElement>(null)
 
@@ -31,7 +34,7 @@ export function StartMenu({ hasSave, ready, pending = false, error = '', onConti
 
   function startNewGame() {
     if (hasSave) setConfirmReset(true)
-    else onNewGame()
+    else setChoosingCharacter(true)
   }
 
   return <section className="start-screen" aria-label="Oppstartsmeny">
@@ -57,11 +60,12 @@ export function StartMenu({ hasSave, ready, pending = false, error = '', onConti
         {error && <p role="alert" className="start-error">{error}</p>}
         <div className="start-confirm-actions">
           <button ref={cancelButton} className="start-button" onClick={() => setConfirmReset(false)} disabled={pending}>Avbryt</button>
-          <button className="start-button start-button-danger" onClick={onNewGame} disabled={pending}>
+          <button className="start-button start-button-danger" onClick={() => { setConfirmReset(false); setChoosingCharacter(true) }} disabled={pending}>
             {pending ? 'Starter på nytt …' : 'Slett alt og start'}
           </button>
         </div>
       </section>
     </div>}
+    {choosingCharacter && <CharacterSelect pending={pending} error={error} onSelect={onNewGame} onBack={() => { setChoosingCharacter(false); newGameButton.current?.focus() }} />}
   </section>
 }

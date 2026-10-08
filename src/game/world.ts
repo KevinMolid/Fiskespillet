@@ -336,12 +336,15 @@ export function isPosition(value: unknown): value is Position {
 export const SHIRT_COLORS = [0x315d89, 0x4f8b58, 0x9b563f, 0x815a99, 0xb9943e] as const
 export const HAIR_COLORS = [0x543925, 0x242d35, 0xb57d37, 0xd4b879, 0xa94735] as const
 export const SKIN_COLORS = [0xf1bd8c, 0xc88f66, 0x885c45, 0x5a3a30] as const
-export type Appearance = { shirt: number; hair: number; skin: number }
+export type PlayerVariant = 'male' | 'female'
+// Optional only for legacy saves, which choose a character on their next start.
+export type Appearance = { shirt: number; hair: number; skin: number; playerVariant?: PlayerVariant }
 export const DEFAULT_APPEARANCE: Appearance = { shirt: 0, hair: 0, skin: 0 }
 export function isAppearance(value: unknown): value is Appearance {
   if (!value || typeof value !== 'object') return false
   const look = value as Partial<Appearance>
   return Number.isInteger(look.shirt) && Number.isInteger(look.hair) && Number.isInteger(look.skin)
+    && (look.playerVariant === undefined || look.playerVariant === 'male' || look.playerVariant === 'female')
     && (look.shirt as number) >= 0 && (look.shirt as number) < SHIRT_COLORS.length
     && (look.hair as number) >= 0 && (look.hair as number) < HAIR_COLORS.length
     && (look.skin as number) >= 0 && (look.skin as number) < SKIN_COLORS.length

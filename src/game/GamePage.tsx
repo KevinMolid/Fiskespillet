@@ -1,5 +1,6 @@
 import { FishBookDialog } from './FishBookDialog'
 import { CatchDialog } from './CatchDialog'
+import { CharacterSelect } from './CharacterSelect'
 import type { CatchMilestone } from './fishBook'
 import type { FishSpecies } from './fish'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -16,7 +17,7 @@ import { useGameInput } from './useGameInput'
 import { FISH_REWARDS, hasRunningShoes, type BaitId } from './items'
 import { MARITA_SNEAKERS_GIFT_LINE } from './npcs'
 import { fishingOptions } from './fish'
-import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, interactionAhead, MAPS, type Appearance, type Position } from './world'
+import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, interactionAhead, MAPS, type Appearance, type PlayerVariant, type Position } from './world'
 
 type Result = { species: FishSpecies; grams: number; coins: number; milestone: CatchMilestone | null }
 
@@ -50,6 +51,8 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const [draftLook, setDraftLook] = useState<Appearance>(DEFAULT_APPEARANCE)
   const [showWardrobe, setShowWardrobe] = useState(false)
   const [savingLook, setSavingLook] = useState(false)
+  const [choiceError, setChoiceError] = useState('')
+  const choosingCharacter = Boolean(appearance && !appearance.playerVariant)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [busyText, setBusyText] = useState('Du kastet ut snøret … Vent på napp!')
@@ -65,7 +68,20 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
     window.requestAnimationFrame(() => gameFrame.current?.focus({ preventScroll: true }))
   }, [])
   const [signMessage, setSignMessage] = useState<{ title: string; text: string } | null>(null)
-  const uiBlocked = showMenu || showBook || showWardrobe || Boolean(inventoryView) || showShop || Boolean(fishingSession) || inventoryPending || savingLook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy
+  const uiBlocked = choosingCharacter || showMenu || showBook || showWardrobe || Boolean(inventoryView) || showShop || Boolean(fishingSession) || inventoryPending || savingLook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy
+
+  async function selectCharacter(playerVariant: PlayerVariant) {
+    if (!appearance || savingLook) return
+    setSavingLook(true)
+    setChoiceError('')
+    const next = { ...appearance, playerVariant }
+    try {
+      await saveAppearance(user.uid, next)
+      setAppearance(next)
+      setDraftLook(next)
+    } catch { setChoiceError('Kunne ikke lagre karaktervalget. Prøv igjen.') }
+    finally { setSavingLook(false) }
+  }
 
   useEffect(() => {
     scene.current?.setUiBlocked(uiBlocked)
@@ -87,7 +103,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   }, [user.uid])
 
   useEffect(() => {
-    if (!canvasParent.current || !position || !appearance || !inventory || scene.current) return
+    if (!canvasParent.current || !position || !appearance?.playerVariant || !inventory || scene.current) return
     let active = true
     const { game, scene: world } = createWorld(canvasParent.current, position, appearance, {
       onInteractionChange() { refreshInteraction(n => n + 1) },
@@ -195,7 +211,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
     }
   // The Phaser scene must be created once after the saved position loads.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(position), Boolean(appearance), Boolean(inventory), user.uid])
+  }, [Boolean(position), Boolean(appearance?.playerVariant), Boolean(inventory), user.uid])
 
   useEffect(() => {
     scene.current?.setCanRun(hasRunningShoes(inventory))
@@ -297,11 +313,11 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
                 : canFish(position) && canFishNow ? 'Fisk' : null
   const caughtSpecies = book.filter(entry => entry.caughtCount > 0).length
 
-  const modal = Boolean(showMenu || showBook || showWardrobe || inventoryView || showShop || fishingSession || catchNotice)
-  const inputContext = fishingSession ? 'fishing' : catchNotice ? 'catch' : showWardrobe ? 'wardrobe' : inventoryView ?? (showBook ? 'book' : showShop ? 'shop' : showMenu ? 'menu' : error || result || signMessage ? 'message' : 'world')
+  const modal = Boolean(choosingCharacter || showMenu || showBook || showWardrobe || inventoryView || showShop || fishingSession || catchNotice)
+  const inputContext = choosingCharacter ? 'character' : fishingSession ? 'fishing' : catchNotice ? 'catch' : showWardrobe ? 'wardrobe' : inventoryView ?? (showBook ? 'book' : showShop ? 'shop' : showMenu ? 'menu' : error || result || signMessage ? 'message' : 'world')
   function dismissMessage() { setError(''); setResult(null); setSignMessage(null) }
   function menuControl() {
-    if (inventoryPending || savingLook || busy) return
+    if (choosingCharacter || inventoryPending || savingLook || busy) return
     if (fishingSession) {
       if (!fishingCommitted.current) closeFishingSession()
     }
@@ -325,7 +341,8 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
     <div ref={gameFrame} tabIndex={-1} className="game-frame relative aspect-[3/2] w-full overflow-hidden rounded-xl border-4 border-[#27474a] bg-[#183a36] shadow-2xl">
       <div ref={canvasParent} className="absolute inset-0 [&_canvas]:block" aria-label="Spillkart" />
 
-      {map && <PlaceNotice key={map.id} name={map.name} />}
+      {map && !choosingCharacter && <PlaceNotice key={map.id} name={map.name} />}
+      {choosingCharacter && <CharacterSelect pending={savingLook} error={choiceError} onSelect={variant => void selectCharacter(variant)} />}
 
       {!showMenu && !showBook && !showWardrobe && !inventoryView && !showShop && <>
         {!position && <p role="status" className="absolute left-4 top-4 text-white">Laster kart …</p>}

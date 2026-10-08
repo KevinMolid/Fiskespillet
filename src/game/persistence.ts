@@ -21,7 +21,8 @@ export async function hasExistingGame(uid: string): Promise<boolean> {
 }
 
 /** Delete all game progress in one Firestore batch while leaving the account and profile intact. */
-export async function resetGameData(uid: string): Promise<void> {
+export async function resetGameData(uid: string, appearance?: Appearance): Promise<void> {
+  if (appearance && !isAppearance(appearance)) throw new Error('Ugyldig figurutseende.')
   const databaseRef = database()
   const [fishBook, digSites] = await Promise.all([
     getDocs(collection(databaseRef, 'fishBooks', uid, 'entries')),
@@ -30,7 +31,8 @@ export async function resetGameData(uid: string): Promise<void> {
   const batch = writeBatch(databaseRef)
   batch.delete(doc(databaseRef, 'gameSaves', uid))
   batch.delete(doc(databaseRef, 'playerInventories', uid))
-  batch.delete(doc(databaseRef, 'characterLooks', uid))
+  if (appearance) batch.set(doc(databaseRef, 'characterLooks', uid), { ...appearance, updatedAt: serverTimestamp() })
+  else batch.delete(doc(databaseRef, 'characterLooks', uid))
   fishBook.docs.forEach(entry => batch.delete(entry.ref))
   digSites.forEach(site => { if (site.exists()) batch.delete(site.ref) })
   await batch.commit()

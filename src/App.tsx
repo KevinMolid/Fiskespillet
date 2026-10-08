@@ -7,7 +7,8 @@ import { auth } from './lib/firebase'
 import { ensureProfile, profileError, watchProfile, type Profile } from './lib/profile'
 import ProfilePage from './ProfilePage'
 import PlayersPage from './PlayersPage'
-import { hasExistingGame, resetGameData } from './game/persistence'
+import { hasExistingGame, resetGameData, saveAppearance } from './game/persistence'
+import { DEFAULT_APPEARANCE, type PlayerVariant } from './game/world'
 import { StartMenu } from './game/StartMenu'
 import { GameLogo } from './GameLogo'
 import { AppHeader } from './AppHeader'
@@ -109,16 +110,19 @@ function App() {
     }
   }, [user])
 
-  async function startNewGame() {
+  async function startNewGame(playerVariant: PlayerVariant) {
     if (!user || startPending) return
     setStartPending(true)
     setStartError('')
     try {
-      if (hasSave) await resetGameData(user.uid)
+      const appearance = { ...DEFAULT_APPEARANCE, playerVariant }
+      // Reset progress and select the new character atomically for existing saves.
+      if (hasSave) await resetGameData(user.uid, appearance)
+      else await saveAppearance(user.uid, appearance)
       setHasSave(false)
       setGameStart('playing')
     } catch {
-      setStartError('Kunne ikke slette spillagringen. Ingen nytt spill er startet. Prøv igjen.')
+      setStartError('Kunne ikke starte et nytt spill og lagre karaktervalget. Prøv igjen.')
     } finally {
       setStartPending(false)
     }
@@ -195,7 +199,7 @@ function App() {
         : user && page === 'profile' ? <div className="flex-1">
           {profileIssue && <p role="alert" className="mt-6 rounded-lg bg-rose-400/10 p-3 text-sm text-rose-200">{profileIssue}</p>}
           <ProfilePage user={user} profile={profile} onBack={() => setPage('home')} />
-        </div> : user && gameStart !== 'playing' ? <div className="flex-1"><StartMenu hasSave={hasSave} ready={gameStart === 'menu'} pending={gameStart === 'checking' || startPending} error={startError} onContinue={() => setGameStart('playing')} onNewGame={() => void startNewGame()} onRetry={() => void retryGameCheck()} /></div>
+        </div> : user && gameStart !== 'playing' ? <div className="flex-1"><StartMenu hasSave={hasSave} ready={gameStart === 'menu'} pending={gameStart === 'checking' || startPending} error={startError} onContinue={() => setGameStart('playing')} onNewGame={variant => void startNewGame(variant)} onRetry={() => void retryGameCheck()} /></div>
         : user ? <div className="flex-1"><Suspense fallback={<p className="py-16 text-slate-300">Laster spillet …</p>}><GamePage key={user.uid} user={user} /></Suspense></div>
         : <section className="login-layout">
           <div className="login-hero">

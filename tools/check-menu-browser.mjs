@@ -88,6 +88,8 @@ try {
     assert(await page.getByRole('button', { name: /Fortsett spill/ }).isDisabled())
     await page.getByRole('button', { name: 'Nytt spill', exact: true }).click()
     assert.equal(await page.getByRole('alertdialog').count(), 0)
+    await page.getByRole('dialog', { name: 'Velg spillkarakter' }).waitFor()
+    await page.getByRole('button', { name: 'Start spillet', exact: true }).click()
     await page.getByRole('dialog', { name: 'Spillmeny' }).waitFor()
 
     // Real GamePage and local game services exercise keyboard and touch navigation.

@@ -2,13 +2,14 @@ import pixelPlayerStandard from './pixel-player-standard.json'
 import playerCastAimStandard from './player-cast-aim-standard.json'
 import playerCastForwardStandard from './player-cast-forward-standard.json'
 import playerFishingIdleStandard from './player-fishing-idle-standard.json'
+import femaleRodTips from './player-female-rod-tips.json'
 import playerDown from '../assets/characters/player/down.png'
 import playerUp from '../assets/characters/player/up.png'
 import playerLeft from '../assets/characters/player/left.png'
 import playerRight from '../assets/characters/player/right.png'
 import npcStandard from './pixel-npc-standard.json'
 import type { NpcId } from './npcs'
-import type { Direction } from './world'
+import type { Direction, PlayerVariant } from './world'
 
 export type CharacterSprites = { down: string; up: string; left: string; right: string }
 export type CharacterPose = 'castAim' | 'castForward' | 'fishingIdle'
@@ -34,9 +35,9 @@ export const CHARACTER_DIRECTIONS: readonly Direction[] = ['down', 'up', 'left',
 // Eager URL imports keep Vite's hashed production asset handling.
 const idleAssets = import.meta.glob<string>('../assets/characters/*/{down,up,left,right}.png', { eager: true, query: '?url', import: 'default' })
 const walkAssets = import.meta.glob<string>('../assets/characters/*/*-walk-*.png', { eager: true, query: '?url', import: 'default' })
-const castAimAssets = import.meta.glob<string>('../assets/characters/player/*-cast-aim.png', { eager: true, query: '?url', import: 'default' })
-const castForwardAssets = import.meta.glob<string>('../assets/characters/player/*-cast-forward.png', { eager: true, query: '?url', import: 'default' })
-const fishingIdleAssets = import.meta.glob<string>('../assets/characters/player/*-fishing-idle.png', { eager: true, query: '?url', import: 'default' })
+const castAimAssets = import.meta.glob<string>('../assets/characters/player*/*-cast-aim.png', { eager: true, query: '?url', import: 'default' })
+const castForwardAssets = import.meta.glob<string>('../assets/characters/player*/*-cast-forward.png', { eager: true, query: '?url', import: 'default' })
+const fishingIdleAssets = import.meta.glob<string>('../assets/characters/player*/*-fishing-idle.png', { eager: true, query: '?url', import: 'default' })
 
 function fishingIdleSprite(direction: Direction) {
   const url = fishingIdleAssets[`../assets/characters/player/${direction}-fishing-idle.png`]
@@ -87,6 +88,25 @@ export const PLAYER_CHARACTER: StandardCharacter = {
   } },
 }
 
+export const FEMALE_PLAYER_CHARACTER: StandardCharacter = {
+  id: 'player-female',
+  sprites: Object.fromEntries(CHARACTER_DIRECTIONS.map(d => [d, asset('player-female', d)])) as CharacterSprites,
+  format: PLAYER_CHARACTER.format,
+  walk: directionalWalk('player-female', true),
+  walkPassingFrame: PLAYER_CHARACTER.walkPassingFrame,
+  poses: Object.fromEntries((Object.keys(PLAYER_CHARACTER.poses!) as CharacterPose[]).map(pose => {
+    const assets = pose === 'castAim' ? castAimAssets : pose === 'castForward' ? castForwardAssets : fishingIdleAssets
+    const suffix = pose === 'castAim' ? 'cast-aim' : pose === 'castForward' ? 'cast-forward' : 'fishing-idle'
+    const sprites = Object.fromEntries(CHARACTER_DIRECTIONS.map(d => {
+      const url = assets[`../assets/characters/player-female/${d}-${suffix}.png`]
+      if (!url) throw new Error(`Missing female player pose: ${d}/${suffix}`)
+      return [d, url]
+    })) as CharacterSprites
+    return [pose, { ...PLAYER_CHARACTER.poses![pose]!, sprites, ...(pose === 'castForward' ? { rodTip: femaleRodTips } : {}) }]
+  })),
+}
+export const PLAYER_CHARACTERS: Record<PlayerVariant, StandardCharacter> = { male: PLAYER_CHARACTER, female: FEMALE_PLAYER_CHARACTER }
+
 function npcCharacter(id: NpcId): StandardCharacter {
   const walk = directionalWalk(id, true)
   // The centered front idle is the neutral transition between contact A/B.
@@ -107,7 +127,7 @@ export const NPC_CHARACTERS: Record<NpcId, StandardCharacter> = {
   nils: npcCharacter('nils'), morten: npcCharacter('morten'), marita: MARITA_CHARACTER,
 }
 export const KEVIN_CHARACTER = NPC_CHARACTERS.kevin
-export const STANDARD_CHARACTERS = [PLAYER_CHARACTER, ...Object.values(NPC_CHARACTERS)]
+export const STANDARD_CHARACTERS = [...Object.values(PLAYER_CHARACTERS), ...Object.values(NPC_CHARACTERS)]
 export function characterTextureKey(character: StandardCharacter, direction: Direction, step = 0, pose?: CharacterPose) {
   return `${character.id}-${direction}${pose === 'castAim' ? '-cast-aim' : pose === 'castForward' ? '-cast-forward' : pose === 'fishingIdle' ? '-fishing-idle' : step ? `-walk-${step}` : ''}`
 }
