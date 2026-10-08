@@ -69,23 +69,38 @@ try {
       assert.equal(r.width, 48); assert.equal(r.height, 64)
       assert.equal(r.groundY, r.y + 14)
     }
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
       const { scene, game } = window.__characterTest
+      const { MAPS, isWalkable } = await import('/src/game/world.ts')
       scene.enterMap({ mapId: 'havn', x: 15, y: 12, facing: 'right' })
+      const map=MAPS.havn
+      let start
+      for (let y=3;y<map.tiles.length-3&&!start;y++) for (let x=3;x<map.tiles[0].length-8&&!start;x++) {
+        if (Array.from({length:7},(_,i)=>isWalkable(map.tiles[y][x+i])).every(Boolean) && !scene.residents.some(n=>n.y===y&&n.x>=x&&n.x<=x+6)) start={mapId:'havn',x,y,facing:'right'}
+      }
+      if(!start) throw new Error('No clear gait-test path')
+      scene.enterMap(start); scene.playerWalkPhase=-1
       scene.setUiBlocked(false)
       window.__gaitSamples = []
       game.events.on('postrender', () => window.__gaitSamples.push({ player: scene.playerImage.texture.key,
+        phase: scene.playerWalkPhase, moving: scene.moving,
         oda: scene.residents.find(n => n.definition.id === 'oda')?.image.texture.key }))
       scene.residents.find(n => n.definition.id === 'oda').next = scene.time.now - 1
       scene.move('right')
     })
-    await page.waitForTimeout(450)
-    await page.evaluate(() => window.__characterTest.scene.move('right'))
-    await page.waitForTimeout(450)
+    for(let tile=0;tile<4;tile++) {
+      if(tile>0) await page.evaluate(() => window.__characterTest.scene.move('right'))
+      await page.waitForTimeout(450)
+    }
     const samples = await page.evaluate(() => window.__gaitSamples)
     assert(samples.some(s => s.player === 'player-right-walk-1'))
     assert(samples.some(s => s.player === 'player-right-walk-2'))
     assert(samples.some(s => s.player === 'player-right-walk-3'), 'Right movement must include passing C')
+    for(const [phase,frame] of [1,3,2,3].entries()) {
+      const movingFrames=samples.filter(s=>s.moving&&s.phase===phase).map(s=>s.player)
+      assert(movingFrames.length>0,`No render samples for tile ${phase+1}`)
+      assert.deepEqual([...new Set(movingFrames)],[`player-right-walk-${frame}`],'Exactly one texture throughout each tile')
+    }
     assert.equal(samples.at(-1).player, 'player-right')
     assert(samples.some(s => s.oda === 'oda-right-walk-1'))
     assert(samples.some(s => s.oda === 'oda-right-walk-2'))

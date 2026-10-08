@@ -1,5 +1,22 @@
 # Player walk: exact pose plan (revision 10, Right passing C)
 
+## Cadence update — one image per tile
+
+After reviewing the published C animation, the user requested one image per
+tile on 2026-10-08. This supersedes revision 10's within-tile timing below.
+
+- Advance the animation phase only when a successful tile movement starts.
+  Right uses A/C/B/C on four consecutive tiles. Hold each chosen texture through
+  its whole tween and settle interval; stopping returns to the facing idle.
+- Keep existing movement duration, keyboard/touch repeat, running multiplier,
+  collision and NPC cadence unchanged. Other player directions retain A/B per tile.
+- The right-character preview uses the existing 145 ms keyboard repeat for each
+  image, making its complete loop 580 ms. Other preview characters remain at
+  their existing 220 ms per image. Pause and direction switching still work.
+- Validate real render samples for all four consecutive tiles on desktop,
+  mobile DPR3 and Canvas: each tile must contain exactly its one expected texture.
+- No character graphics or sprite registrations change in this cadence update.
+
 ## Right C between A and B
 
 Add `player/right-walk-3.png` as the shared passing frame requested by the user.

@@ -1,7 +1,7 @@
 import { NPCS, type NpcDefinition } from './npcs'
 import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTER, STANDARD_CHARACTERS } from './characters'
 import { createCharacterImage, preloadCharacter, setCharacterDirection } from './characterRendering'
-import { characterWalkStep, nextPlayerWalkStep, playerWalkTextureStep, PLAYER_WALK_SETTLE_MS } from './characterAnimation'
+import { characterWalkStep, nextPlayerWalkPhase, playerWalkTextureStep, PLAYER_WALK_SETTLE_MS } from './characterAnimation'
 import { playerMovementTiming } from './playerMovement'
 import { CAST_SPLASH_DURATION_MS, RETRIEVE_SHORE_DISTANCE, castFlightDuration, castTargets } from './fishing'
 import Phaser from 'phaser'
@@ -45,10 +45,9 @@ export class WorldScene extends Phaser.Scene {
   private castCameraZoom?: number
   private keys?: Record<string, Phaser.Input.Keyboard.Key>
   private moving = false
-  private playerWalkFrame: 1 | 2 = 2
+  private playerWalkPhase = -1
+  private playerWalkFrame = 1
   private playerWalkUntil = 0
-  private playerWalkStarted = 0
-  private playerWalkDuration = playerMovementTiming(false).duration
   private fishing = false
   private aimingCast = false
   private castingForward = false
@@ -163,16 +162,16 @@ export class WorldScene extends Phaser.Scene {
       return
     }
     this.moving = true
-    this.playerWalkFrame = nextPlayerWalkStep(this.playerWalkFrame)
+    const passingFrame = PLAYER_CHARACTER.walkPassingFrame?.[direction]
+    this.playerWalkPhase = nextPlayerWalkPhase(this.playerWalkPhase, passingFrame)
+    this.playerWalkFrame = playerWalkTextureStep(this.playerWalkPhase, passingFrame)
     this.playerWalkUntil = 0
-    this.playerWalkStarted = this.time.now
-    this.playerWalkDuration = playerMovementTiming(this.utilityHeld).duration
     this.drawPlayer()
     this.tweens.add({
       targets: this.player,
       x: x * TILE_SIZE + 16,
       y: y * TILE_SIZE + 16,
-      duration: this.playerWalkDuration,
+      duration: playerMovementTiming(this.utilityHeld).duration,
       ease: 'Linear',
       onComplete: () => {
         this.moving = false
@@ -580,11 +579,8 @@ export class WorldScene extends Phaser.Scene {
     // Every direction within the character format shares origin/scale.
     if (!this.playerImage) return
     const walking = !this.uiBlocked && !this.fishing && (this.moving || this.time.now < this.playerWalkUntil)
-    const walkStep = playerWalkTextureStep(this.playerWalkFrame,
-      (this.time.now - this.playerWalkStarted) / this.playerWalkDuration,
-      PLAYER_CHARACTER.walkPassingFrame?.[this.position.facing])
     setCharacterDirection(this.playerImage, PLAYER_CHARACTER, this.position.facing,
-      walking ? walkStep : 0, this.castingForward ? 'castForward' : this.aimingCast ? 'castAim' : this.fishingRelaxed ? 'fishingIdle' : undefined)
+      walking ? this.playerWalkFrame : 0, this.castingForward ? 'castForward' : this.aimingCast ? 'castAim' : this.fishingRelaxed ? 'fishingIdle' : undefined)
   }
 }
 

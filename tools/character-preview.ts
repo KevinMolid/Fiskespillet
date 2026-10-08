@@ -1,5 +1,6 @@
 import { MARITA_CHARACTER, STANDARD_CHARACTERS, type StandardCharacter } from '../src/game/characters'
 import type { Direction } from '../src/game/world'
+import { playerMovementTiming } from '../src/game/playerMovement'
 const names: Record<string, string> = { player: 'Spiller', kevin: 'Kevin', mor: 'Mor', far: 'Far', oda: 'Oda', magnus: 'Magnus – kraftig og helt skallet', bendik: 'Bendik', nils: 'Nils', morten: 'Morten', marita: 'Marita' }
 const reviewCharacters = [MARITA_CHARACTER, ...STANDARD_CHARACTERS.filter(character => character.id !== 'marita')]
 const grid = document.querySelector<HTMLDivElement>('#grid')!
@@ -8,11 +9,13 @@ const play = document.querySelector<HTMLButtonElement>('#play')!
 const requestedDirection = new URLSearchParams(window.location.search).get('direction')
 if (requestedDirection && ['down', 'right', 'up', 'left'].includes(requestedDirection)) direction.value = requestedDirection
 let playing = true
-let phase = 0
+let elapsed = 0
+let lastTick = performance.now()
 function previewFrame(character: StandardCharacter) {
   const facing = direction.value as Direction
   const passing = character.walkPassingFrame?.[facing]
-  const index = passing === undefined ? Math.floor(phase / 2) % 2 : [0, passing - 1, 1, passing - 1][phase % 4]
+  const phase = Math.floor(elapsed / (passing === undefined ? 220 : playerMovementTiming(false).keyboardRepeat))
+  const index = passing === undefined ? phase % 2 : [0, passing - 1, 1, passing - 1][phase % 4]
   return character.walk?.[facing][index] ?? character.sprites[facing]
 }
 function image(character: StandardCharacter, source: string) {
@@ -48,11 +51,16 @@ function draw() {
 direction.addEventListener('change', draw)
 play.addEventListener('click', () => { playing = !playing; play.textContent = playing ? 'Pause' : 'Spill av' })
 setInterval(() => {
+  const now = performance.now()
+  const delta = now - lastTick
+  lastTick = now
   if (!playing) return
-  phase = (phase + 1) % 4
+  elapsed += delta
   for (const frame of document.querySelectorAll<HTMLElement>('.live')) {
     const character = reviewCharacters.find(c => c.id === frame.dataset.character)!
-    frame.querySelector('img')!.src = previewFrame(character)
+    const img = frame.querySelector('img')!
+    const source = previewFrame(character)
+    if (img.getAttribute('src') !== source) img.src = source
   }
-}, 110)
+}, 25)
 draw()
