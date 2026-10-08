@@ -30,7 +30,7 @@ function Preview() {
     <div className="flex-1">
       {view === 'start' ? <StartMenu hasSave={hasSave} ready onContinue={close} onNewGame={playerVariant => { setLook({ ...DEFAULT_APPEARANCE, playerVariant }); setHasSave(false); close() }} onRetry={() => {}} />
       : <div className="game-shell"><div className="game-frame relative aspect-[3/2] w-full overflow-hidden rounded-xl">
-        {view === 'pause' && <GameMenu inventory={inventory} appearance={look} caughtSpecies={4} speciesCount={21} onBag={() => setView('bag')} onBook={() => setView('book')} onClose={() => setView('start')} />}
+        {view === 'pause' && <GameMenu inventory={inventory} appearance={look} caughtSpecies={4} speciesCount={21} onBag={() => setView('bag')} onBook={() => setView('book')} onClose={() => setView('start')} onExit={() => setView('start')} />}
         {view === 'bag' && <InventoryDialog inventory={inventory} chest={false} pending={false} error="" onClose={close} onBait={() => {}} onTransfer={() => {}} />}
         {view === 'book' && <FishBookDialog book={[]} onClose={close} />}
         {view === 'shop' && <ShopDialog inventory={inventory} pending={false} error="" onClose={close} onBuy={() => {}} />}

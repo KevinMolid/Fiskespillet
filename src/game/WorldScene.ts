@@ -242,6 +242,8 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  getPosition(): Position { return { ...this.position } }
+
   setAppearance(appearance: Appearance) {
     this.playerCharacter = PLAYER_CHARACTERS[appearance.playerVariant ?? 'male']
     this.drawPlayer()

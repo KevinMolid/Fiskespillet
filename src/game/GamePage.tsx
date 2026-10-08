@@ -1,6 +1,5 @@
 import { FishBookDialog } from './FishBookDialog'
 import { CatchDialog } from './CatchDialog'
-import { CharacterSelect } from './CharacterSelect'
 import type { CatchMilestone } from './fishBook'
 import type { FishSpecies } from './fish'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -17,13 +16,13 @@ import { useGameInput } from './useGameInput'
 import { FISH_REWARDS, hasRunningShoes, type BaitId } from './items'
 import { MARITA_SNEAKERS_GIFT_LINE } from './npcs'
 import { fishingOptions } from './fish'
-import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, interactionAhead, MAPS, type Appearance, type PlayerVariant, type Position } from './world'
+import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, interactionAhead, MAPS, type Appearance, type Position } from './world'
 
 type Result = { species: FishSpecies; grams: number; coins: number; milestone: CatchMilestone | null }
 
 export type GameServices = Pick<typeof persistence, 'buyBait' | 'consumeBait' | 'digForWorms' | 'grantMaritaSneakers' | 'loadAppearance' | 'loadFishBook' | 'loadInventory' | 'loadPosition' | 'recordEncounter' | 'saveAppearance' | 'savePosition' | 'setEquippedBait' | 'transferItem'>
 
-export default function GamePage({ user, services = persistence }: { user: Pick<User, 'uid'>; services?: GameServices }) {
+export default function GamePage({ user, services = persistence, onExit }: { user: Pick<User, 'uid'>; services?: GameServices; onExit: () => void }) {
   const { buyBait, consumeBait, digForWorms, grantMaritaSneakers, loadAppearance, loadFishBook, loadInventory, loadPosition, recordEncounter, saveAppearance, savePosition, setEquippedBait, transferItem } = services
   const canvasParent = useRef<HTMLDivElement>(null)
   const gameFrame = useRef<HTMLDivElement>(null)
@@ -51,8 +50,8 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const [draftLook, setDraftLook] = useState<Appearance>(DEFAULT_APPEARANCE)
   const [showWardrobe, setShowWardrobe] = useState(false)
   const [savingLook, setSavingLook] = useState(false)
-  const [choiceError, setChoiceError] = useState('')
-  const choosingCharacter = Boolean(appearance && !appearance.playerVariant)
+  const [exiting, setExiting] = useState(false)
+  const [exitError, setExitError] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [busyText, setBusyText] = useState('Du kastet ut snøret … Vent på napp!')
@@ -68,19 +67,18 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
     window.requestAnimationFrame(() => gameFrame.current?.focus({ preventScroll: true }))
   }, [])
   const [signMessage, setSignMessage] = useState<{ title: string; text: string } | null>(null)
-  const uiBlocked = choosingCharacter || showMenu || showBook || showWardrobe || Boolean(inventoryView) || showShop || Boolean(fishingSession) || inventoryPending || savingLook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy
+  const uiBlocked = exiting || showMenu || showBook || showWardrobe || Boolean(inventoryView) || showShop || Boolean(fishingSession) || inventoryPending || savingLook || Boolean(result) || Boolean(error) || Boolean(signMessage) || busy
 
-  async function selectCharacter(playerVariant: PlayerVariant) {
-    if (!appearance || savingLook) return
-    setSavingLook(true)
-    setChoiceError('')
-    const next = { ...appearance, playerVariant }
+  async function exitGame() {
+    if (exiting || !scene.current) return
+    setExiting(true)
+    setExitError('')
+    if (saveTimer.current !== null) { window.clearTimeout(saveTimer.current); saveTimer.current = null }
     try {
-      await saveAppearance(user.uid, next)
-      setAppearance(next)
-      setDraftLook(next)
-    } catch { setChoiceError('Kunne ikke lagre karaktervalget. Prøv igjen.') }
-    finally { setSavingLook(false) }
+      await savePosition(user.uid, scene.current.getPosition())
+      onExit()
+    } catch { setExitError('Kunne ikke lagre spillet. Prøv å gå ut igjen.') }
+    finally { setExiting(false) }
   }
 
   useEffect(() => {
@@ -93,8 +91,10 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       if (!active) return
       setPosition(saved)
       setBook(entries)
-      setAppearance(look)
-      setDraftLook(look)
+      // Legacy saves retain the original player. Character choice is new-game only.
+      const continuedLook: Appearance = { ...look, playerVariant: look.playerVariant ?? 'male' }
+      setAppearance(continuedLook)
+      setDraftLook(continuedLook)
       setInventory(items)
     }).catch(() => {
       if (active) setError('Kunne ikke laste spillet. Kontroller Firestore-tilgangen og prøv å laste siden på nytt.')
@@ -103,7 +103,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   }, [user.uid])
 
   useEffect(() => {
-    if (!canvasParent.current || !position || !appearance?.playerVariant || !inventory || scene.current) return
+    if (!canvasParent.current || !position || !appearance || !inventory || scene.current) return
     let active = true
     const { game, scene: world } = createWorld(canvasParent.current, position, appearance, {
       onInteractionChange() { refreshInteraction(n => n + 1) },
@@ -198,6 +198,8 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       },
     })
     scene.current = world
+    // Initialize every new scene, even when the inventory hasn't changed.
+    world.setCanRun(hasRunningShoes(inventory))
     return () => {
       active = false
       if (saveTimer.current !== null) {
@@ -211,7 +213,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
     }
   // The Phaser scene must be created once after the saved position loads.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(position), Boolean(appearance?.playerVariant), Boolean(inventory), user.uid])
+  }, [Boolean(position), Boolean(appearance), Boolean(inventory), user.uid])
 
   useEffect(() => {
     scene.current?.setCanRun(hasRunningShoes(inventory))
@@ -313,11 +315,11 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
                 : canFish(position) && canFishNow ? 'Fisk' : null
   const caughtSpecies = book.filter(entry => entry.caughtCount > 0).length
 
-  const modal = Boolean(choosingCharacter || showMenu || showBook || showWardrobe || inventoryView || showShop || fishingSession || catchNotice)
-  const inputContext = choosingCharacter ? 'character' : fishingSession ? 'fishing' : catchNotice ? 'catch' : showWardrobe ? 'wardrobe' : inventoryView ?? (showBook ? 'book' : showShop ? 'shop' : showMenu ? 'menu' : error || result || signMessage ? 'message' : 'world')
+  const modal = Boolean(showMenu || showBook || showWardrobe || inventoryView || showShop || fishingSession || catchNotice)
+  const inputContext = fishingSession ? 'fishing' : catchNotice ? 'catch' : showWardrobe ? 'wardrobe' : inventoryView ?? (showBook ? 'book' : showShop ? 'shop' : showMenu ? 'menu' : error || result || signMessage ? 'message' : 'world')
   function dismissMessage() { setError(''); setResult(null); setSignMessage(null) }
   function menuControl() {
-    if (choosingCharacter || inventoryPending || savingLook || busy) return
+    if (exiting || inventoryPending || savingLook || busy) return
     if (fishingSession) {
       if (!fishingCommitted.current) closeFishingSession()
     }
@@ -329,7 +331,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
     else if (showMenu) closeMenu()
     else if (position && inventory) { scene.current?.setUiBlocked(true); setShowMenu(true) }
   }
-  const input = useGameInput({ frame: gameFrame, context: inputContext, modal, locked: busy || inventoryPending || savingLook,
+  const input = useGameInput({ frame: gameFrame, context: inputContext, modal, locked: exiting || busy || inventoryPending || savingLook,
     move: direction => { if (!uiBlocked) scene.current?.move(direction) },
     moveHold: direction => { if (!uiBlocked || direction === null) scene.current?.setTouchDirection(direction) },
     action: () => { if (error || result || signMessage) dismissMessage(); else scene.current?.action() }, menu: menuControl,
@@ -341,8 +343,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
     <div ref={gameFrame} tabIndex={-1} className="game-frame relative aspect-[3/2] w-full overflow-hidden rounded-xl border-4 border-[#27474a] bg-[#183a36] shadow-2xl">
       <div ref={canvasParent} className="absolute inset-0 [&_canvas]:block" aria-label="Spillkart" />
 
-      {map && !choosingCharacter && <PlaceNotice key={map.id} name={map.name} />}
-      {choosingCharacter && <CharacterSelect pending={savingLook} error={choiceError} onSelect={variant => void selectCharacter(variant)} />}
+      {map && <PlaceNotice key={map.id} name={map.name} />}
 
       {!showMenu && !showBook && !showWardrobe && !inventoryView && !showShop && <>
         {!position && <p role="status" className="absolute left-4 top-4 text-white">Laster kart …</p>}
@@ -361,6 +362,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
         inventory={inventory} appearance={appearance} caughtSpecies={caughtSpecies} speciesCount={FISH.length}
         onBag={() => { setInventoryError(''); setInventoryView('bag') }}
         onBook={() => setShowBook(true)} onClose={closeMenu}
+        onExit={() => void exitGame()} pending={exiting} error={exitError}
       />}
 
       {inventoryView && inventory && <InventoryDialog inventory={inventory} chest={inventoryView === 'chest'} pending={inventoryPending} error={inventoryError}
@@ -385,8 +387,8 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       onUtilityStart={input.utilityStart} onUtilityEnd={input.utilityEnd} utilityHeld={input.utilityHeld}
       utilityDisabled={uiBlocked || !hasRunningShoes(inventory)}
       actionLabel={fishingSession ? fishingActionLabel : catchNotice ? 'Videre' : modal ? 'Velg' : (error || result || signMessage) ? 'Videre' : actionLabel ?? ''}
-      disabled={!position || !inventory || busy || inventoryPending || savingLook}
-      actionDisabled={!position || busy || inventoryPending || savingLook || (!modal && !actionLabel && !error && !result && !signMessage)} />
+      disabled={!position || !inventory || exiting || busy || inventoryPending || savingLook}
+      actionDisabled={!position || exiting || busy || inventoryPending || savingLook || (!modal && !actionLabel && !error && !result && !signMessage)} />
     <p className="desktop-control-hint mt-3 text-xs text-slate-400">Enter: spillmeny · Piltaster / WASD: bevegelse · {hasRunningShoes(inventory) ? 'Hold Shift: løp' : 'Joggesko fra Marita låser opp løping'} · E / mellomrom: handling · Esc: tilbake · Gå på dører og trapper for å bytte rom.</p>
   </div>
 }

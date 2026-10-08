@@ -31,13 +31,14 @@ try {
     await page.getByRole('button', { name: 'Nytt spill', exact: true }).click()
     await choose.waitFor()
     await fits()
-    await page.getByRole('button', { name: /Kvinnelig karakter/ }).click()
-    assert.equal(await page.getByRole('button', { name: /Kvinnelig karakter/ }).getAttribute('aria-pressed'), 'true')
+    await page.getByRole('button', { name: 'Figur med røde detaljer' }).click()
+    assert.equal(await page.getByRole('button', { name: 'Figur med røde detaljer' }).getAttribute('aria-pressed'), 'true')
+    assert(!(await choose.textContent()).match(/mannlig|kvinnelig/i), 'Character choices do not name genders')
     await page.screenshot({ path: `output/female-player-review/choice-${mode}.png` })
     await page.getByRole('button', { name: 'Tilbake', exact: true }).click()
     assert.equal(await choose.count(), 0, 'Cancel never starts or resets a game')
     await page.getByRole('button', { name: 'Nytt spill', exact: true }).click()
-    await page.getByRole('button', { name: /Kvinnelig karakter/ }).click()
+    await page.getByRole('button', { name: 'Figur med røde detaljer' }).click()
     await page.getByRole('button', { name: 'Start spillet', exact: true }).click()
     await page.getByRole('dialog', { name: 'Spillmeny' }).waitFor()
     assert((await page.locator('.equipment-portrait img').getAttribute('src')).includes('player-female'))
@@ -52,26 +53,11 @@ try {
     await page.keyboard.press('Escape')
     assert.equal(await choose.count(), 0)
 
-    // Legacy accounts choose without a reset. A failed choice save keeps the menu.
-    await page.route(/\/tools\/game-preview\.tsx(?:\?.*)?$/, async route => {
-      const response = await route.fetch()
-      const body = (await response.text()).replace('saveAppearance: async (_uid, a) => {', 'saveAppearance: async (_uid, a) => { if(window.__failChoice) throw new Error("offline");')
-      assert(body.includes('__failChoice'))
-      await route.fulfill({ response, body })
-    })
+    // Existing saves, including legacy appearances, continue without a selection.
     await page.goto(`${base}/tools/game-preview.html?character=legacy`)
-    await choose.waitFor(); await fits()
-    assert.equal(await page.locator('.game-frame canvas').count(), 0, 'No movement/scene until character is saved')
-    await page.getByRole('button', { name: /Kvinnelig karakter/ }).click()
-    await page.evaluate(() => { window.__failChoice = true })
-    await page.getByRole('button', { name: 'Start spillet', exact: true }).click()
-    await choose.getByRole('alert').waitFor()
-    assert.equal(await page.locator('.game-frame canvas').count(), 0)
-    await page.evaluate(() => { window.__failChoice = false })
-    await page.getByRole('button', { name: 'Start spillet', exact: true }).click()
-    await page.waitForFunction(() => window.__choiceWorld?.scene.playerImage?.texture.key === 'player-female-down')
-    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('fiskespillet-preview-character')).playerVariant), 'female')
-    await page.goto(`${base}/tools/game-preview.html`)
+    await page.waitForFunction(() => window.__choiceWorld?.scene.playerImage?.texture.key === 'player-down')
+    assert.equal(await choose.count(), 0)
+    await page.goto(`${base}/tools/game-preview.html?character=female`)
     await page.waitForFunction(() => window.__choiceWorld?.scene.playerImage?.texture.key === 'player-female-down')
     assert.equal(await choose.count(), 0, 'Saved choice loads without asking again')
     const audit = await page.evaluate(async () => {
@@ -152,7 +138,7 @@ try {
     }
     await page.screenshot({ path: `output/female-player-review/game-${mode}.png`, fullPage: true })
     assert.deepEqual(errors,[])
-    console.log(`${mode}: character choice/cancel/reset confirmation, legacy save failure/retry, persistence, 28 female textures, RGBA, nearest, scale, foot anchors, camera and full 4-direction casting/retrieval passed.`)
+    console.log(`${mode}: new-game-only character choice/cancel/reset, no gender labels, legacy continue, 28 female textures, RGBA, nearest, scale, foot anchors, camera and full 4-direction casting/retrieval passed.`)
     await context.close()
   }
 } finally { await browser.close() }

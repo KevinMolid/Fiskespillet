@@ -3,6 +3,7 @@ import { NPCS } from '../src/game/npcs'
 import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import GamePage, { type GameServices } from '../src/game/GamePage'
+import { StartMenu } from '../src/game/StartMenu'
 import { DEFAULT_APPEARANCE, START, isAppearance, type Appearance, type Position } from '../src/game/world'
 import type { FishBookEntry, Inventory } from '../src/game/persistence'
 import { Timestamp } from 'firebase/firestore'
@@ -35,6 +36,7 @@ const services: GameServices = {
     return { inventory: snapshot(), received: true }
   },
   savePosition: async (_uid, p) => {
+    savedPosition = { ...p }
     const output = document.querySelector('#preview-position')
     if (output) output.textContent = `${p.mapId}: ${p.x}, ${p.y} (${p.facing})`
   },
@@ -77,13 +79,21 @@ const services: GameServices = {
 
 function Preview() {
   const [revision, setRevision] = useState(0)
+  const [playing, setPlaying] = useState(true)
   function go(position: Position) {
     savedPosition = { ...position }
     setRevision(current => current + 1)
   }
   return <main className="game-preview-page mx-auto max-w-4xl text-white">
     <header className="preview-heading"><strong>Fiskespillet</strong><span>Lokal prøve · ingen kontolagring</span></header>
-    <GamePage key={revision} user={{ uid: 'local-preview' }} services={services} />
+    {playing ? <GamePage key={revision} user={{ uid: 'local-preview' }} services={services} onExit={() => setPlaying(false)} />
+      : <StartMenu hasSave ready onContinue={() => { setRevision(current => current + 1); setPlaying(true) }} onNewGame={playerVariant => {
+        savedPosition = { ...START }; savedAppearance = { ...DEFAULT_APPEARANCE, playerVariant }
+        inventory = { bag: { rod: 1, shovel: 1, bread: 3, worm: 5 }, storage: {}, equippedBait: 'bread', coins: 60 }
+        fishBook = []; localStorage.removeItem('fiskespillet-preview-sneakers')
+        localStorage.setItem('fiskespillet-preview-character', JSON.stringify(savedAppearance))
+        setRevision(current => current + 1); setPlaying(true)
+      }} onRetry={() => {}} />}
     <details className="preview-tools p-3"><summary>Teststeder og posisjon</summary><div className="mt-3 flex flex-wrap gap-2">
       <button className="game-hud-button" onClick={() => go(START)}>Bryggehavn</button>
       <button className="game-hud-button" onClick={() => go({ mapId: 'havn', x: 24, y: 25, facing: 'down' })}>Fiske ved bryggen</button>

@@ -27,7 +27,11 @@ Prompten brukt i imagegen:
 
 `CharacterSelect.tsx` viser de to karakterene med et eksplisitt valg og «Start spillet». «Nytt spill» i `StartMenu` åpner valget; eksisterende progresjon slettes først etter den vanlige reset-bekreftelsen og når spilleren starter med valgt karakter. Tilbake/Escape avbryter uten å slette.
 
-`Appearance.playerVariant` er `male` eller `female`. Feltet er valgfritt kun for eldre lagringer. En eldre lagring får karaktervalget i `GamePage` ved første oppstart, og valget lagres uten å slette annen progresjon. Spillscenen opprettes først når valget er lagret. Senere «Fortsett spill» bruker det lagrede valget.
+`Appearance.playerVariant` er `male` eller `female`. Feltet er valgfritt for eldre lagringer. «Fortsett spill» åpner alltid lagringen uten karaktervalg. En eksisterende valgt figur beholdes; eldre lagringer uten feltet bruker den opprinnelige figuren. Ingen utseendeskriving eller reset gjøres ved fortsettelse. Valget vises bare ved «Nytt spill». Valgbildene har ingen kjønnsnavn; skjermleseretikettene beskriver de blå/røde detaljene.
+
+`GamePage` initialiserer løperetten fra inventaret straks spillscenen opprettes, og oppdaterer den også når inventaret endres. Dette hindrer at en ny scene mister løperetten selv om det allerede lastede inventaret ikke har endret seg. Shift/B krever fortsatt joggesko.
+
+«Gå ut av spillet» i spillmenyen lagrer den gjeldende logiske posisjonen før `App` går tilbake til startmenyen med «Fortsett spill» og «Nytt spill». Under lagring blokkeres menyinput; ved feil beholdes spillscenen og feilmeldingen gir mulighet for å prøve igjen. Ingen konto, inventar, fiskebok eller figurvalg slettes.
 
 For eksisterende spill skriver `resetGameData(uid, appearance)` reset og nytt karaktervalg i samme Firestore-batch; ved feil slettes ikke progresjonen. Firebase-reglene tillater bare de to verdiene, og eldre utseendedokumenter fungerer fortsatt. Reglene må publiseres sammen med endringen; prosjektets eksisterende main-workflow håndterer `firestore.rules`.
 
@@ -35,7 +39,8 @@ For eksisterende spill skriver `resetGameData(uid, appearance)` reset og nytt ka
 
 - Typecheck: `node node_modules/typescript/bin/tsc -b`.
 - Build: `node node_modules/vite/bin/vite.js build`.
-- `check-player-choice-browser.mjs`: oppstartsvalg, avbrudd, reset-bekreftelse, eldre lagring, lagringsfeil/retry, gjenopptakelse, 28 textures, transparency, fotanker og fire retningsbestemte kaste-/sveivesekvenser på desktop, mobil DPR3 og liggende mobil DPR3.
+- `check-player-choice-browser.mjs`: valg bare ved nytt spill, avbrudd, reset-bekreftelse, fortsettelse av eldre lagring uten spørsmål, 28 textures, transparency, fotanker og fire retningsbestemte kaste-/sveivesekvenser på desktop, mobil DPR3 og liggende mobil DPR3.
+- `check-continue-exit-browser.mjs`: lagret blå/rød/eldre figur med joggesko, Shift/B-løping, løpehastighet, avslutning/fortsettelse, lagringsfeil/retry, pending input, scene-cleanup og fortsatt låsing uten joggesko på desktop, mobil, liggende mobil og Canvas fallback.
 - `PLAYER_VARIANT=female check-player-browser.mjs`: bevegelse/facing, nearest, dybde, fotlinje mot Kevin, kollisjon, interaksjon, alle kartoverganger, kamera og fishing entry, inkludert Canvas fallback.
 - `check-menu-browser.mjs`: menyene på desktop, mobil, smal mobil og liggende mobil.
 - `check-fishbook.mjs`: lagring og atomisk reset, inkludert feiltilfeller.

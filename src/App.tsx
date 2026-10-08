@@ -200,7 +200,7 @@ function App() {
           {profileIssue && <p role="alert" className="mt-6 rounded-lg bg-rose-400/10 p-3 text-sm text-rose-200">{profileIssue}</p>}
           <ProfilePage user={user} profile={profile} onBack={() => setPage('home')} />
         </div> : user && gameStart !== 'playing' ? <div className="flex-1"><StartMenu hasSave={hasSave} ready={gameStart === 'menu'} pending={gameStart === 'checking' || startPending} error={startError} onContinue={() => setGameStart('playing')} onNewGame={variant => void startNewGame(variant)} onRetry={() => void retryGameCheck()} /></div>
-        : user ? <div className="flex-1"><Suspense fallback={<p className="py-16 text-slate-300">Laster spillet …</p>}><GamePage key={user.uid} user={user} /></Suspense></div>
+        : user ? <div className="flex-1"><Suspense fallback={<p className="py-16 text-slate-300">Laster spillet …</p>}><GamePage key={user.uid} user={user} onExit={() => { setHasSave(true); setStartError(''); setGameStart('menu') }} /></Suspense></div>
         : <section className="login-layout">
           <div className="login-hero">
             <p className="start-kicker">Norges sykeste fiskespill</p>

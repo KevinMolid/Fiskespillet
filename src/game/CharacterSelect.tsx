@@ -27,9 +27,8 @@ export function CharacterSelect({ pending = false, error = '', onSelect, onBack 
       <h2 id="character-select-title">Velg spillkarakter</h2>
       <p>Hvem tar det neste kastet?</p>
       <div className="character-choices" role="group" aria-label="Spillkarakter">
-        {(['male', 'female'] as const).map((variant, index) => <button key={variant} ref={index === 0 ? firstChoice : undefined} type="button" aria-pressed={selected === variant} disabled={pending} onClick={() => setSelected(variant)}>
+        {(['male', 'female'] as const).map((variant, index) => <button key={variant} ref={index === 0 ? firstChoice : undefined} type="button" aria-label={variant === 'male' ? 'Figur med blå detaljer' : 'Figur med røde detaljer'} aria-pressed={selected === variant} disabled={pending} onClick={() => setSelected(variant)}>
           <img src={variant === 'male' ? male : female} alt="" />
-          <strong>{variant === 'male' ? 'Mannlig karakter' : 'Kvinnelig karakter'}</strong>
           <span aria-hidden="true">{selected === variant ? '✓ Valgt' : 'Velg'}</span>
         </button>)}
       </div>

@@ -165,7 +165,7 @@ for (const playerVariant of ['male', 'female']) {
   assert.equal((await loadAppearance(uid)).playerVariant, playerVariant, 'Character choice persists per account')
 }
 documents.set('characterLooks/legacy', { shirt: 2, hair: 1, skin: 3 })
-assert.equal((await loadAppearance('legacy')).playerVariant, undefined, 'Old saves still load and can choose without a reset')
+assert.equal((await loadAppearance('legacy')).playerVariant, undefined, 'Old saves remain readable without modifying their character data')
 await assert.rejects(saveAppearance(uid, { shirt: 0, hair: 0, skin: 0, playerVariant: 'invalid' }))
 documents.set('playerInventories/' + uid, inventory())
 const beforeReset = JSON.stringify([...documents])
