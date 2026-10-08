@@ -168,3 +168,51 @@ if c_path.exists():
         leg=data['legJoints'];hip,knee,ankle=(np.array(leg[j]) for j in ['hip','knee','ankle'])
         assert abs(np.linalg.norm(knee-hip)-7.5)<.001 and abs(np.linalg.norm(ankle-knee)-5)<.001
     print('Right C: exact head/format/ground, centered support leg, lifted swing leg and centered arm passed.')
+
+# Left uses its own head/clothing and the same readable side-contact geometry.
+left_idle=np.array(Image.open(ROOT/'src/assets/characters/player/left.png').convert('RGBA'))
+for step in ['1','2','3']:
+    rgba=np.array(Image.open(ROOT/f'src/assets/characters/player/left-walk-{step}.png').convert('RGBA'))
+    assert np.array_equal(rgba[:520],left_idle[:520]),'Left pose changed its approved head'
+    pose=rig['left']['poses'][step]['limbs']
+    brightness={}
+    for limb in ['left','right']:
+        leg=pose[limb]['legJoints'];x0,y0,x1,y1=leg['bootBounds']
+        assert leg['bootAngle']==0 and 1<(x1-x0)/(y1-y0)<1.25
+        assert y1==leg['bootBaseline']
+        shoe=rgba[y0:y1,x0:x1];opaque=shoe[:,:,3]>0
+        if step!='3':
+            # In production pixels, the wide toe projects left of the cuff.
+            assert np.where(opaque[:45])[1].mean()-np.where(opaque[-50:])[1].mean()>24
+            brightness[limb]=shoe[:,:,:3][opaque].mean()
+    if step!='3':
+        assert brightness['right']>brightness['left']*1.4,'Left near/far feet lack contrast'
+        left,right=(pose[side]['legJoints'] for side in ['left','right'])
+        assert left['bootBounds'][2]<right['bootBounds'][0] if step=='1' else right['bootBounds'][2]<left['bootBounds'][0]
+    else:
+        assert pose['right']['legJoints']['bootBaseline']==1172
+        assert pose['left']['legJoints']['bootBaseline']==1112
+        support=pose['right']['legJoints']
+        assert abs(support['hip'][0]-support['ankle'][0])<.1
+        wrist=pose['right']['armJoints']['wrist'][0]
+        contacts=[rig['left']['poses'][s]['limbs']['right']['armJoints']['wrist'][0] for s in ['1','2']]
+        assert min(contacts)<wrist<max(contacts)
+print('Left A/B/C: exact head, opposed contacts, whole left-pointing boots, near/far contrast and lifted passing foot passed.')
+
+for direction,support in [('down','left'),('up','right')]:
+    idle=np.array(Image.open(ROOT/f'src/assets/characters/player/{direction}.png').convert('RGBA'))
+    c=Image.open(ROOT/f'src/assets/characters/player/{direction}-walk-3.png').convert('RGBA')
+    rgba=np.array(c)
+    assert c.size==(768,1184) and c.getbbox()[3]==1172
+    assert np.array_equal(rgba[:520],idle[:520])
+    assert set(np.unique(rgba[:,:,3]))=={0,255} and np.all(rgba[rgba[:,:,3]==0]==0)
+    pose=rig[direction]['poses']['3']['limbs']
+    assert pose[support]['legBounds'][3]==1172
+    swing='right' if support=='left' else 'left'
+    assert pose[swing]['legBounds'][3]==1142
+    contacts=[Image.open(ROOT/f'src/assets/characters/player/{direction}-walk-{s}.png') for s in [1,2]]
+    for side in ['screen-left','screen-right']:
+        ys=[hand_center(contact,side)[1] for contact in contacts]
+        assert min(ys)<=hand_center(c,side)[1]<=max(ys),'Passing hand must lie between its contact positions'
+    assert not any(np.array_equal(rgba,np.array(contact)) for contact in contacts),'C duplicates a contact'
+print('Down/up C: neutral hands between A/B, lifted swing sole, fixed support/head/ground passed.')

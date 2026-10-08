@@ -1,4 +1,4 @@
-"""Validate all 108 production frames and their anatomical pose contract."""
+"""Validate character production frames and their anatomical pose contract."""
 from pathlib import Path
 import json,hashlib
 import numpy as np
@@ -13,7 +13,7 @@ for id in IDS:
  for direction in ['down','right','up','left']:
   path=ROOT/'src/assets/characters'/id/(direction+'.png');idle=np.array(Image.open(path))
   assert hashlib.sha256(path.read_bytes()).hexdigest()==rig[id][direction]['idleSha256'], 'Rig must not rewrite idle'
-  for step in [0,1,2]:
+  for step in ([0,1,2,3] if id=='player' else [0,1,2]):
    file=ROOT/'src/assets/characters'/id/(direction+('' if not step else '-walk-'+str(step))+'.png')
    image=Image.open(file);assert image.mode=='RGBA'
    assert image.size==(config['canvas']['width'],config['canvas']['height'])
@@ -25,8 +25,13 @@ for id in IDS:
     fixed_head=26 if id=='player' else 32
     assert np.array_equal(rgba[:round(fixed_head*unit)],idle[:round(fixed_head*unit)]), 'Head must be exact idle pixels; player sleeves articulate below it'
     pose=rig[id][direction]['poses'][str(step)]
-    assert pose['forwardLeg']==('left' if step==1 else 'right')
-    assert pose['forwardArm']==('right' if step==1 else 'left')
+    if step==3:
+     assert pose['phase']=='passing' and pose['between']==['1','2']
+     assert pose['forwardLeg'] is None and pose['forwardArm'] is None
+     assert sorted(limb['passingRole'] for limb in pose['limbs'].values())==['support','swing']
+    else:
+     assert pose['forwardLeg']==('left' if step==1 else 'right')
+     assert pose['forwardArm']==('right' if step==1 else 'left')
     assert all(limb['armBounds'] for limb in pose['limbs'].values()), 'Both arms need explicit controls'
     assert not np.array_equal(rgba,idle), 'Walk must differ from idle'
    count+=1
@@ -68,5 +73,5 @@ for direction in ['down','right','up','left']:
 mag=np.array(Image.open(ROOT/'src/assets/characters/magnus/down.png'))
 kev=np.array(Image.open(ROOT/'src/assets/characters/kevin/down.png'))
 assert np.count_nonzero(mag[40,:,3])>np.count_nonzero(kev[40,:,3])*1.15, 'Magnus must be clearly heavier'
-assert count==108
-print('108 production frames and Magnus bald/stocky features passed.')
+assert count==112
+print('112 production frames, all player passing poses and Magnus bald/stocky features passed.')

@@ -1,4 +1,42 @@
-# Player walk: exact pose plan (revision 10, Right passing C)
+# Player walk: exact pose plan (revision 11, passing C in every direction)
+
+## Left contacts and directional passing frames
+
+Keep the published right A/B/C, all idle artwork, and front/back A/B byte exact.
+Only rebuild left A/B and add left/down/up C. All player directions now use
+A–C–B–C, one texture per successful tile, with the existing movement timings.
+
+- Left A: anatomical left (far) foot advances left; right (near) foot trails.
+  Near right arm advances left, far left arm trails. B reverses both phases.
+- Reuse the accepted right contact geometry, continuous cargo trouser panel,
+  chunky horizontal profile boots and stepped dark outlines in a reflected
+  working coordinate system. Use actual left idle pixels for head, shirt,
+  sleeves and stationary bag; never replace left identity with mirrored right art.
+  Near right leg retains the palette; far left leg uses 62% material brightness.
+  Near baseline 1172, far baseline 1152. Toes point left in both contacts.
+- Left C: near right support leg centered below its hip; far left swing leg
+  bends and lifts to baseline 1112. Both hands return close to the hips.
+- Down C: anatomical left support sole remains at 1172; right swing foot lifts
+  30 source pixels (1.5 world pixels). Both shoulder/elbow/hand chains return
+  to their neutral positions between the approved opposing contact poses.
+- Up C: anatomical right support sole remains at 1172; left swing foot lifts
+  30 source pixels. Same neutral arm joints, with actual back-facing artwork.
+- Shared 768 × 1184 canvas, anchor (384,1172), scale .05 and nearest filtering.
+  No movement, collision, NPC gait, world or fishing pose changes.
+- Reproduce with `python tools/player_walk_rig.py --direction left`, then
+  `--direction down --step 3` and `--direction up --step 3`.
+- Registry `characters.ts` declares A/B/C and passing frame 3 for all four
+  player directions. The existing renderer and per-tile phase selection apply.
+
+Validation: sprite anatomy/112-frame format audit, animation timing test,
+typecheck and production build passed. Real desktop, mobile DPR3 and Canvas
+tests passed for A/C/B/C over four successive tiles in every direction, exact
+ground registration, nearest filtering, retained idle facing and unchanged NPC
+cadence. Git asset comparison confirms only left A/B change among previously
+tracked character images; down/up C and left C are the three new assets.
+
+The older right-only scope/timing notes below record previous revisions;
+this section defines the current directional extension.
 
 ## Cadence update — one image per tile
 

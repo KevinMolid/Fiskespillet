@@ -11,7 +11,7 @@ import json
 import io
 import time
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
 UNIT = 20
@@ -134,6 +134,10 @@ def pose_arm(image, direction, index, forward):
         fore_angle=upper_angle
         target_shoulder=shoulder+np.array([(.5 if forward else -.5)*inward,(.5 if forward else -.5)*projection])
         depth=(1.5 if forward else -1.5)*projection
+    if forward is None:
+        # Passing: shoulder, elbow and hand return to the neutral joint chain.
+        upper_angle=fore_angle=depth=0
+        target_shoulder=shoulder.copy()
     target_elbow=target_shoulder+rotate_vector(elbow-shoulder,upper_angle)
     target_wrist=target_elbow+rotate_vector(wrist-elbow,fore_angle)+np.array([0,depth])
     upper=slice_layer(image,y1=elbow[1]+.55)
@@ -350,7 +354,7 @@ def registered_arm(template,source,target):
     result.alpha_composite(segment_pose(slice_layer(template,y0=wrist[1]-.55),wrist,wrist+(0,2),target_wrist,hand_tip))
     return result,{'shoulder':target_shoulder.tolist(),'elbow':target_elbow.tolist(),'wrist':target_wrist.tolist()}
 
-def right_contact(image,body,arms,template,bag,step):
+def right_contact(image,body,arms,template,bag,step,arm_sources=None,reflected_left=False):
     """Right contacts share the approved chunky trouser/boot artwork.
 
     Keep the original head/identity and complete the hidden torso/pelvis before
@@ -430,6 +434,15 @@ def right_contact(image,body,arms,template,bag,step):
         draw=ImageDraw.Draw(torso)
         draw.line([(round(x*UNIT),round(y*UNIT)) for x,y in
                    [(12.2,26.8),(11.8,31),(12.6,34)]],fill=(14,22,43,255),width=12)
+    if reflected_left:
+        # Left's vest edge is farther inward than right's. The side fill must
+        # end at its own shirt seam, not leave a stationary blue sleeve stub
+        # outside the body when the near arm swings forward.
+        torso_a=np.array(torso)
+        tr,tg,tb=torso_a[:,:,:3].astype(float).transpose(2,0,1)
+        sleeve_fill=(tb>tr*1.1)&(tb>tg*.95)
+        torso_a[(xx<14*UNIT)&(yy>=30*UNIT)&sleeve_fill]=0
+        torso=Image.fromarray(torso_a)
     # The mask dilation previously picked up pale vest trim and rotated it
     # with the sleeve, creating the apparent white cut-out at the shoulder.
     clean_arms=[]
@@ -442,7 +455,7 @@ def right_contact(image,body,arms,template,bag,step):
         hip,ankle=leg_targets[limb]
         lift_baseline=GROUND-CONTACT_FAR_DEPTH-2*UNIT if step==3 and limb=='right' else None
         legs[limb],leg_joints=pose_profile_leg(template,'right',limb,step,'left',limb==forward,hip,ankle,True,image,lift_baseline)
-        posed_arms[limb],arm_joints=registered_arm(clean_arms[index],ARM_JOINTS['right'][index],arm_targets[limb])
+        posed_arms[limb],arm_joints=registered_arm(clean_arms[index],(arm_sources or ARM_JOINTS['right'])[index],arm_targets[limb])
         measurements[limb]={'legForward':limb==forward,'armForward':limb!=forward,'legBounds':list(legs[limb].getbbox()),'armBounds':list(posed_arms[limb].getbbox()),'legJoints':leg_joints,'armJoints':arm_joints}
         if step==3:
             measurements[limb].update(legForward=False,armForward=False,
@@ -452,6 +465,32 @@ def right_contact(image,body,arms,template,bag,step):
     # Drawing a wide pelvis patch over it hid which leg owned the front foot.
     for layer in [posed_arms['right'],legs['right'],pelvis,legs['left'],torso,bag,posed_arms['left']]:frame.alpha_composite(layer)
     return frame,measurements
+
+def left_contact(image,body,arms,template,bag,step):
+    """Reuse contact geometry with the actual left artwork and anatomical sides.
+
+    Only the working coordinate system is reflected. Head, torso, sleeve and
+    bag pixels come from left.png, not a mirrored right-facing character.
+    Left A advances the far left leg; B advances the near right leg.
+    """
+    width=image.width
+    mirror=lambda layer: ImageOps.mirror(layer)
+    sources=[[(width/UNIT-x,y) for x,y in ARM_JOINTS['left'][index]] for index in [1,0]]
+    frame,posed=right_contact(mirror(image),np.array(mirror(Image.fromarray(body))),
+        [mirror(arms[1]),mirror(arms[0])],mirror(template),mirror(bag),
+        {1:2,2:1,3:3}[step],sources,True)
+    result={}
+    for side,data in posed.items():
+        data=json.loads(json.dumps(data))
+        for name in ['legBounds','armBounds']:
+            x0,y0,x1,y1=data[name];data[name]=[width-x1,y0,width-x0,y1]
+        for name,joints in [('legJoints',['hip','knee','ankle']),('armJoints',['shoulder','elbow','wrist'])]:
+            for joint in joints:
+                x,y=data[name][joint];data[name][joint]=[width/UNIT-x,y]
+        x0,y0,x1,y1=data['legJoints']['bootBounds']
+        data['legJoints']['bootBounds']=[width-x1,y0,width-x0,y1]
+        result['right' if side=='left' else 'left']=data
+    return mirror(frame),result
 
 def rig_player(direction,steps=(1,2)):
     config=json.loads((ROOT/'src/game/pixel-player-standard.json').read_text())
@@ -562,26 +601,29 @@ def rig_player(direction,steps=(1,2)):
     for step in steps:
         forward_leg='left' if step==1 else 'right';forward_arm='right' if step==1 else 'left'
         posed_arms={};posed_legs={};measurements={}
-        for limb in ([] if direction=='right' else ['left','right']):
+        for limb in ([] if direction in ('right','left') else ['left','right']):
             index=anatomy[limb];leg_forward=limb==forward_leg;arm_forward=limb==forward_arm
             leg_joints={}
             if direction in ('down','up'):
                 projection=1 if direction=='down' else -1
                 leg_dx=0
                 leg_dy=0 if leg_forward==(direction=='down') else -3*UNIT
+                if step==3:
+                    support='left' if direction=='down' else 'right'
+                    leg_dy=0 if limb==support else -round(1.5*UNIT)
                 posed_legs[limb]=pose_limb(legs[index],40,52,leg_dx,leg_dy)
             else:
                 posed_legs[limb],leg_joints=pose_profile_leg(profile_template,direction,limb,step,near,leg_forward)
-            posed_arms[limb],arm_joints=pose_arm(arms[index],direction,index,arm_forward)
+            posed_arms[limb],arm_joints=pose_arm(arms[index],direction,index,None if step==3 else arm_forward)
             measurements[limb]={'legForward':leg_forward,'armForward':arm_forward,'legBounds':list(posed_legs[limb].getbbox()),'armBounds':list(posed_arms[limb].getbbox()),'legJoints':leg_joints,'armJoints':arm_joints}
+            if step==3:
+                measurements[limb].update(legForward=False,armForward=False,
+                    passingRole='support' if limb==support else 'swing')
         frame=Image.new('RGBA',image.size)
         if direction=='right':
             frame,measurements=right_contact(image,body,arms,profile_template,bag,step)
         elif direction=='left':
-            far='right' if near=='left' else 'left'
-            frame.alpha_composite(posed_arms[far]);frame.alpha_composite(posed_legs[far])
-            frame.alpha_composite(Image.fromarray(body));frame.alpha_composite(posed_legs[near])
-            frame.alpha_composite(bag);frame.alpha_composite(posed_arms[near])
+            frame,measurements=left_contact(image,body,arms,profile_template,bag,step)
         else:
             for leg in posed_legs.values():frame.alpha_composite(leg)
             frame.alpha_composite(Image.fromarray(body));frame.alpha_composite(bag)
@@ -602,7 +644,7 @@ def rig_player(direction,steps=(1,2)):
                 time.sleep(.2)
         report[str(step)]={'forwardLeg':forward_leg,'forwardArm':forward_arm,'limbs':measurements}
         if step==3:report[str(step)].update(forwardLeg=None,forwardArm=None,phase='passing',between=['1','2'])
-    return {'rig':'player-joints-v10-right-passing' if direction=='right' else 'player-joints-v3','idleSha256':hashlib.sha256(path.read_bytes()).hexdigest(),'poses':report}
+    return {'rig':'player-joints-v11-directional-passing' if direction!='right' else 'player-joints-v10-right-passing','idleSha256':hashlib.sha256(path.read_bytes()).hexdigest(),'poses':report}
 
 if __name__=='__main__':
     import argparse
@@ -610,11 +652,10 @@ if __name__=='__main__':
     parser.add_argument('--direction',choices=['down','right','up','left'])
     parser.add_argument('--step',type=int,choices=[1,2,3])
     args=parser.parse_args()
-    if args.step==3 and args.direction!='right':parser.error('Passing C is registered for right only; pass --direction right --step 3')
     report_path=ROOT/'docs/character-rig-measurements.json'
     report=json.loads(report_path.read_text())
     directions=[args.direction] if args.direction else ['down','right','up','left']
-    steps=(args.step,) if args.step else (1,2)
+    steps=(args.step,) if args.step else (1,2,3)
     for direction in directions:
         updated=rig_player(direction,steps)
         existing=report['player'][direction]

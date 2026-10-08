@@ -1,7 +1,7 @@
 {
   "player": {
     "down": {
-      "rig": "player-joints-v3",
+      "rig": "player-joints-v11-directional-passing",
       "idleSha256": "ec3e05c831b7a6b98d1252d7a91823640fa4e5acb930b63f62cdfdd02ca64896",
       "poses": {
         "1": {
@@ -147,6 +147,85 @@
               }
             }
           }
+        },
+        "3": {
+          "forwardLeg": null,
+          "forwardArm": null,
+          "limbs": {
+            "left": {
+              "legForward": false,
+              "armForward": false,
+              "legBounds": [
+                385,
+                800,
+                614,
+                1172
+              ],
+              "armBounds": [
+                489,
+                545,
+                673,
+                866
+              ],
+              "legJoints": {},
+              "armJoints": {
+                "shoulder": [
+                  26.3,
+                  28.5
+                ],
+                "elbow": [
+                  28.8,
+                  34.6
+                ],
+                "wrist": [
+                  29.8,
+                  40.0
+                ],
+                "upperAngle": 0,
+                "foreAngle": 0
+              },
+              "passingRole": "support"
+            },
+            "right": {
+              "legForward": false,
+              "armForward": false,
+              "legBounds": [
+                154,
+                800,
+                385,
+                1142
+              ],
+              "armBounds": [
+                121,
+                545,
+                256,
+                868
+              ],
+              "legJoints": {},
+              "armJoints": {
+                "shoulder": [
+                  12.0,
+                  28.0
+                ],
+                "elbow": [
+                  9.4,
+                  34.3
+                ],
+                "wrist": [
+                  8.7,
+                  39.7
+                ],
+                "upperAngle": 0,
+                "foreAngle": 0
+              },
+              "passingRole": "swing"
+            }
+          },
+          "phase": "passing",
+          "between": [
+            "1",
+            "2"
+          ]
         }
       }
     },
@@ -494,7 +573,7 @@
       }
     },
     "up": {
-      "rig": "player-joints-v3",
+      "rig": "player-joints-v11-directional-passing",
       "idleSha256": "91194502aa08b224e4ac05c62c0a7052f4b7aaed3aba3cfd40200a13bd4b223e",
       "poses": {
         "1": {
@@ -640,123 +719,198 @@
               }
             }
           }
+        },
+        "3": {
+          "forwardLeg": null,
+          "forwardArm": null,
+          "limbs": {
+            "left": {
+              "legForward": false,
+              "armForward": false,
+              "legBounds": [
+                156,
+                800,
+                385,
+                1142
+              ],
+              "armBounds": [
+                123,
+                565,
+                274,
+                861
+              ],
+              "legJoints": {},
+              "armJoints": {
+                "shoulder": [
+                  12.0,
+                  29.5
+                ],
+                "elbow": [
+                  9.5,
+                  35.0
+                ],
+                "wrist": [
+                  9.0,
+                  40.0
+                ],
+                "upperAngle": 0,
+                "foreAngle": 0
+              },
+              "passingRole": "swing"
+            },
+            "right": {
+              "legForward": false,
+              "armForward": false,
+              "legBounds": [
+                385,
+                800,
+                612,
+                1172
+              ],
+              "armBounds": [
+                487,
+                565,
+                645,
+                857
+              ],
+              "legJoints": {},
+              "armJoints": {
+                "shoulder": [
+                  26.4,
+                  29.5
+                ],
+                "elbow": [
+                  29.0,
+                  35.0
+                ],
+                "wrist": [
+                  30.1,
+                  40.0
+                ],
+                "upperAngle": 0,
+                "foreAngle": 0
+              },
+              "passingRole": "support"
+            }
+          },
+          "phase": "passing",
+          "between": [
+            "1",
+            "2"
+          ]
         }
       }
     },
     "left": {
-      "rig": "player-joints-v3",
+      "rig": "player-joints-v11-directional-passing",
       "idleSha256": "cbc49dca631e7c224ee2eeb3ad8aa1b60517ff56e7495a962bcf47a39a1e64cd",
       "poses": {
         "1": {
           "forwardLeg": "left",
           "forwardArm": "right",
           "limbs": {
-            "left": {
-              "legForward": true,
-              "armForward": false,
-              "legBounds": [
-                234,
-                771,
-                421,
-                1152
-              ],
-              "armBounds": [
-                287,
-                537,
-                482,
-                875
-              ],
-              "legJoints": {
-                "hip": [
-                  20.5,
-                  39.5
-                ],
-                "knee": [
-                  16.88132492989273,
-                  46.06926104953854
-                ],
-                "ankle": [
-                  18.5,
-                  50.8
-                ],
-                "bootAngle": 0,
-                "bootBaseline": 1152,
-                "bootBounds": [
-                  234,
-                  1010,
-                  421,
-                  1152
-                ]
-              },
-              "armJoints": {
-                "shoulder": [
-                  16.05,
-                  28.75
-                ],
-                "elbow": [
-                  20.363251730142867,
-                  34.888880965812874
-                ],
-                "wrist": [
-                  21.582059373238923,
-                  39.78832051836688
-                ],
-                "upperAngle": -14,
-                "foreAngle": -6
-              }
-            },
             "right": {
               "legForward": false,
               "armForward": true,
               "legBounds": [
-                369,
-                788,
-                562,
+                374,
+                806,
+                616,
                 1172
               ],
               "armBounds": [
-                370,
-                526,
-                532,
-                879
+                249,
+                535,
+                514,
+                827
               ],
               "legJoints": {
                 "hip": [
-                  23.5,
-                  40.0
+                  22.799999999999997,
+                  40.3
                 ],
                 "knee": [
-                  21.89964796156083,
-                  47.32726916068078
+                  25.240061526273653,
+                  47.39197431946838
                 ],
                 "ankle": [
-                  25.0,
-                  51.25
+                  27.599999999999998,
+                  51.8
                 ],
-                "bootAngle": -6,
+                "bootAngle": 0,
                 "bootBaseline": 1172,
                 "bootBounds": [
-                  369,
-                  1016,
-                  562,
+                  412,
+                  1008,
+                  610,
                   1172
                 ]
               },
               "armJoints": {
                 "shoulder": [
-                  23.150000000000002,
-                  28.25
+                  23.5,
+                  28.2
                 ],
                 "elbow": [
-                  24.076345191747517,
-                  35.695259202051076
+                  21.0,
+                  34.8
                 ],
                 "wrist": [
-                  22.85234092286471,
-                  40.593403090276155
+                  16.799999999999997,
+                  38.2
+                ]
+              }
+            },
+            "left": {
+              "legForward": true,
+              "armForward": false,
+              "legBounds": [
+                180,
+                800,
+                485,
+                1152
+              ],
+              "armBounds": [
+                319,
+                529,
+                462,
+                878
+              ],
+              "legJoints": {
+                "hip": [
+                  20.4,
+                  39.3
                 ],
-                "upperAngle": 14,
-                "foreAngle": 22
+                "knee": [
+                  16.761567404843106,
+                  45.858338833157354
+                ],
+                "ankle": [
+                  16.0,
+                  50.8
+                ],
+                "bootAngle": 0,
+                "bootBaseline": 1152,
+                "bootBounds": [
+                  180,
+                  988,
+                  378,
+                  1152
+                ]
+              },
+              "armJoints": {
+                "shoulder": [
+                  17.299999999999997,
+                  28.2
+                ],
+                "elbow": [
+                  20.599999999999998,
+                  34.8
+                ],
+                "wrist": [
+                  20.7,
+                  40.1
+                ]
               }
             }
           }
@@ -765,115 +919,228 @@
           "forwardLeg": "right",
           "forwardArm": "left",
           "limbs": {
-            "left": {
-              "legForward": false,
-              "armForward": true,
-              "legBounds": [
-                369,
-                787,
-                562,
-                1152
-              ],
-              "armBounds": [
-                210,
-                526,
-                372,
-                879
-              ],
-              "legJoints": {
-                "hip": [
-                  20.5,
-                  39.5
-                ],
-                "knee": [
-                  21.231180606170177,
-                  46.96427323462644
-                ],
-                "ankle": [
-                  25.0,
-                  50.25
-                ],
-                "bootAngle": -6,
-                "bootBaseline": 1152,
-                "bootBounds": [
-                  369,
-                  996,
-                  562,
-                  1152
-                ]
-              },
-              "armJoints": {
-                "shoulder": [
-                  15.15,
-                  28.25
-                ],
-                "elbow": [
-                  16.076345191747517,
-                  35.695259202051076
-                ],
-                "wrist": [
-                  14.852340922864707,
-                  40.593403090276155
-                ],
-                "upperAngle": 14,
-                "foreAngle": 22
-              }
-            },
             "right": {
               "legForward": true,
               "armForward": false,
               "legBounds": [
-                254,
-                784,
-                473,
+                180,
+                806,
+                485,
                 1172
               ],
               "armBounds": [
-                447,
-                537,
-                642,
-                875
+                461,
+                529,
+                604,
+                878
               ],
               "legJoints": {
                 "hip": [
-                  23.5,
-                  40.0
+                  20.4,
+                  40.3
                 ],
                 "knee": [
-                  20.631181094210763,
-                  46.92963765905449
+                  16.761567404843106,
+                  46.858338833157354
                 ],
                 "ankle": [
-                  19.5,
+                  16.0,
                   51.8
                 ],
                 "bootAngle": 0,
                 "bootBaseline": 1172,
                 "bootBounds": [
-                  254,
-                  1030,
-                  441,
+                  180,
+                  1008,
+                  378,
                   1172
                 ]
               },
               "armJoints": {
                 "shoulder": [
-                  24.05,
-                  28.75
+                  24.4,
+                  28.2
                 ],
                 "elbow": [
-                  28.363251730142863,
-                  34.888880965812874
+                  27.7,
+                  34.8
                 ],
                 "wrist": [
-                  29.58205937323892,
-                  39.78832051836688
+                  27.799999999999997,
+                  40.1
+                ]
+              }
+            },
+            "left": {
+              "legForward": false,
+              "armForward": true,
+              "legBounds": [
+                384,
+                800,
+                616,
+                1152
+              ],
+              "armBounds": [
+                117,
+                535,
+                382,
+                827
+              ],
+              "legJoints": {
+                "hip": [
+                  22.799999999999997,
+                  39.3
                 ],
-                "upperAngle": -14,
-                "foreAngle": -6
+                "knee": [
+                  25.240061526273653,
+                  46.39197431946838
+                ],
+                "ankle": [
+                  27.599999999999998,
+                  50.8
+                ],
+                "bootAngle": 0,
+                "bootBaseline": 1152,
+                "bootBounds": [
+                  412,
+                  988,
+                  610,
+                  1152
+                ]
+              },
+              "armJoints": {
+                "shoulder": [
+                  16.9,
+                  28.2
+                ],
+                "elbow": [
+                  14.399999999999999,
+                  34.8
+                ],
+                "wrist": [
+                  10.2,
+                  38.2
+                ]
               }
             }
           }
+        },
+        "3": {
+          "forwardLeg": null,
+          "forwardArm": null,
+          "limbs": {
+            "right": {
+              "legForward": false,
+              "armForward": false,
+              "legBounds": [
+                288,
+                800,
+                515,
+                1172
+              ],
+              "armBounds": [
+                381,
+                535,
+                542,
+                876
+              ],
+              "legJoints": {
+                "hip": [
+                  21.4,
+                  39.3
+                ],
+                "knee": [
+                  21.4,
+                  46.8
+                ],
+                "ankle": [
+                  21.4,
+                  51.8
+                ],
+                "bootAngle": 0,
+                "bootBaseline": 1172,
+                "bootBounds": [
+                  288,
+                  1008,
+                  486,
+                  1172
+                ]
+              },
+              "armJoints": {
+                "shoulder": [
+                  23.95,
+                  28.2
+                ],
+                "elbow": [
+                  24.349999999999998,
+                  35.2
+                ],
+                "wrist": [
+                  23.2,
+                  40.45
+                ]
+              },
+              "passingRole": "support"
+            },
+            "left": {
+              "legForward": false,
+              "armForward": false,
+              "legBounds": [
+                256,
+                800,
+                495,
+                1112
+              ],
+              "armBounds": [
+                276,
+                535,
+                405,
+                888
+              ],
+              "legJoints": {
+                "hip": [
+                  20.9,
+                  39.3
+                ],
+                "knee": [
+                  16.303192659163074,
+                  45.22615915000835
+                ],
+                "ankle": [
+                  19.799999999999997,
+                  48.8
+                ],
+                "bootAngle": 0,
+                "bootBaseline": 1112,
+                "bootBounds": [
+                  256,
+                  948,
+                  454,
+                  1112
+                ]
+              },
+              "armJoints": {
+                "shoulder": [
+                  17.099999999999998,
+                  28.2
+                ],
+                "elbow": [
+                  17.5,
+                  35.2
+                ],
+                "wrist": [
+                  17.599999999999998,
+                  40.6
+                ]
+              },
+              "passingRole": "swing"
+            }
+          },
+          "phase": "passing",
+          "between": [
+            "1",
+            "2"
+          ]
         }
       }
     }

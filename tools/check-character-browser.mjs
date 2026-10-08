@@ -55,12 +55,14 @@ try {
       const { NPC_CHARACTERS } = await import('/src/game/characters.ts')
       return Object.values(NPC_CHARACTERS).reduce((count, character) => count + 4 * (character.walk ? 3 : 1), 0)
     }))
-    const passingTexture = await page.evaluate(() => {
-      const texture = window.__characterTest.scene.textures.get('player-right-walk-3')
-      const source = texture.getSourceImage()
-      return { width: source.width, height: source.height, filter: texture.source[0].scaleMode }
-    })
-    assert.deepEqual(passingTexture,{width:768,height:1184,filter:1},'C must use the shared canvas and nearest filtering')
+    for (const direction of ['down','right','up','left']) {
+      const passingTexture = await page.evaluate(direction => {
+        const texture = window.__characterTest.scene.textures.get(`player-${direction}-walk-3`)
+        const source = texture.getSourceImage()
+        return { width: source.width, height: source.height, filter: texture.source[0].scaleMode }
+      },direction)
+      assert.deepEqual(passingTexture,{width:768,height:1184,filter:1},`${direction} C must use the shared canvas and nearest filtering`)
+    }
     for (const r of results) {
       assert.equal(r.texture, `${r.id}-${r.direction}${r.phase ? '-walk-' + r.phase : ''}`)
       assert(r.sameObject, 'Animation must retain the same image object')
@@ -84,6 +86,8 @@ try {
       window.__gaitSamples = []
       game.events.on('postrender', () => window.__gaitSamples.push({ player: scene.playerImage.texture.key,
         phase: scene.playerWalkPhase, moving: scene.moving,
+        ground: scene.playerImage.y+(1172-scene.playerImage.originY*scene.playerImage.height)*scene.playerImage.scaleY,
+        scale: scene.playerImage.scaleX, filter: scene.playerImage.texture.source[0].scaleMode,
         oda: scene.residents.find(n => n.definition.id === 'oda')?.image.texture.key }))
       scene.residents.find(n => n.definition.id === 'oda').next = scene.time.now - 1
       scene.move('right')
@@ -105,6 +109,41 @@ try {
     assert(samples.some(s => s.oda === 'oda-right-walk-1'))
     assert(samples.some(s => s.oda === 'oda-right-walk-2'))
     assert.equal(samples.at(-1).oda, 'oda-right')
+    // Each additional view has the same four-tile cadence and ground anchor.
+    for(const direction of ['left','down','up']) {
+      const start=await page.evaluate(async direction => {
+        const { scene }=window.__characterTest
+        const { MAPS,isWalkable }=await import('/src/game/world.ts')
+        const map=MAPS.havn
+        const [dx,dy]=({left:[-1,0],down:[0,1],up:[0,-1]})[direction]
+        let start
+        for(let y=7;y<map.tiles.length-7&&!start;y++) for(let x=7;x<map.tiles[0].length-7&&!start;x++) {
+          const path=Array.from({length:5},(_,i)=>({x:x+dx*i,y:y+dy*i}))
+          if(path.every(p=>isWalkable(map.tiles[p.y][p.x])&&!scene.residents.some(n=>n.x===p.x&&n.y===p.y))) start={mapId:'havn',x,y,facing:direction}
+        }
+        if(!start) throw new Error(`No clear ${direction} gait-test path`)
+        scene.enterMap(start);scene.playerWalkPhase=-1;window.__gaitSamples=[]
+        return {...start,dx,dy}
+      },direction)
+      for(let tile=0;tile<4;tile++) {
+        await page.evaluate(direction=>window.__characterTest.scene.move(direction),direction)
+        await page.waitForTimeout(260)
+      }
+      const directional=await page.evaluate(()=>({samples:window.__gaitSamples,position:window.__characterTest.scene.position}))
+      for(const sample of directional.samples) {
+        assert.equal(sample.ground,14,'Pose change must not shift ground anchor')
+        assert.equal(sample.scale,.05)
+        assert.equal(sample.filter,1)
+      }
+      for(const [phase,frame] of [1,3,2,3].entries()) {
+        const keys=directional.samples.filter(s=>s.moving&&s.phase===phase).map(s=>s.player)
+        assert(keys.length>0,`${direction}: no moving samples for phase ${phase}`)
+        assert.deepEqual([...new Set(keys)],[`player-${direction}-walk-${frame}`])
+      }
+      assert.equal(directional.samples.at(-1).player,`player-${direction}`)
+      assert.equal(directional.position.x,start.x+4*start.dx)
+      assert.equal(directional.position.y,start.y+4*start.dy)
+    }
     // Continuous keyboard walking must bridge the inter-tile pause without an
     // idle flash; release still settles back into the correct facing idle.
     await page.evaluate(async () => {

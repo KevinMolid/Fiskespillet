@@ -62,18 +62,17 @@ function asset(character: string, file: string, walking = false) {
   return url
 }
 
-function directionalWalk(id: string): NonNullable<StandardCharacter['walk']> {
-  const frames = (direction: Direction): readonly [string, string] =>
-    [asset(id, `${direction}-walk-1`, true), asset(id, `${direction}-walk-2`, true)]
+function directionalWalk(id: string, passing = false): NonNullable<StandardCharacter['walk']> {
+  const frames = (direction: Direction): readonly string[] =>
+    (passing ? [1, 2, 3] : [1, 2]).map(step => asset(id, `${direction}-walk-${step}`, true))
   return { down: frames('down'), up: frames('up'), left: frames('left'), right: frames('right') }
 }
 
 export const PLAYER_CHARACTER: StandardCharacter = {
   id: 'player', sprites: { down: playerDown, up: playerUp, left: playerLeft, right: playerRight },
   format: { ...pixelPlayerStandard, filter: 'nearest' },
-  walk: { ...directionalWalk('player'), right: [asset('player', 'right-walk-1', true),
-    asset('player', 'right-walk-2', true), asset('player', 'right-walk-3', true)] },
-  walkPassingFrame: { right: 3 },
+  walk: directionalWalk('player', true),
+  walkPassingFrame: { down: 3, up: 3, left: 3, right: 3 },
   poses: { castAim: {
     sprites: { down: castAimSprite('down'), up: castAimSprite('up'), left: castAimSprite('left'), right: castAimSprite('right') },
     // Extra transparent canvas contains the rod. Body scale stays shared with idle.
