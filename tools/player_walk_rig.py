@@ -16,6 +16,10 @@ from PIL import Image, ImageDraw, ImageFilter
 ROOT = Path(__file__).resolve().parents[1]
 UNIT = 20
 GROUND = 1172
+# Right contacts: the far anatomical leg is on a one-world-pixel deeper
+# ground plane and stays visibly shaded throughout both gait phases.
+CONTACT_FAR_SHADE = .62
+CONTACT_FAR_DEPTH = UNIT
 # Screen-left/right arm masks include the sleeve, cuff, forearm and hand.
 ARMS = {
     'down': [([(12,28),(10,28),(8,31),(7.5,35),(6,40),(7,43),(11,43),(12,36),(12,32)],(11,29)),
@@ -154,30 +158,288 @@ def knee_for(hip,ankle,facing):
     perp=np.array([direction[1],-direction[0]])*facing
     return hip+direction*along+perp*offset
 
-def pose_profile_leg(template,direction,limb,step,near,forward):
+def side_boot(image,ankle,trailing=False,far=False):
+    """Brown/laced original boot design, drawn in genuine right side profile.
+
+    Front-view source boots cannot be made into a profile by translating them.
+    Keep their leather palette/texture, but register shaft, instep, heel and toe
+    explicitly along the horizontal travel axis. All edges are hard pixel steps.
+    """
+    # The authoritative front view supplies the same chunky leather clusters,
+    # highlights and colours as the accepted character, rather than a smooth
+    # narrow hiking-boot substitute.
+    original=np.array(Image.open(ROOT/'src/assets/characters/player/down.png').convert('RGBA'))
+    patch=original[round(50*UNIT):GROUND,round(8*UNIT):round(18*UNIT)]
+    pr,pg,pb=patch[:,:,:3].astype(float).transpose(2,0,1)
+    leather=(patch[:,:,3]>0)&(pr>pg*1.15)&(pg>pb*1.1)&(pr>45)&(pr<190)
+    dy,dx=np.where(leather)
+    assert len(dx)>100
+    width,height=198,164
+    pixels=np.zeros((height,width,4),dtype=np.uint8)
+    for y in range(0,height,10):
+        for x in range(0,width,10):
+            sy=min(patch.shape[0]-1,round(y/height*patch.shape[0]))
+            sx=min(patch.shape[1]-1,round(x/width*patch.shape[1]))
+            if y>=96:
+                # Put the front shoe's rounded toe highlights on the profile
+                # toe, rather than stretching the dark shaft down over it.
+                sy=min(patch.shape[0]-1,round(80+(y-96)*.95))
+                sx=min(patch.shape[1]-1,max(0,round((x-30)*1.1)))
+            closest=np.argmin((dy-sy)**2+(dx-sx)**2)
+            pixels[y:y+10,x:x+10]=patch[dy[closest],dx[closest]]
+    # Palette samples remain part of the approved original artwork.
+    palette=np.array([original[round(y*UNIT),round(x*UNIT),:3] for x,y in
+        [(12,55.5),(14,54.5),(12,57),(12,53),(13,52.5)]],dtype=np.uint8)
+    outline=(25,15,12,255);dark=(*palette[2],255);mid=(*palette[0],255)
+    highlight=(*palette[1],255);lace=(217,170,103,255)
+    boot=Image.fromarray(pixels);mask=Image.new('L',boot.size)
+    # Cuff is directly below the leg; heel is left, toe is right.
+    shape=[(.5,0),(5.6,0),(5.6,1),(5.4,1.6),(5.7,2.7),(6.1,3.8),
+           (7,4.2),(8.4,4.5),(9.2,5),(9.8,5.6),(9.8,7.6),(9.2,8.2),
+           (.4,8.2),(0,7.5),(.2,5.8),(.3,1)]
+    def coordinates(points):
+        return [(round(x*UNIT),round((y-(1.2*max(0,1-x/7) if trailing and y>6 else 0))*UNIT)) for x,y in points]
+    ImageDraw.Draw(mask).polygon(coordinates(shape),fill=255)
+    # The reference outline is made of visible pixel steps, not thin sloping
+    # vector edges. Snap only the new lower-body silhouette to ten-pixel blocks.
+    mask=mask.resize((width//10,height//10),Image.Resampling.NEAREST).resize(boot.size,Image.Resampling.NEAREST)
+    boot.putalpha(mask)
+    draw=ImageDraw.Draw(boot)
+    draw.line(coordinates(shape+[shape[0]]),fill=outline,width=10)
+    sole_mask=Image.new('L',boot.size)
+    ImageDraw.Draw(sole_mask).polygon(coordinates([(.2,7.3),(9.7,7.3),(9.7,7.7),(9.2,8.2),(.4,8.2)]),fill=255)
+    sole=np.array(boot)
+    for y in range(146,height,10):
+        for x in range(0,width,10):
+            sample=original[min(GROUND-1,1145+(y-146)),min(340,180+x),:3]
+            if sample[0]<25 or sample[0]>140:sample=palette[2]
+            sole[y:y+10,x:x+10,:3]=sample
+    sole_layer=Image.fromarray(sole);sole_layer.putalpha(sole_mask);boot.alpha_composite(sole_layer)
+    draw=ImageDraw.Draw(boot)
+    draw.line(coordinates([(.3,7.2),(9.5,7.2)]),fill=mid,width=10)
+    draw.rectangle((10,0,100,20),fill=dark)
+    draw.rectangle((20,25,35,95),fill=highlight)
+    draw.line(coordinates([(4.2,1.6),(4.5,2.5),(4.8,3.4),(5.3,4.2),(6,4.8)]),fill=dark,width=20)
+    for x,y in [(4,1.7),(4.3,2.5),(4.6,3.3),(5,4.1)]:
+        draw.rectangle((round(x*UNIT),round(y*UNIT),round((x+.8)*UNIT),round((y+.35)*UNIT)),fill=lace)
+    draw.line(coordinates([(6.1,5.2),(7.4,5.4)]),fill=highlight,width=15)
+    # Match the front reference's dark outer rim, including its toe and sole.
+    # Inward erosion keeps the baseline and silhouette fixed and the border
+    # uniformly thick around the stepped edge.
+    solid=np.array(mask)>0
+    padded=Image.new('L',(width+40,height+40));padded.paste(mask,(20,20))
+    interior=np.array(padded.filter(ImageFilter.MinFilter(31)))[20:20+height,20:20+width]>0
+    # Reapply the silhouette after internal panels; no detached dark pixels.
+    a=np.array(boot);a[solid&~interior]=outline;a[~solid]=0
+    if far:a[:,:,:3]=np.rint(a[:,:,:3]*CONTACT_FAR_SHADE).astype(np.uint8)
+    boot=Image.fromarray(a)
+    result=Image.new('RGBA',image.size)
+    # A taller, wider cuff overlaps the trousers just like the front boots.
+    # Physical ankle, ground registration and overall character height stay fixed.
+    result.alpha_composite(boot,(round((ankle[0]-2.9)*UNIT),round((ankle[1]-1.4)*UNIT)))
+    return result
+
+def pose_profile_leg(template,direction,limb,step,near,forward,hip_override=None,ankle_override=None,repair_joint=False,boot_source=None):
     config=PROFILE_LEG[direction];source_hip,source_knee,source_ankle=config['source']
     hip=np.array(config['hips'][limb]);ankle=np.array(config['ankles'][step][limb])
+    if hip_override is not None:hip=np.array(hip_override,dtype=float)
+    if ankle_override is not None:ankle=np.array(ankle_override,dtype=float)
+    if boot_source is not None and limb!=near:
+        # Translate the entire far chain together, preserving limb lengths and
+        # knee shape. This is perspective within the artwork, not world motion.
+        hip=hip-np.array([0,CONTACT_FAR_DEPTH/UNIT])
+        ankle=ankle-np.array([0,CONTACT_FAR_DEPTH/UNIT])
     facing=1 if direction=='right' else -1
     if limb!=near:
-        a=np.array(template);a[:,:,:3]=np.rint(a[:,:,:3]*.86).astype(np.uint8);template=Image.fromarray(a)
+        shade=CONTACT_FAR_SHADE if boot_source is not None else .86
+        a=np.array(template);a[:,:,:3]=np.rint(a[:,:,:3]*shade).astype(np.uint8);template=Image.fromarray(a)
     thigh=slice_layer(template,y1=source_knee[1]+.6)
     shin=slice_layer(template,y0=source_knee[1]-.6,y1=source_ankle[1]+.55)
     boot=slice_layer(template,y0=source_ankle[1]-.3)
-    angle=0 if forward else 6*facing
-    posed_boot=segment_pose(boot,source_ankle,np.array(source_ankle)+(0,2),ankle,ankle+rotate_vector((0,2),angle))
-    baseline=GROUND if limb==near else GROUND-UNIT
+    angle=0 if boot_source is not None else (0 if forward else 6*facing)
+    posed_boot=side_boot(boot_source,ankle,not forward,limb!=near) if boot_source is not None else segment_pose(boot,source_ankle,np.array(source_ankle)+(0,2),ankle,ankle+rotate_vector((0,2),angle))
+    baseline=GROUND-(CONTACT_FAR_DEPTH if limb!=near else 0) if boot_source is not None else (GROUND if limb==near else GROUND-UNIT)
     correction=baseline-posed_boot.getbbox()[3]
     posed_boot=Image.fromarray(shift_rigid(np.array(posed_boot),0,correction))
     # Register the shin to the boot's final ankle, after sole registration.
     # The floor constraint is visual artwork geometry, never a world offset.
     ankle=ankle+np.array([0,correction/UNIT]);knee=knee_for(hip,ankle,facing)
     result=Image.new('RGBA',template.size)
-    result.alpha_composite(segment_pose(thigh,source_hip,source_knee,hip,knee))
-    result.alpha_composite(segment_pose(shin,source_knee,source_ankle,knee,ankle))
+    if repair_joint:
+        # One continuous trouser panel registered to all three joints avoids
+        # the diagonally cut wedges produced by rotating overlapping slices.
+        a=np.array(template);cloth=np.zeros_like(a)
+        r,g,b=a[:,:,:3].astype(float).transpose(2,0,1)
+        cloth_pixels=(g>=r*.95)&(b<g*1.2)|(np.max(a[:,:,:3],axis=2)<35)
+        # The front-reference panel is already isolated as cloth. Reclassifying
+        # it after far-leg shading punches holes in borderline colour clusters.
+        if boot_source is None:a[~cloth_pixels]=0
+        for y in range(round(hip[1]*UNIT),round((ankle[1]+.4)*UNIT)):
+            segment=0 if y/UNIT<knee[1] else 1
+            s0,s1=(source_hip,source_knee) if segment==0 else (source_knee,source_ankle)
+            t0,t1=(hip,knee) if segment==0 else (knee,ankle)
+            progress=(y/UNIT-t0[1])/(t1[1]-t0[1])
+            source_y=round((s0[1]+(s1[1]-s0[1])*progress)*UNIT)
+            source_x=s0[0]+(s1[0]-s0[0])*progress
+            target_x=t0[0]+(t1[0]-t0[0])*progress
+            # Source artwork uses roughly ten-pixel blocks; retain hard edges.
+            dx=round((target_x-source_x)*UNIT/10)*10
+            sx0,sx1=max(0,-dx),min(a.shape[1],a.shape[1]-dx)
+            cloth[y,sx0+dx:sx1+dx]=a[source_y,sx0:sx1]
+        if boot_source is not None:
+            # The trouser contour needs the same dark pixel rim as the front
+            # artwork. A continuous inward outline cannot detach from the leg
+            # or widen collision; it is entirely inside this visual layer.
+            mask=Image.fromarray(cloth[:,:,3])
+            mask=mask.resize((cloth.shape[1]//10,cloth.shape[0]//10),Image.Resampling.NEAREST).resize(mask.size,Image.Resampling.NEAREST)
+            snapped=np.array(mask)>0
+            # Fill newly included contour blocks from the closest original
+            # fabric sample on that row; never manufacture transparent notches.
+            for cy in np.unique(np.where(snapped&(cloth[:,:,3]==0))[0]):
+                missing=np.where(snapped[cy]&(cloth[cy,:,3]==0))[0]
+                donors=np.where(cloth[cy,:,3]>0)[0]
+                if len(donors):
+                    nearest=donors[np.argmin(abs(donors[None,:]-missing[:,None]),axis=1)]
+                    cloth[cy,missing]=cloth[cy,nearest]
+            cloth[~snapped]=0
+            solid=cloth[:,:,3]>0
+            interior=np.array(mask.filter(ImageFilter.MinFilter(31)))>0
+            cloth[solid&~interior]=(24,23,20,255)
+            # The approved torso and hands start above the trouser boundary.
+            # Hidden far-hip pixels must not protrude around the shirt there.
+            cloth[:40*UNIT]=0
+        result.alpha_composite(Image.fromarray(cloth))
+    else:
+        result.alpha_composite(segment_pose(thigh,source_hip,source_knee,hip,knee))
+        result.alpha_composite(segment_pose(shin,source_knee,source_ankle,knee,ankle))
     result.alpha_composite(posed_boot)
     return result,{'hip':hip.tolist(),'knee':knee.tolist(),'ankle':ankle.tolist(),'bootAngle':angle,'bootBaseline':baseline,'bootBounds':list(posed_boot.getbbox())}
 
-def rig_player(direction):
+def restore_cloth(layer, original, region, donors):
+    """Reconstruct occluded cloth from exposed pixels on the same source row."""
+    a=np.array(layer).copy()
+    for y in np.unique(np.where(region)[0]):
+        holes=np.where(region[y])[0];samples=np.where(donors[y])[0]
+        if not len(samples):
+            # A neighbouring source row is allowed only within one pixel block.
+            for delta in range(1,2*UNIT+1):
+                rows=[v for v in (y-delta,y+delta) if 0<=v<original.shape[0] and donors[v].any()]
+                if rows:
+                    donor_y=rows[0];samples=np.where(donors[donor_y])[0];break
+            else:raise AssertionError(('Missing source clothing',y))
+        else:donor_y=y
+        nearest=samples[np.argmin(abs(samples[None,:]-holes[:,None]),axis=1)]
+        # Restore hidden patches as hard pixel blocks, avoiding one-pixel
+        # horizontal streaks when the nearest exposed sample varies per row.
+        block_y=(donor_y//10)*10+5
+        block_samples=np.where(donors[min(block_y,original.shape[0]-1)])[0]
+        if len(block_samples):
+            donor_y=block_y
+            nearest=block_samples[np.argmin(abs(block_samples[None,:]-holes[:,None]),axis=1)]
+        a[y,holes]=original[donor_y,nearest]
+    return Image.fromarray(a)
+
+def registered_arm(template,source,target):
+    shoulder,elbow,wrist=map(np.array,source)
+    target_shoulder,target_elbow,target_wrist=map(np.array,target)
+    result=Image.new('RGBA',template.size)
+    result.alpha_composite(segment_pose(slice_layer(template,y1=elbow[1]+.65),shoulder,elbow,target_shoulder,target_elbow))
+    result.alpha_composite(segment_pose(slice_layer(template,y0=elbow[1]-.65,y1=wrist[1]+.55),elbow,wrist,target_elbow,target_wrist))
+    hand_tip=target_wrist+(target_wrist-target_elbow)/np.linalg.norm(target_wrist-target_elbow)*2
+    result.alpha_composite(segment_pose(slice_layer(template,y0=wrist[1]-.55),wrist,wrist+(0,2),target_wrist,hand_tip))
+    return result,{'shoulder':target_shoulder.tolist(),'elbow':target_elbow.tolist(),'wrist':target_wrist.tolist()}
+
+def right_contact(image,body,arms,template,bag,step):
+    """Right contacts share the approved chunky trouser/boot artwork.
+
+    Keep the original head/identity and complete the hidden torso/pelvis before
+    articulating the limbs. A/B reverse anatomical arm and leg phases rather
+    than mirroring the image, clothing, bag or character identity.
+    """
+    original=np.array(image);yy,xx=np.indices(original.shape[:2])
+    r,g,b=original[:,:,:3].astype(float).transpose(2,0,1)
+    visible=original[:,:,3]>0
+    trouser=visible&(g>=r*.97)&(b<g*1.15)&(r>30)&(r<150)&(yy>=40*UNIT)&(yy<52*UNIT)&(xx>=12*UNIT)&(xx<23*UNIT)
+    # Complete one trouser panel before deformation: no idle hand/boot pixels
+    # or cropped ankle gaps are allowed inside the clothing silhouette.
+    leg_region=polygon_mask(image.size,[(13.5,40),(21,40),(20.3,43.5),(18.7,47.8),
+        (17.5,51.8),(18,52.5),(10.9,52.5),(11.3,49),(11.7,45),(12.5,41)])
+    front=np.array(Image.open(ROOT/'src/assets/characters/player/down.png').convert('RGBA'))
+    # Transfer complete front-view cargo-trouser clusters as a single panel.
+    # Horizontal nearest-donor sampling made the old pants look striped/torn.
+    source_panel=Image.fromarray(front[800:1010,208:368]).resize((210,251),Image.Resampling.NEAREST)
+    panel=np.array(source_panel);pr,pg,pb=panel[:,:,:3].astype(float).transpose(2,0,1)
+    valid=(panel[:,:,3]>0)&(pg>=pr*.95)&(pb<pg*1.2)&(pr>30)&(pr<150)
+    donors_y,donors_x=np.where(valid)
+    for py,px in zip(*np.where(~valid)):
+        same=donors_y==py
+        if same.any():
+            options=donors_x[same];donor_x=options[np.argmin(abs(options-px))]
+            panel[py,px]=panel[py,donor_x]
+        else:
+            nearest=np.argmin((donors_y-py)**2+(donors_x-px)**2)
+            panel[py,px]=panel[donors_y[nearest],donors_x[nearest]]
+    clean=Image.new('RGBA',image.size);clean.alpha_composite(Image.fromarray(panel),(215,800))
+    template=part(clean,leg_region)
+    # Restore the side of the vest exposed when the complete near sleeve moves.
+    torso=Image.fromarray(body)
+    torso_region=polygon_mask(image.size,[(13.5,26.8),(16,26.8),(21.5,30),(23.2,35),
+        (23.5,40),(12.6,40),(12.6,34),(13.2,29)])
+    body_a=np.array(torso)
+    cloth=visible&(yy>=26.8*UNIT)&(yy<40*UNIT)&(xx>=9*UNIT)&(xx<22*UNIT)&((b>r*1.15)|((xx>=16*UNIT)&(r>140)&(g>95)&(b<g*.85)&(r<g*1.65)))
+    torso=restore_cloth(torso,original,torso_region&(body_a[:,:,3]==0),cloth)
+    # Fixed shirt sockets overlap moving sleeves instead of leaving white
+    # notches at the shoulder. The exposed side below the sleeve is blue shirt.
+    blue=(b>r*1.15)&(b>g*1.05)&visible&(yy>=26.8*UNIT)&(yy<40.8*UNIT)
+    socket=polygon_mask(image.size,[(13.2,26.8),(15.6,26.8),(16,30),(13.1,31)])
+    side=polygon_mask(image.size,[(12.6,32.5),(14.3,33),(14.3,40),(12.6,40)])
+    torso=restore_cloth(torso,original,socket|side,blue)
+    torso_a=np.array(torso);tr,tg,tb=torso_a[:,:,:3].astype(float).transpose(2,0,1)
+    ghost_hand=(xx<16*UNIT)&(yy>=39*UNIT)&(yy<40*UNIT)&(tr>170)&(tr>tg*1.25)&(tg>95)&(tb>70)
+    torso=restore_cloth(torso,original,ghost_hand,blue)
+    torso_a=np.array(torso);torso_a[yy>=40*UNIT]=0;torso=Image.fromarray(torso_a)
+    pelvis_region=polygon_mask(image.size,[(13.5,40),(24,40),(24,43.5),(22.5,45),
+        (18.7,43.3),(13,42.6)])
+    pelvis=restore_cloth(Image.new('RGBA',image.size),original,pelvis_region,trouser)
+    leg_targets={'left':((18,40.3),(22.4,51.8)),'right':((15.6,40.3),(10.8,51.8))}
+    arm_targets={'left':((14,28.2),(10.7,34.8),(10.6,40.1)),
+                 'right':((21.5,28.2),(24,34.8),(28.2,38.2))}
+    forward='left' if step==1 else 'right'
+    if step==2:
+        # Pelvis rotates through the opposing contact. Swap hip/contact
+        # registrations, keeping the same lengths, stride and ground line.
+        leg_targets={'left':leg_targets['right'],'right':leg_targets['left']}
+        arm_targets={'left':((14.9,28.2),(17.4,34.8),(21.6,38.2)),
+                     'right':((21.1,28.2),(17.8,34.8),(17.7,40.1))}
+        # Advancing the near sleeve exposes the back of the shoulder that A's
+        # backward sleeve covers. Restore that shirt socket beneath the moving
+        # arm rather than leaving an empty triangle below the collar.
+        back_socket=polygon_mask(image.size,[(12.2,26.8),(14.7,26.8),(16,29),
+            (14.8,32),(12.6,34),(11.8,31)])
+        torso=restore_cloth(torso,original,back_socket,blue)
+        draw=ImageDraw.Draw(torso)
+        draw.line([(round(x*UNIT),round(y*UNIT)) for x,y in
+                   [(12.2,26.8),(11.8,31),(12.6,34)]],fill=(14,22,43,255),width=12)
+    # The mask dilation previously picked up pale vest trim and rotated it
+    # with the sleeve, creating the apparent white cut-out at the shoulder.
+    clean_arms=[]
+    for arm in arms:
+        a=np.array(arm).copy();ar,ag,ab=a[:,:,:3].astype(float).transpose(2,0,1)
+        vest_trim=(yy<34*UNIT)&(ar>120)&(ag>75)&(ab<ag*.9)
+        a[vest_trim]=0;clean_arms.append(Image.fromarray(a))
+    legs={};posed_arms={};measurements={}
+    for limb,index in [('left',0),('right',1)]:
+        hip,ankle=leg_targets[limb]
+        legs[limb],leg_joints=pose_profile_leg(template,'right',limb,step,'left',limb==forward,hip,ankle,True,image)
+        posed_arms[limb],arm_joints=registered_arm(clean_arms[index],ARM_JOINTS['right'][index],arm_targets[limb])
+        measurements[limb]={'legForward':limb==forward,'armForward':limb!=forward,'legBounds':list(legs[limb].getbbox()),'armBounds':list(posed_arms[limb].getbbox()),'legJoints':leg_joints,'armJoints':arm_joints}
+    frame=Image.new('RGBA',image.size)
+    # The near thigh must have an uninterrupted contour from hip to boot.
+    # Drawing a wide pelvis patch over it hid which leg owned the front foot.
+    for layer in [posed_arms['right'],legs['right'],pelvis,legs['left'],torso,bag,posed_arms['left']]:frame.alpha_composite(layer)
+    return frame,measurements
+
+def rig_player(direction,steps=(1,2)):
     config=json.loads((ROOT/'src/game/pixel-player-standard.json').read_text())
     assert config['renderScale']==1/UNIT and config['groundAnchor']=={'x':384,'y':GROUND}, 'Re-register the manual rig if the player standard changes'
     directory=ROOT/'src/assets/characters/player'
@@ -283,7 +545,7 @@ def rig_player(direction):
         profile_template=part(leg_body,polygon_mask(image.size,PROFILE_LEG[direction]['outline']))
 
     report={}
-    for step in [1,2]:
+    for step in steps:
         forward_leg='left' if step==1 else 'right';forward_arm='right' if step==1 else 'left'
         posed_arms={};posed_legs={};measurements={}
         for limb in ['left','right']:
@@ -308,6 +570,8 @@ def rig_player(direction):
             for leg in posed_legs.values():frame.alpha_composite(leg)
             frame.alpha_composite(Image.fromarray(body));frame.alpha_composite(bag)
             for arm in posed_arms.values():frame.alpha_composite(arm)
+        if direction=='right':
+            frame,measurements=right_contact(image,body,arms,profile_template,bag,step)
         result=np.array(frame);result[result[:,:,3]==0]=0;frame=Image.fromarray(result)
         assert np.array_equal(result[:26*UNIT],original[:26*UNIT]),(direction,'head changed')
         assert frame.getbbox()[3]==GROUND,(direction,step,'baseline')
@@ -323,11 +587,22 @@ def rig_player(direction):
                 if attempt==19:raise
                 time.sleep(.2)
         report[str(step)]={'forwardLeg':forward_leg,'forwardArm':forward_arm,'limbs':measurements}
-    return {'rig':'player-joints-v3','idleSha256':hashlib.sha256(path.read_bytes()).hexdigest(),'poses':report}
+    return {'rig':'player-joints-v9-right-depth' if direction=='right' else 'player-joints-v3','idleSha256':hashlib.sha256(path.read_bytes()).hexdigest(),'poses':report}
 
 if __name__=='__main__':
+    import argparse
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--direction',choices=['down','right','up','left'])
+    parser.add_argument('--step',type=int,choices=[1,2])
+    args=parser.parse_args()
     report_path=ROOT/'docs/character-rig-measurements.json'
     report=json.loads(report_path.read_text())
-    report['player']={direction:rig_player(direction) for direction in ['down','right','up','left']}
+    directions=[args.direction] if args.direction else ['down','right','up','left']
+    steps=(args.step,) if args.step else (1,2)
+    for direction in directions:
+        updated=rig_player(direction,steps)
+        existing=report['player'][direction]
+        existing['rig']=updated['rig'];existing['idleSha256']=updated['idleSha256']
+        existing['poses'].update(updated['poses'])
     report_path.write_text(json.dumps(report,indent=2)+'\n')
-    print('Rebuilt eight player walk poses; idles and all NPC assets unchanged.')
+    print(f'Rebuilt {len(directions)*len(steps)} player walk poses; idles and all NPC assets unchanged.')

@@ -1,6 +1,6 @@
 """Audit actual production hand pixels, separately from the rig's pose labels."""
 from pathlib import Path
-import json
+import json,hashlib
 import numpy as np
 from PIL import Image
 
@@ -72,3 +72,79 @@ for direction in ['right','left']:
             x0,_,x1,_=leg['bootBounds']
             assert x1-x0>7*20,'Boot was sliced or flattened'
 print('Moving shoulder pixels, complete profile boots and forward-bending joint geometry passed.')
+
+# Regression for the reported Right/A defects: visible forward far hand and
+# continuous clothing under the swinging near arm and around the hip/knee.
+idle=np.array(Image.open(ROOT/'src/assets/characters/player/right.png').convert('RGBA'))
+right_a=np.array(Image.open(ROOT/'src/assets/characters/player/right-walk-1.png').convert('RGBA'))
+assert np.array_equal(right_a[:520],idle[:520]),'Right/A changed the approved head'
+assert hashlib.sha256(right_a[:800].tobytes()).hexdigest()=='4699642e4c80bd2fa2c56466d7ce50aabb9eedbb08d4ccea18cf71167a4f7c9d','Lower-body refinement changed the approved upper body/arms'
+for x,y in [(14.5,28.5),(13,36.5),(14,39),(17,40.5),(18,42.5),
+            (22.8,41),(23,43.8),(22.5,44.3),(20.5,46.5),(21.5,49.5),(10.8,52.2),(22.4,52.2)]:
+    assert right_a[round(y*20),round(x*20),3]==255,(x,y,'Hole in torso/trousers')
+r,g,b=right_a[:,:,:3].astype(float).transpose(2,0,1)
+yy,xx=np.indices(r.shape)
+far_hand=(right_a[:,:,3]>0)&(xx>=28*20)&(xx<33*20)&(yy>=36*20)&(yy<42*20)&(r>170)&(g>90)&(r>g*1.25)&(g>b*1.1)
+assert np.count_nonzero(far_hand)>1000,'Far hand is occluded behind the bag'
+assert set(np.unique(right_a[:,:,3]))=={0,255}
+assert Image.fromarray(right_a).getbbox()[3]==1172
+right_pose=rig['right']['poses']['1']['limbs']
+rear=right_pose['right']['legJoints'];front=right_pose['left']['legJoints']
+hip,knee,ankle=(np.array(rear[j]) for j in ['hip','knee','ankle'])
+assert hip[0]-ankle[0]>4,'Trailing leg is not extended behind the hip'
+axis=ankle-hip
+offset=knee-hip
+distance_from_axis=abs(axis[0]*offset[1]-axis[1]*offset[0])/np.linalg.norm(axis)
+assert distance_from_axis<1,'Rear knee no longer follows the trailing leg line'
+assert rear['bootBounds'][2]<front['bootBounds'][0],'Feet overlap instead of forming a readable stride'
+for leg in [rear,front]:
+    x0,y0,x1,y1=leg['bootBounds']
+    pixels=right_a[y0:y1,x0:x1];opaque=pixels[:,:,3]>0
+    cuff=np.where(opaque[:45])[1].mean()
+    toe=np.where(opaque[-50:])[1].mean()
+    assert toe-cuff>24,'Boot reads as a frontal foot instead of pointing right'
+    assert 1<(x1-x0)/(y1-y0)<1.25,'Boot is too long/narrow for the front-view character proportions'
+    assert leg['bootAngle']==0,'Right-facing boots must not rotate towards the viewer'
+    assert y1==leg['bootBaseline'],'Contact foot does not meet its perspective ground plane'
+print('Right/A: shoulder/side/pelvis/ankle coverage, trailing leg line, separated side-profile boots, visible forward hand and unchanged head/ground passed.')
+
+# B must match the approved A artwork while actually reversing the contact.
+right_b=np.array(Image.open(ROOT/'src/assets/characters/player/right-walk-2.png').convert('RGBA'))
+assert np.array_equal(right_b[:520],idle[:520]),'Right/B changed the character head'
+assert set(np.unique(right_b[:,:,3]))=={0,255}
+b_pose=rig['right']['poses']['2']['limbs']
+assert b_pose['left']['legJoints']['ankle'][0]<b_pose['right']['legJoints']['ankle'][0],'B repeats A leading leg'
+assert b_pose['left']['armJoints']['wrist'][0]>right_pose['left']['armJoints']['wrist'][0],'B near arm does not swing forward'
+for limb in ['left','right']:
+    leg=b_pose[limb]['legJoints'];x0,y0,x1,y1=leg['bootBounds']
+    a_leg=right_pose[limb]['legJoints'];ax0,ay0,ax1,ay1=a_leg['bootBounds']
+    assert (x1-x0,y1-y0)==(ax1-ax0,ay1-ay0),'A/B boot sizes differ'
+    pixels=right_b[y0:y1,x0:x1];opaque=pixels[:,:,3]>0
+    assert np.where(opaque[-50:])[1].mean()-np.where(opaque[:45])[1].mean()>24,'B boot points toward viewer'
+    assert leg['bootAngle']==0 and y1==a_leg['bootBaseline'],'B boot angle/depth differs from A'
+for x,y in [(12.8,27.5),(13,30),(13,36.5),(17,40.5),(18,42.5),
+            (10.8,52.2),(22.4,52.2)]:
+    assert right_b[round(y*20),round(x*20),3]==255,(x,y,'Gap in B shoulder/cloth/cuff')
+print('Right/B: opposing contact, matching whole side boots, shoulder/cloth/cuff coverage and exact head/ground passed.')
+
+# Readability must exist in actual pixels, not only anatomical pose labels.
+# Left is always the near leg, right the far leg; their leading phase reverses.
+for step,rgba in [('1',right_a),('2',right_b)]:
+    pose=rig['right']['poses'][step]['limbs'];brightness={}
+    for limb,baseline in [('left',1172),('right',1152)]:
+        leg=pose[limb]['legJoints'];x0,y0,x1,y1=leg['bootBounds']
+        assert y1==baseline,'Near/far foot perspective changes between contacts'
+        pixels=rgba[y0:y1,x0:x1];opaque=pixels[:,:,3]>0
+        brightness[limb]=pixels[:,:,:3][opaque].mean()
+    assert brightness['left']>brightness['right']*1.4,'Near/far boots cannot be distinguished by shade'
+    assert Image.fromarray(rgba).getbbox()[3]==1172,'Global ground anchor changed'
+    # The enlarged native samples should keep the same difference as production.
+    native=np.array(Image.fromarray(rgba).resize((38,59),Image.Resampling.NEAREST))
+    sampled={}
+    for limb in ['left','right']:
+        x0,y0,x1,y1=pose[limb]['legJoints']['bootBounds']
+        shoe=native[round((y0+50)/1184*59):round(y1/1184*59),
+                    round(x0/768*38):round(x1/768*38)]
+        sampled[limb]=shoe[:,:,:3][shoe[:,:,3]>0].mean()
+    assert sampled['left']>sampled['right']*1.3,'Foot depth is lost at runtime pixel size'
+print('Right A/B: actual near/far boot contrast survives runtime sampling; perspective and ground are stable.')

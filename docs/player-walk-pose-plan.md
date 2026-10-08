@@ -1,4 +1,149 @@
-# Player walk: exact pose plan (revision 3)
+# Player walk: exact pose plan (revision 9, readable Right/A and Right/B contacts)
+
+## Visible leading foot in both contacts
+
+Revision 9 changes only the two right walk frames' lower bodies. The upper
+regions above source Y=800 and all visible hand pixels remain exact revision-8
+pixels. The approved chunky trousers/boots, character proportions and artwork
+palette are retained.
+
+- Keep anatomical left as the near leg in both images, and right as the far leg.
+  A advances the near left foot; B advances the far right foot. Arm phase stays
+  opposed. Never exchange depth identity merely because a foot advances.
+- Shade the far trouser and boot materials to 62% of the reference value rather
+  than 86%. The near leg keeps its original colours. This makes the advancing
+  bright near foot in A and dark far foot in B readable at runtime size.
+- Draw the near thigh over the repaired pelvis patch, with an uninterrupted
+  dark contour from hip to cuff. Previously the patch hid the thigh's ownership.
+- Translate the entire far leg chain up 20 source pixels (one world pixel),
+  preserving all segment lengths and knee geometry. Far contact baseline is
+  Y=1152 in both images; near contact remains Y=1172. This represents perspective
+  inside the sprite; world anchor, rendering offsets and collision do not change.
+- Lift the trailing heel by up to 1.2 world pixels while its toe contacts its
+  assigned plane. The leading boot's sole stays flat. Both toes still point right.
+- Verify the actual boot colour contrast in production pixels and after nearest
+  sampling to the 38 × 59 world-size review, as well as both anatomical phases.
+
+Rebuild with `python tools/player_walk_rig.py --direction right`.
+Only `right-walk-1.png` and `right-walk-2.png` change; all idle/other directions,
+NPCs, renderer, movement and gameplay remain unchanged. The historical registrations
+below are superseded by the far-chain perspective translation described here.
+
+## Right/B matches approved Right/A
+
+Revision 8 applies the approved revision-7 trouser/boot panel and outline to
+Right/B. Only `right-walk-2.png` is rebuilt; the approved Right/A, all idles,
+other directions and NPC assets remain byte-identical.
+
+- Both contacts share the 210-pixel front-reference trouser panel, 198 × 164
+  side boots, dark stepped contours, fixed canvas and ground Y=1172.
+- B reverses the anatomical phase: near left leg back, far right leg forward;
+  near left arm forward, far right arm back. The pelvis rotates through the
+  opposing contact instead of mirroring the character, bag or artwork.
+- B left hip (15.6,40.3), ankle (10.8,51.8); right hip (18,40.3),
+  ankle (22.4,51.8). Both use the same 7.5/5 world-pixel limb lengths as A.
+- B left shoulder/elbow/wrist (14.9,28.2)/(17.4,34.8)/(21.6,38.2);
+  right shoulder/elbow/wrist (21.1,28.2)/(17.8,34.8)/(17.7,40.1).
+- Boot far-side shading is independent of trailing-foot heel lift. In B the
+  near foot trails and the far foot leads; toe direction remains horizontal.
+- Restore the shirt socket exposed behind B's advancing sleeve, retaining
+  full shoulder/collar coverage and correct sleeve movement.
+
+Reproduce B only with `python tools/player_walk_rig.py --direction right --step 2`.
+The preview compares front/A/B and includes the two-frame right walk loop.
+
+
+## Fuller trousers and reference-style outline
+
+Revision 7 responds to the remaining narrow trousers/boots and missing outline.
+Only Right/A's lower-body artwork changes; all approved RGBA pixels above Y=800
+and the hands are identical to revision 6. Hip, knee, ankle and ground coordinates
+remain unchanged.
+
+- Widen the source trouser texture panel from 180 to 210 source pixels and expand
+  the continuous leg silhouette about its registered joints. Preserve the cargo
+  fabric clusters from the front reference.
+- Add a dark 15-source-pixel inward contour to the trousers and boots. The edges
+  use hard ten-pixel steps, matching the front artwork's visible pixel contours;
+  no antialiasing or smooth diagonal outer edges.
+- Widen the side boot template from 178 to 198 source pixels, keeping its height
+  at 164. Widen the shaft and raise the toe volume without lengthening the leg or
+  moving its ground contact. Retain the source leather texture, laces and sole.
+- Pad the boot mask before outlining so the lower sole has the same full dark
+  rim as the toe, shaft and heel, even at the template's bottom canvas edge.
+
+The v7 comparison uses the immutable front idle and Right/A at the same scale.
+Other frames and all gameplay/rendering configuration remain unchanged.
+
+## Front-view style and proportion correction
+
+The user approved the revision-5 upper body and arms. Revision 6 changes only
+the lower body of Right/A, preserving all RGBA pixels above source Y=800 and
+both visible hands. The approved upper-region SHA-256 is
+`4699642e4c80bd2fa2c56466d7ce50aabb9eedbb08d4ccea18cf71167a4f7c9d`.
+
+- Use actual cargo-trouser pixel clusters from the front `down.png` reference
+  instead of horizontal nearest-donor stripes from the profile source. Transfer
+  a complete panel with nearest sampling, then apply the same approved joints.
+- Do not reclassify cloth colours after far-leg shading: rounding borderline
+  colours punched transparent speckles into otherwise complete fabric.
+- Profile boots use the front-view leather colours and texture. Their template
+  changes from 200 × 136 to 178 × 164 source px: shorter toe projection, wider
+  shaft, rounded chunky toe and thicker sole, matching the front character's
+  compact boots. The upper cuff overlaps the trousers by 28 source px.
+- Keep toe direction, rear-leg extension, arm phase and foot ground line.
+  No canvas, rendering-scale, movement or collision changes.
+- The actual boot silhouette aspect ratio must stay between 1 and 1.25;
+  cuff-to-toe projection still has to point right. This prevents retaining the
+  previous long/narrow proportions merely to satisfy a direction test.
+
+Reproduce with `python tools/player_walk_rig.py --direction right --step 1`.
+The preview compares the unchanged front idle and corrected Right/A at the same
+canvas size and baseline. Other directional frames remain unchanged.
+
+## Right/A correction — 2026-10-08
+
+Only `player/right-walk-1.png` is corrected in this revision. The idle, other
+seven walk frames, fishing poses, NPCs, canvas, anchor and renderer are unchanged.
+The older Right/A coordinates below are superseded by these registrations:
+
+- Near anatomical left leg goes forward: hip (18,40.3), ankle (22.4,51.8).
+- Far right leg extends behind the hip along the user's sketched line:
+  hip (15.6,40.3), ankle (10.8,51.8), with less than one world pixel of knee
+  deviation from the hip-to-ankle axis. Both contacts meet source ground Y=1172.
+- Near left arm swings back: shoulder (14,28.2), elbow (10.7,34.8), wrist (10.6,40.1).
+- Far right arm swings forward with a bent elbow: shoulder (21.5,28.2),
+  elbow (24,34.8), wrist (28.2,38.2). Its hand emerges beyond the bag.
+- Reconstruct the exposed vest side, hidden trousers and pelvis from the same
+  immutable idle PNG. Sample restored patches in hard blocks to avoid thin
+  horizontal streaks. No generated artwork or antialiasing.
+- Close the actual shoulder socket, shirt side, pelvis-to-bag seam and both
+  ankle/cuff junctions. The sleeve mask excludes pale vest trim: this previously
+  rotated with the shoulder and looked like a white cut-out.
+- Use a continuous trouser panel through hip/knee/ankle instead of rotated
+  horizontal slices that create diagonal wedges and missing cloth at the joints.
+  Add cuff overlap so extracting the boot cannot leave a transparent ankle gap.
+- Draw genuine side-profile boots with the original leather palette/texture,
+  laces and cuff. Heel is left, toe is right; no frontal shoe panel or diagonal
+  outward orientation. Rear heel lifts slightly while its toe remains on the
+  same ground line. Both boot angles are zero; depth comes from far-limb shading.
+- Composite far arm, far leg, near leg, pelvis, torso, bag, near arm. Keep all
+  pixels above source Y=520 identical to the original idle.
+
+Reproduce only this pose with `python tools/player_walk_rig.py --direction right --step 1`.
+Actual joint registrations are recorded in `character-rig-measurements.json`.
+The pixel audit checks the marked shoulder/side/hip/ankle locations, trailing
+leg line, separation of the feet, actual cuff-to-toe pixel projection and the
+visible forward far hand. Inspect transparency on both light and dark backgrounds.
+
+### Reference study
+
+Studied the actual directional sheet in the [LPC style guide](https://lpc.opengameart.org/static/LPC-Style-Guide/build/assets.html),
+the [RUNED walk cycle by Raymond Schlitter](https://www.slynyrd.com/blog/2015/9/29/runed-formerly-remnant-devlog-3)
+and [Pedro Medeiros's Simple Walk Cycle](https://www.patreon.com/posts/simple-walk-14234033).
+Applied their readable opposing arm/leg contacts, extended trailing leg,
+directional foot silhouettes and complete overlapping clothing. The references
+are only for pose analysis; no reference artwork is included in production.
 
 All left/right labels are anatomical. A = left leg + right arm forward;
 B = right leg + left arm forward. Eight production poses, using the original
