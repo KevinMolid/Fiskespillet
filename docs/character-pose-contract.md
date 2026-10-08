@@ -6,6 +6,12 @@ Left/right always mean the character's anatomical side, not the viewer's.
 |---|---|---|---|---|
 | A | left | right | right | left |
 | B | right | left | left | right |
+| C | neutral/support | passing swing | neutral | neutral |
+
+NPC down/front C is an explicit exception: use the unchanged original idle,
+with both feet neutral and no forward foot. Runtime uses the idle image directly.
+For side shoes, isolate ONE foreground shoe using its per-row source contour;
+never copy a rectangular crop containing pieces of the second idle shoe.
 
 Projection rules:
 
@@ -19,7 +25,9 @@ Projection rules:
   near arm left/forward; far leg left/forward, far arm right/back. B reverses both.
 
 The foreground/layer order follows near/far anatomy, not a mirrored full sprite.
-Shoulders, hip roots, head, clothing, facing and ground registration stay fixed.
+The head, hip roots, clothing identity, facing and ground registration stay fixed.
+Shoulder caps rotate with the upper arm; the inner shirt socket connects them
+to the torso. Each tile holds one frame; the shared sequence is A–C–B–C.
 All walk poses are derived from the corresponding idle with integer pixel rigging.
 AI-generated walking columns are discarded. Skin/limb masks must not include hair,
 bags or torso. Check the masks and both poses for each direction individually.
@@ -37,5 +45,6 @@ bags or torso. Check the masks and both poses for each direction individually.
 | Bendik | Lean/slightly taller, sandy hair, glasses, beard, green shirt |
 | Nils | Blonde hair, blue sports top with light trim, light trainers |
 | Morten | Dark hair, green shopkeeper shirt |
+| Marita | Slim, long brown hair, lightly tanned skin, white cropped tank/bare midriff, charcoal leggings and white trainers |
 
 NPC names, dialogue, routes and occupancy remain in existing NPC data.

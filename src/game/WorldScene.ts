@@ -1,8 +1,9 @@
 import { NPCS, type NpcDefinition } from './npcs'
 import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTER, STANDARD_CHARACTERS } from './characters'
 import { createCharacterImage, preloadCharacter, setCharacterDirection } from './characterRendering'
-import { characterWalkStep, nextPlayerWalkPhase, playerWalkTextureStep, PLAYER_WALK_SETTLE_MS } from './characterAnimation'
+import { nextCharacterWalkPhase, characterWalkTextureStep, CHARACTER_WALK_SETTLE_MS } from './characterAnimation'
 import { playerMovementTiming } from './playerMovement'
+import { NPC_MOVE_DURATION_MS, NPC_ROUTE_PAUSE_MS } from './npcMovement'
 import { CAST_SPLASH_DURATION_MS, RETRIEVE_SHORE_DISTANCE, castFlightDuration, castTargets } from './fishing'
 import Phaser from 'phaser'
 import { drawDecoration, drawOutdoorGround, drawOutdoorObject, isOutdoorObject, isRaisedDecoration } from './outdoorTiles'
@@ -45,6 +46,7 @@ export class WorldScene extends Phaser.Scene {
   private castCameraZoom?: number
   private keys?: Record<string, Phaser.Input.Keyboard.Key>
   private moving = false
+  private playerStep?: { fromX: number; fromY: number; x: number; y: number; started: number; duration: number }
   private playerWalkPhase = -1
   private playerWalkFrame = 1
   private playerWalkUntil = 0
@@ -57,7 +59,7 @@ export class WorldScene extends Phaser.Scene {
   private canRun = false
   private touchDirection: Direction | null = null
   private nextMove = 0
-  private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container; image?: Phaser.GameObjects.Image; walkStarted?: number }[] = []
+  private residents: { definition: NpcDefinition; x: number; y: number; fromX: number; fromY: number; facing: Direction; index: number; moving: boolean; next: number; nextLook: number; lookingAside: boolean; sprite: Phaser.GameObjects.Container; image?: Phaser.GameObjects.Image; walkStarted?: number; walkPhase: number; walkFrame: number; walkUntil: number }[] = []
   private conversations = new Map<string, number>()
 
   constructor(position: Position, _appearance: Appearance, callbacks: Callbacks) {
@@ -96,21 +98,20 @@ export class WorldScene extends Phaser.Scene {
   }
 
   update(time: number) {
-    // Sort by feet every frame, including between tween endpoints and after map changes.
+    // Sort by feet every frame, including between tile endpoints and after map changes.
     this.player?.setDepth(this.player.y)
     for (const n of this.residents) n.sprite.setDepth(n.sprite.y)
     this.updateResidents(time)
     this.drawPlayer()
     for (const n of this.residents) this.drawResident(n)
     this.updateWaterSigns(time)
-    if (!this.keys) return
     const key = this.keys
     let direction: Direction | null = null
     let pressed = false
-    for (const [facing, arrow, letter] of [
+    for (const [facing, arrow, letter] of key ? [
       ['up', key.UP, key.W], ['down', key.DOWN, key.S],
       ['left', key.LEFT, key.A], ['right', key.RIGHT, key.D],
-    ] as const) {
+    ] as const : []) {
       // Consume every press, including when movement/UI blocks input. Fresh
       // taps need not wait for the hold-repeat timer and can last one frame.
       const arrowPressed = Phaser.Input.Keyboard.JustDown(arrow)
@@ -122,15 +123,19 @@ export class WorldScene extends Phaser.Scene {
     }
     const keyboardDirection = Boolean(direction)
     direction ??= this.touchDirection
-    if (this.moving || this.fishing || this.uiBlocked || (time < this.nextMove && !pressed)) return
+    const wasMoving = this.moving
+    this.advancePlayerMovement(time, direction, !keyboardDirection)
+    this.player?.setDepth(this.player.y)
+    this.drawPlayer()
+    if (this.moving || this.fishing || this.uiBlocked || (time < this.nextMove && (!pressed || wasMoving))) return
     if (direction) {
-      const turned = this.move(direction)
+      const turned = this.move(direction, !keyboardDirection)
       const timing = playerMovementTiming(this.utilityHeld)
       this.nextMove = time + (turned ? timing.turnDelay : keyboardDirection ? timing.keyboardRepeat : timing.touchRepeat)
     }
   }
 
-  move(direction: Direction) {
+  move(direction: Direction, touch = false, started = this.time.now) {
     if (this.moving || this.fishing || this.uiBlocked || !this.player) return
     if (direction !== this.position.facing) {
       this.position = { ...this.position, facing: direction }
@@ -163,26 +168,44 @@ export class WorldScene extends Phaser.Scene {
     }
     this.moving = true
     const passingFrame = PLAYER_CHARACTER.walkPassingFrame?.[direction]
-    this.playerWalkPhase = nextPlayerWalkPhase(this.playerWalkPhase, passingFrame)
-    this.playerWalkFrame = playerWalkTextureStep(this.playerWalkPhase, passingFrame)
+    this.playerWalkPhase = nextCharacterWalkPhase(this.playerWalkPhase, passingFrame)
+    this.playerWalkFrame = characterWalkTextureStep(this.playerWalkPhase, passingFrame)
     this.playerWalkUntil = 0
     this.drawPlayer()
-    this.tweens.add({
-      targets: this.player,
-      x: x * TILE_SIZE + 16,
-      y: y * TILE_SIZE + 16,
-      duration: playerMovementTiming(this.utilityHeld).duration,
-      ease: 'Linear',
-      onComplete: () => {
-        this.moving = false
-        this.playerWalkUntil = this.time.now + PLAYER_WALK_SETTLE_MS
-        this.position = { ...this.position, x, y }
-        this.drawPlayer()
-        const target = stepTransition(this.position) ?? edgeTransition(this.position)
-        if (target) this.enterMap(target)
-        else this.callbacks.onPosition({ ...this.position }, false)
-      },
-    })
+    this.playerStep = { fromX: this.player.x, fromY: this.player.y, x, y, started,
+      duration: playerMovementTiming(this.utilityHeld, touch).duration }
+  }
+
+  private advancePlayerMovement(time: number, direction: Direction | null, touch: boolean) {
+    // Carry frame overshoot into the next tile instead of restarting a tween
+    // next frame. Logical positions/collision still advance one tile at a time.
+    while (this.playerStep && this.player) {
+      const step = this.playerStep
+      const progress = Math.min(1, Math.max(0, (time - step.started) / step.duration))
+      this.player.setPosition(step.fromX + (step.x * TILE_SIZE + 16 - step.fromX) * progress,
+        step.fromY + (step.y * TILE_SIZE + 16 - step.fromY) * progress)
+      if (progress < 1) return
+      const arrived = step.started + step.duration
+      this.playerStep = undefined
+      this.moving = false
+      this.playerWalkUntil = time + CHARACTER_WALK_SETTLE_MS
+      this.position = { ...this.position, x: step.x, y: step.y }
+      this.nextMove = arrived
+      const target = stepTransition(this.position) ?? edgeTransition(this.position)
+      if (target) {
+        this.enterMap(target)
+        // A transition ends this step; do not carry elapsed travel into a new map.
+        this.nextMove = time + playerMovementTiming(this.utilityHeld, touch).duration
+        return
+      }
+      this.callbacks.onPosition({ ...this.position }, false)
+      if (!direction || this.fishing || this.uiBlocked) return
+      // Long background stalls must not queue a burst of invisible tile steps.
+      const started = time - arrived > step.duration ? time : arrived
+      const turned = this.move(direction, touch, started)
+      const timing = playerMovementTiming(this.utilityHeld, touch)
+      this.nextMove = turned ? time + timing.turnDelay : started + timing.duration
+    }
   }
 
   action() {
@@ -191,6 +214,7 @@ export class WorldScene extends Phaser.Scene {
     const resident = this.npcAhead()
     if (resident) {
       resident.facing = ({ up: 'down', down: 'up', left: 'right', right: 'left' } as const)[this.position.facing]
+      resident.walkUntil = 0
       this.drawResident(resident)
       const index = this.conversations.get(resident.definition.id) ?? 0
       this.conversations.set(resident.definition.id, index + 1)
@@ -417,7 +441,7 @@ export class WorldScene extends Phaser.Scene {
   setTouchDirection(direction: Direction | null) {
     this.touchDirection = direction && !this.uiBlocked && !this.fishing ? direction : null
     if (!this.touchDirection) return
-    const turned = this.move(this.touchDirection)
+    const turned = this.move(this.touchDirection, true)
     const timing = playerMovementTiming(this.utilityHeld)
     this.nextMove = (this.time?.now ?? 0) + (turned ? timing.turnDelay : timing.touchRepeat)
   }
@@ -437,6 +461,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private enterMap(destination: Position) {
+    this.playerStep = undefined
+    this.moving = false
     this.playerWalkUntil = 0
     this.position = destination
     this.drawMap()
@@ -500,7 +526,7 @@ export class WorldScene extends Phaser.Scene {
         ?? [[0,1],[1,0],[0,-1],[-1,0]].map(([dx,dy]) => [definition.route[0][0]+dx,definition.route[0][1]+dy] as const).find(([x,y]) => isWalkable(map.tiles[y]?.[x]) && (x !== this.position.x || y !== this.position.y))
       if (!start) continue
       const [x,y] = start
-      const resident = { definition, x, y, fromX: x, fromY: y, facing: definition.facing, index: Math.max(0, definition.route.indexOf(start)), moving: false, next: this.time.now + 1800, nextLook: this.time.now + 5000 + this.residents.length * 1300, lookingAside: false, sprite: this.add.container(x*TILE_SIZE+16,y*TILE_SIZE+16).setDepth(y*TILE_SIZE+16) }
+      const resident = { definition, x, y, fromX: x, fromY: y, facing: definition.facing, index: Math.max(0, definition.route.indexOf(start)), moving: false, next: this.time.now + 1800, nextLook: this.time.now + 5000 + this.residents.length * 1300, lookingAside: false, sprite: this.add.container(x*TILE_SIZE+16,y*TILE_SIZE+16).setDepth(y*TILE_SIZE+16), walkPhase: -1, walkFrame: 1, walkUntil: 0 }
       this.residents.push(resident)
       this.drawResident(resident)
     }
@@ -540,13 +566,31 @@ export class WorldScene extends Phaser.Scene {
       n.image = createCharacterImage(this, character, n.facing)
       n.sprite.add([shadow, n.image])
     }
-    const progress = (this.time.now - (n.walkStarted ?? this.time.now)) / 300
-    setCharacterDirection(n.image, character, n.facing, characterWalkStep(n.moving, progress))
+    setCharacterDirection(n.image, character, n.facing,
+      n.moving || this.time.now < n.walkUntil ? n.walkFrame : 0)
   }
 
   private updateResidents(time: number) {
-    if (this.uiBlocked || this.fishing || this.moving) return
     for (const n of this.residents) {
+      let arrived: number | undefined
+      if (n.moving) {
+        const started = n.walkStarted ?? time
+        const progress = Math.min(1, Math.max(0, (time-started)/NPC_MOVE_DURATION_MS))
+        n.sprite.setPosition((n.fromX+(n.x-n.fromX)*progress)*TILE_SIZE+16,
+          (n.fromY+(n.y-n.fromY)*progress)*TILE_SIZE+16)
+        n.sprite.setDepth(n.sprite.y)
+        if (progress < 1) continue
+        arrived = started+NPC_MOVE_DURATION_MS
+        n.moving=false
+        n.walkUntil=time+CHARACTER_WALK_SETTLE_MS
+        const [nx,ny]=n.definition.route[(n.index+1)%n.definition.route.length]
+        const direction = nx>n.x ? 'right' : nx<n.x ? 'left' : ny>n.y ? 'down' : 'up'
+        // Continue straight route sections immediately; the existing stroll
+        // pause remains at a direction change.
+        n.next=direction===n.facing ? arrived : time+NPC_ROUTE_PAUSE_MS
+        this.callbacks.onInteractionChange?.()
+      }
+      if (this.uiBlocked || this.fishing) continue
       if (n.definition.route.length < 2) {
         if (time >= n.nextLook) {
           n.lookingAside = !n.lookingAside
@@ -561,15 +605,23 @@ export class WorldScene extends Phaser.Scene {
       if (Math.abs(n.x-this.position.x)+Math.abs(n.y-this.position.y) <= 1) continue
       const index = (n.index+1)%n.definition.route.length
       const [x,y] = n.definition.route[index]
-      if (!isWalkable(MAPS[this.position.mapId].tiles[y]?.[x]) || (x === this.position.x && y === this.position.y) || this.residents.some(other => other !== n && ((other.x === x && other.y === y) || (other.moving && other.fromX === x && other.fromY === y)))) continue
+      if (!isWalkable(MAPS[this.position.mapId].tiles[y]?.[x]) || (x === this.position.x && y === this.position.y)
+        || (x === this.playerStep?.x && y === this.playerStep.y)
+        || this.residents.some(other => other !== n && ((other.x === x && other.y === y) || (other.moving && other.fromX === x && other.fromY === y)))) continue
       n.facing = x > n.x ? 'right' : x < n.x ? 'left' : y > n.y ? 'down' : 'up'
       n.fromX=n.x; n.fromY=n.y; n.x=x; n.y=y; n.index=index; n.moving=true
-      n.walkStarted = this.time.now
+      n.walkStarted = arrived !== undefined && time-arrived<NPC_MOVE_DURATION_MS ? arrived : time
+      const character = NPC_CHARACTERS[n.definition.id]
+      const passingFrame = character.walkPassingFrame?.[n.facing]
+      n.walkPhase=nextCharacterWalkPhase(n.walkPhase,passingFrame)
+      n.walkFrame=characterWalkTextureStep(n.walkPhase,passingFrame)
+      n.walkUntil=0
+      // Carry this frame's overshoot into the next tile, as for the player.
+      const progress = Math.min(1, Math.max(0, (time-n.walkStarted)/NPC_MOVE_DURATION_MS))
+      n.sprite.setPosition((n.fromX+(n.x-n.fromX)*progress)*TILE_SIZE+16,
+        (n.fromY+(n.y-n.fromY)*progress)*TILE_SIZE+16)
+      n.sprite.setDepth(n.sprite.y)
       this.drawResident(n)
-      this.tweens.add({ targets:n.sprite, x:x*TILE_SIZE+16, y:y*TILE_SIZE+16, duration:300, onComplete:()=>{
-        n.moving=false; n.next=this.time.now+1600; this.drawResident(n)
-        this.callbacks.onInteractionChange?.()
-      } })
       this.callbacks.onInteractionChange?.()
     }
   }

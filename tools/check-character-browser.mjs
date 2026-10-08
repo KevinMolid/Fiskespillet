@@ -11,6 +11,7 @@ try {
     const mobile = mode === 'mobile'
     const context = await browser.newContext({ viewport: mobile ? { width: 390, height: 844 } : { width: 1280, height: 900 }, deviceScaleFactor: mobile ? 3 : 1, isMobile: mobile, hasTouch: mobile })
     const page = await context.newPage(); const errors = []
+    await page.routeWebSocket(/^ws:\/\/127\.0\.0\.1:/,()=>{})
     page.on('pageerror', error => errors.push(error.message))
     await page.route(/\/src\/game\/WorldScene\.ts(?:\?.*)?$/, async route => {
       const response = await route.fetch()
@@ -25,6 +26,17 @@ try {
       const { NPCS } = await import('/src/game/npcs.ts')
       const { NPC_CHARACTERS } = await import('/src/game/characters.ts')
       const { scene } = window.__characterTest
+      for (const character of Object.values(NPC_CHARACTERS)) {
+        if(character.walk.down[2]!==character.sprites.down) throw new Error(`${character.id}: front C must map to idle`)
+        const pixels=key=>{
+          const canvas=document.createElement('canvas');canvas.width=48;canvas.height=64
+          const context=canvas.getContext('2d')
+          context.drawImage(scene.textures.get(key).getSourceImage(),0,0)
+          return context.getImageData(0,0,48,64).data
+        }
+        const idle=pixels(`${character.id}-down`),passing=pixels(`${character.id}-down-walk-3`)
+        if(!idle.every((value,index)=>value===passing[index])) throw new Error(`${character.id}: runtime front C pixels differ`)
+      }
       scene.setUiBlocked(true)
       const result = []
       for (const mapId of ['havn', 'hjem', 'butikk', 'skogstjern']) {
@@ -34,8 +46,8 @@ try {
           const original = n.image
           for (const direction of ['down', 'right', 'up', 'left']) {
             n.facing = direction
-            for (const phase of NPC_CHARACTERS[definition.id].walk ? [0, 1, 2] : [0]) {
-              n.moving = phase > 0; n.walkStarted = scene.time.now - (phase === 2 ? 225 : 25)
+            for (const phase of NPC_CHARACTERS[definition.id].walk ? [0, 1, 2, 3] : [0]) {
+              n.moving = phase > 0; n.walkStarted = scene.time.now; n.walkFrame = phase
               scene.drawResident(n)
               const i = n.image
               result.push({ id: definition.id, direction, phase, texture: i.texture.key, sameObject: i === original,
@@ -46,14 +58,14 @@ try {
               })
             }
           }
-          n.moving = false; scene.drawResident(n)
+              n.moving = false; n.walkUntil = 0; scene.drawResident(n)
         }
       }
       return result
     })
     assert.equal(results.length, await page.evaluate(async () => {
       const { NPC_CHARACTERS } = await import('/src/game/characters.ts')
-      return Object.values(NPC_CHARACTERS).reduce((count, character) => count + 4 * (character.walk ? 3 : 1), 0)
+      return Object.values(NPC_CHARACTERS).reduce((count, character) => count + 4 * (character.walk ? 4 : 1), 0)
     }))
     for (const direction of ['down','right','up','left']) {
       const passingTexture = await page.evaluate(direction => {
@@ -107,7 +119,7 @@ try {
     }
     assert.equal(samples.at(-1).player, 'player-right')
     assert(samples.some(s => s.oda === 'oda-right-walk-1'))
-    assert(samples.some(s => s.oda === 'oda-right-walk-2'))
+    assert(samples.some(s => s.oda === 'oda-right-walk-3'), 'NPCs hold A then C over successive tiles')
     assert.equal(samples.at(-1).oda, 'oda-right')
     // Each additional view has the same four-tile cadence and ground anchor.
     for(const direction of ['left','down','up']) {

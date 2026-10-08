@@ -17,15 +17,18 @@ controls center X and the soles align at Y=60. All views use the existing NPC
 48 × 64 canvas, ground anchor (24,60), render scale 1 and nearest filtering.
 No per-direction scale or world-position compensation is used.
 
-`MARITA_CHARACTER` in `src/game/characters.ts` exposes the idle design through
-the existing directional sprite format. Character preview includes her first and
-supports idle-only designs alongside animated characters.
+`MARITA_CHARACTER` in `src/game/characters.ts` exposes idle and A/B/C walking
+frames in all four directions through the same format as the other NPCs.
+`tools/npc_walk_rig.py` derives walking frames from the unchanged idles, preserving
+her slim leggings, trainers, hair and exposed midriff. Character preview includes
+her first and uses the shared A–C–B–C loop at 300 ms per tile.
 
 Marita is registered in `NPC_CHARACTERS` and the existing `NPCS` data. She stands
 at (38,20) in Skogstjernet (area 2), directly south of the water at (38,19).
 She uses the existing stationary NPC look-around, conversation, tile occupancy,
 foot anchoring and ground-Y depth rules. Her two dialogue lines describe a break
-from training by the lake. No walking route or walking frames are required.
+from training by the lake. Her existing stationary route remains unchanged;
+walking frames are available through the shared renderer for future routes.
 
 ## Final prompt — built-in imagegen
 

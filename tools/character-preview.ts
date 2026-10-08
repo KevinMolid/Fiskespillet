@@ -1,6 +1,7 @@
 import { MARITA_CHARACTER, STANDARD_CHARACTERS, type StandardCharacter } from '../src/game/characters'
 import type { Direction } from '../src/game/world'
 import { playerMovementTiming } from '../src/game/playerMovement'
+import { NPC_MOVE_DURATION_MS } from '../src/game/npcMovement'
 const names: Record<string, string> = { player: 'Spiller', kevin: 'Kevin', mor: 'Mor', far: 'Far', oda: 'Oda', magnus: 'Magnus – kraftig og helt skallet', bendik: 'Bendik', nils: 'Nils', morten: 'Morten', marita: 'Marita' }
 const reviewCharacters = [MARITA_CHARACTER, ...STANDARD_CHARACTERS.filter(character => character.id !== 'marita')]
 const grid = document.querySelector<HTMLDivElement>('#grid')!
@@ -14,7 +15,7 @@ let lastTick = performance.now()
 function previewFrame(character: StandardCharacter) {
   const facing = direction.value as Direction
   const passing = character.walkPassingFrame?.[facing]
-  const phase = Math.floor(elapsed / (passing === undefined ? 220 : playerMovementTiming(false).keyboardRepeat))
+  const phase = Math.floor(elapsed / (character.id === 'player' ? playerMovementTiming(false).duration : NPC_MOVE_DURATION_MS))
   const index = passing === undefined ? phase % 2 : [0, passing - 1, 1, passing - 1][phase % 4]
   return character.walk?.[facing][index] ?? character.sprites[facing]
 }

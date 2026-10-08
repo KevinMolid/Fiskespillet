@@ -1,111 +1,111 @@
 # Pixel character system
 
-Nine characters: the approved player plus Mor, Far, Kevin, Oda, Magnus, Bendik,
-Nils and Morten. Each has down/right/up/left idle and two anatomical walk poses.
-108 runtime PNGs live under `src/assets/characters/<id>/`:
-`down.png`, `down-walk-1.png`, `down-walk-2.png`, and the equivalent other views.
+The player and all nine NPCs share directional idle plus A/B/C walking assets.
+NPCs: Kevin, Mor, Far, Oda, Magnus, Bendik, Nils, Morten and Marita. Each has 16
+production PNGs in `src/assets/characters/<id>/`: `<direction>.png` and
+`<direction>-walk-{1,2,3}.png`, for down/right/up/left. Player fishing poses use
+the separate existing pose registrations.
 
-## Standards and identity
+## Format and identity
 
-NPC canvas is 48 × 64, origin (24,60), scale 1, NEAREST. Their authored proportions
-match the detailed pixel player. Bendik's modest extra height is retained in his
-asset because existing NPC data explicitly identifies him as tall. Magnus has a
-round belly/wider torso, beard and Hawaiian shirt and is **completely bald** in
-every view. Other identifying traits are listed in `character-pose-contract.md`.
-No character/direction-specific runtime offsets or scales exist for NPCs.
+NPC canvas: 48 x 64; foot anchor (24,60); render scale 1; nearest filtering.
+Player canvas: 768 x 1184; anchor (384,1172); scale .05; nearest filtering.
+Both use the existing +14 ground conversion inside their tile-center containers.
+All directions of each format share the same scale and origin. Collision remains
+one logical tile, independently of image width, arms, hats or hair.
 
-Player original idle canvases remain 768 × 1184, origin (384,1172), scale 0.05.
-They have not been rewritten or redesigned. Their original-resolution source
-needs a different asset-to-world scale to maintain its approved visual size.
-Both formats use the same existing +14 world-Y ground conversion from tile-center
-containers. Logical position, collision, camera following and depth are unchanged.
+Approved player artwork and all NPC idle PNGs are immutable in this update.
+Character identities remain defined by their own idles and the checklist in
+`character-pose-contract.md`: Magnus is bald and heavy with a beard and orange
+Hawaiian shirt; Bendik is lean/taller; Marita retains brown hair, white cropped
+tank, exposed midriff, charcoal leggings and white trainers. Other hair, glasses,
+clothing palettes and silhouettes are retained.
 
-## Production workflow
+## Walking authoring
 
-Built-in imagegen created the NPC design sheets from the approved pixel-player
-style and existing identity descriptions. Source sheets and prompts are stored in
-`output/imagegen/manifest.json` and sibling PNGs, outside the runtime asset tree.
-Their generated walking columns are discarded, not used in the game.
-`tools/prepare-npc-idle-assets.py` extracts only the four idle designs,
-detects real transparent gutters, uses nearest resizing and aligns the boots.
-Run it with `output/imagegen/manifest.json` to rebuild NPC idles.
+The user authorized deterministic pixel rigging. `tools/npc_walk_rig.py` derives
+108 NPC walking frames from 36 directional idles, with native integer pixels,
+binary RGBA alpha and nearest sampling. No AI walking columns are consumed.
+`tools/rig-character-walk.py` delegates to this current rig; its optional
+`--include-player` flag explicitly also rebuilds the separate player rig.
 
-The user authorized deterministic pixel rigging for all walking frames.
-`tools/rig-character-walk.py` derives 72 frames from the 36 corresponding idles.
-Player poses now delegate to `tools/player_walk_rig.py`: manually registered
-sleeve/arm and trouser/shoe masks for each view, explicit shoulder/elbow/wrist
-and hip/knee/ankle joints, and rigid hands/boots. The bag excludes the old
-hand masks, preventing a second stationary hand behind the moving hand. Only
-the player's eight walk PNGs are rebuilt; the four idles and all NPCs stay intact.
-Profile legs use two joint segments with forward-bending knees and whole boots;
-the accepted front/back legs retain their existing depth projection. All four
-views articulate complete shoulder caps, upper arms and forearms. A small source
-shirt socket keeps each sleeve attached to the collar. The exact eight-pose plan
-and numerical joint targets are in `player-walk-pose-plan.md`.
-Anatomical left/right are mapped per
-view; right profile's near limb is left, left profile's near limb is right.
-A is left leg/right arm forward; B is the opposite. Front and back use opposite
-depth projections. Occluded profile limbs are derived from the same character's
-near limb, shaded and drawn behind the body. Player heads remain fixed while
-shoulders move. The separate NPC rig is unchanged, including Oda's hair.
-No generative walking images or global body scaling are used.
-All operations use nearest sampling and binary alpha. Rig metadata and idle
-hashes are in `character-rig-measurements.json`.
+Source registration includes shoulder, hip and cuff levels per character.
+Complete sleeve caps, upper arms, forearms and rigid hands are articulated, with
+an inner sleeve socket behind the moving cap. Profiles reconstruct hidden limbs
+from the same character and shade them behind the body. Hair is a separate layer;
+it must not rotate as a sleeve. Exposed clothing is filled from existing palette
+pixels, with an uninterrupted waistband and native dark contour. Magnus retains
+his full belly and pelvis; his narrower lateral arm swing fits the wide body in
+the shared canvas without changing runtime scale.
 
-## Runtime
+A advances the anatomical left leg and right arm; B advances the right leg and
+left arm. Down/up reverse the actual shoe-depth projection by five native pixels.
+Profiles articulate continuous trouser panels through hip, forward-bending knee
+and ankle. `PROFILE_SHOES` registers the original foreground shoe's contour row
+by row for each NPC/profile. This excludes the other idle shoe's toe, which a
+rectangular sole crop incorrectly carried into both walking legs. Exactly two
+copies of this isolated shoe move rigidly on a horizontal toe axis; the farther
+shoe is shaded to 80% and one pixel higher. Side/back C returns the arms to neutral,
+with one support leg and one bent passing leg lifted three pixels. NPC down C is
+the exact original idle, with centered feet; its registry slot points directly
+to the idle URL and `down-walk-3.png` is byte-identical for authoring tools. Source shoe
+sizes, trouser widths and outlines are retained; Marita's slim leggings are not
+widened by her hand pixels. The planted sole stays at Y=60.
 
-`characters.ts` maps IDs to directional idle/walk URLs and format. Vite resolves
-hashed/inline production assets. `characterRendering.ts` preloads and validates
-every frame and maintains one image object per character. `characterAnimation.ts`
-selects A in the first half of the NPC tile tween and B in the second half,
-then idle on completion. For the player, each successful tile move is one
-alternating footfall: A→B→A→B. `PLAYER_WALK_SETTLE_MS` (70 ms) holds the final
-pose across the existing 30 ms keyboard gap, then returns to idle. Opening a UI,
-fishing and map transitions clear this visual continuation. Movement still uses
-the original 115 ms tween and 145 ms keyboard cadence.
+Joint targets, anatomical phase, bounds and immutable idle hashes are recorded in
+`character-rig-measurements.json`. `output/npc-walk-review/{down,right,up,left}.png`
+contains the local idle/A/B/C review sheets, outside the runtime bundle.
 
-The shared `WorldScene.move` command turns in place when the requested direction
-differs from saved facing. It updates the saved facing and interaction UI without
-starting a movement tween or checking a map transition. A second input in the
-same direction walks normally; holding continues after the usual repeat delay.
-Fresh keyboard presses bypass the repeat cooldown, so a quick second tap is
-not lost. Mobile direction controls use the same scene command. Existing movement,
-fishing and modal guards still apply before turning.
+## Runtime movement and animation
 
-Menu/wardrobe SVG portraits retain `fisherSprite.fisherPixels` and its editable
-palette. This is separate from the world's fixed PNG character assets; the unused
-canvas portrait experiment is not part of the runtime.
+`characters.ts` registers directional URLs, A/B/C frames and passing frame 3 for
+all characters. `characterRendering.ts` validates/preloads the assets and retains
+one image object per character. `characterAnimation.ts` selects the shared
+A-C-B-C sequence, advancing once per successful tile. Each image is held for that
+whole tile; idle returns at rest after a brief 70 ms final-pose settle.
 
-`WorldScene.ts` uses existing player 115 ms / NPC 300 ms movement tweens and existing
-NPC routes/look timers. Stationary NPCs still stand still, but all have complete
-walking assets for future routes. No collision/map/dialogue/gameplay data changed.
-The world canvas remains pixelated, without applying this style to DOM UI/text.
+`WorldScene` interpolates actual position each frame and carries fractional frame
+time into the next tile. Logical tile positions, collision and interaction checks
+remain in the existing world/NPC systems. Ground Y controls depth every frame.
+Player keyboard/touch steps take 145/150 ms, halved when running; turn-before-walk
+is 50 ms for walking and immediate for running. NPC strolling takes 300 ms per
+tile, configured in `npcMovement.ts`. Straight sections chain without a stationary
+gap; the existing 1600 ms route pause is retained at changes of direction. Route
+occupancy and the player's nearby interaction guard still block further steps.
+Active NPC steps finish if UI or fishing temporarily prevents starting the next
+step. NPCs can continue while the player walks; collision reserves both the
+player's current tile and the destination of an active step, preventing overlap
+or head-on swaps. The nearby interaction guard still stops NPCs for conversation.
+
+NPC map positions, routes, dialogue, gifts, stationary look timers and map data
+are unchanged. Stationary NPCs have complete walking assets for future use but
+continue standing at their existing positions. Player camera follow, controls,
+fishing poses, artwork and render scales remain unchanged.
 
 ## Review and validation
 
-`/tools/character-preview.html` shows all nine figures: idle, A, B and live loop.
-Choose a view to inspect feet/arms against a common baseline. World preview is at
-`/tools/game-preview.html`. These are local review tools, not runtime UI additions.
-Screenshots are in `output/character-review/`.
+`/tools/character-preview.html` shows all ten characters with idle/A/B/C and a
+live loop. Player preview uses 145 ms per pose; NPCs use their actual 300 ms stroll.
+`/tools/game-preview.html` shows the real movement and route behavior.
 
-Validation:
+- `check-character-standard.py`: 160 idle/A/B/C frames, exact heads and idle hashes,
+  alpha, dimensions, foot baseline, actual opposite front/back foot pixels,
+  anatomical arm/leg phase and Magnus's bald/heavy identity.
+- `check-npc-walk.py`: all 108 NPC walking PNGs have connected anatomy, covered
+  torsos and whole undistorted horizontal profile shoes. Actual shoe-height pixels
+  must match exactly the composited pair of isolated source shoes, detecting any
+  extra toe fragments; all nine front C files must match idle byte for byte.
+- `check-character-animation.mjs`: shared one-image-per-tile A-C-B-C sequence.
+- `check-npc-movement-browser.mjs`: all nine NPCs in four directions, actual
+  rendered velocity across four tiles, per-tile frames, turnaround pauses, depth,
+  ground, nearest filtering and unchanged stationary positions. Desktop,
+  mobile/DPR3 and Canvas.
+- `check-character-browser.mjs`: all NPC poses, retained rendering objects,
+  player directional gait, NPC gait, Marita interaction and review gallery.
+  Also checks NPC down C's idle URL and actual loaded texture pixels on desktop,
+  mobile/DPR3 and Canvas.
+- `check-continuous-movement.mjs`, `check-turn-before-move.mjs` and existing NPC
+  checks: player travel, turns, collision, fishing, map exits and route accessibility.
+- TypeScript and production Vite build.
 
-- TypeScript and Vite build.
-- `check-character-standard.py`: 108 PNGs, alpha, ground, unchanged idle/head,
-  actual alternating boot pixels, anatomical forearm projection, Magnus traits.
-- `check-character-animation.mjs`: gait phases, idle reset and consecutive steps.
-- `check-turn-before-move.mjs`: real keyboard/touch taps, rapid second taps,
-  holding/release, blocked input, collision, map exits and fishing after turning.
-- `check-fisher.mjs`: the menu/wardrobe export and all 1200 palette/direction/pose
-  combinations; its esbuild bundle includes a PNG loader for world dependencies.
-- `check-player-walk.py`: actual hand and shoulder pixels articulate in every
-  view; profile knees bend forward, segment lengths stay fixed and boots stay whole.
-- `check-character-browser.mjs`: all NPC views/poses, retained objects, actual
-  player/NPC tween animations, preview gallery, desktop/mobile DPR3/Canvas.
-- `check-player-browser.mjs`: controls, facing, collision, camera, transitions,
-  signs/fishing/dialogue and layout in those same three browser modes.
-- Existing world, NPC, controls and fishing checks.
-
-The user approved publication on 2026-10-02 with “Implementer karakterene i spillet
-og publiser.” The project uses GitHub `main` for publication. No web hosting
-deployment is configured in this repository.
+Publication uses GitHub main; no web hosting deployment is configured here.

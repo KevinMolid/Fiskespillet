@@ -88,19 +88,19 @@ export const PLAYER_CHARACTER: StandardCharacter = {
 }
 
 function npcCharacter(id: NpcId): StandardCharacter {
+  const walk = directionalWalk(id, true)
+  // The centered front idle is the neutral transition between contact A/B.
+  walk.down = [walk.down[0], walk.down[1], asset(id, 'down')]
   return {
     id,
     sprites: Object.fromEntries(CHARACTER_DIRECTIONS.map(direction => [direction, asset(id, direction)])) as CharacterSprites,
-    walk: directionalWalk(id),
+    walk,
+    walkPassingFrame: { down: 3, up: 3, left: 3, right: 3 },
     format: { ...npcStandard, filter: 'nearest' },
   }
 }
-// Marita stays at the shoreline and uses directional idle sprites.
-export const MARITA_CHARACTER: StandardCharacter = {
-  id: 'marita',
-  sprites: Object.fromEntries(CHARACTER_DIRECTIONS.map(direction => [direction, asset('marita', direction)])) as CharacterSprites,
-  format: { ...npcStandard, filter: 'nearest' },
-}
+// Marita retains her stationary shoreline route, with the same full pose format.
+export const MARITA_CHARACTER = npcCharacter('marita')
 export const NPC_CHARACTERS: Record<NpcId, StandardCharacter> = {
   mor: npcCharacter('mor'), far: npcCharacter('far'), kevin: npcCharacter('kevin'),
   oda: npcCharacter('oda'), magnus: npcCharacter('magnus'), bendik: npcCharacter('bendik'),

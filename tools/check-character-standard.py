@@ -4,7 +4,7 @@ import json,hashlib
 import numpy as np
 from PIL import Image
 ROOT=Path(__file__).resolve().parents[1]
-IDS=['player','kevin','mor','far','oda','magnus','bendik','nils','morten']
+IDS=['player','kevin','mor','far','oda','magnus','bendik','nils','morten','marita']
 rig=json.loads((ROOT/'docs/character-rig-measurements.json').read_text())
 count=0
 for id in IDS:
@@ -13,7 +13,7 @@ for id in IDS:
  for direction in ['down','right','up','left']:
   path=ROOT/'src/assets/characters'/id/(direction+'.png');idle=np.array(Image.open(path))
   assert hashlib.sha256(path.read_bytes()).hexdigest()==rig[id][direction]['idleSha256'], 'Rig must not rewrite idle'
-  for step in ([0,1,2,3] if id=='player' else [0,1,2]):
+  for step in [0,1,2,3]:
    file=ROOT/'src/assets/characters'/id/(direction+('' if not step else '-walk-'+str(step))+'.png')
    image=Image.open(file);assert image.mode=='RGBA'
    assert image.size==(config['canvas']['width'],config['canvas']['height'])
@@ -22,18 +22,23 @@ for id in IDS:
    assert np.all(alpha[0]==0) and np.all(alpha[-1]==0) and np.all(alpha[:,0]==0) and np.all(alpha[:,-1]==0),file
    assert image.getbbox()[3]==ground,file
    if step:
-    fixed_head=26 if id=='player' else 32
+    fixed_head=26 if id=='player' else rig[id][direction]['fixedHeadRows']
     assert np.array_equal(rgba[:round(fixed_head*unit)],idle[:round(fixed_head*unit)]), 'Head must be exact idle pixels; player sleeves articulate below it'
     pose=rig[id][direction]['poses'][str(step)]
+    idle_transition=id!='player' and direction=='down' and step==3
     if step==3:
-     assert pose['phase']=='passing' and pose['between']==['1','2']
+     assert pose['phase']==('idle-transition' if idle_transition else 'passing') and pose['between']==['1','2']
      assert pose['forwardLeg'] is None and pose['forwardArm'] is None
-     assert sorted(limb['passingRole'] for limb in pose['limbs'].values())==['support','swing']
+     assert sorted(limb['passingRole'] for limb in pose['limbs'].values())==(['neutral','neutral'] if idle_transition else ['support','swing'])
     else:
      assert pose['forwardLeg']==('left' if step==1 else 'right')
      assert pose['forwardArm']==('right' if step==1 else 'left')
     assert all(limb['armBounds'] for limb in pose['limbs'].values()), 'Both arms need explicit controls'
-    assert not np.array_equal(rgba,idle), 'Walk must differ from idle'
+    if idle_transition:
+     assert np.array_equal(rgba,idle) and file.read_bytes()==path.read_bytes(), 'NPC front C must use exact idle'
+     assert all(limb['legJoints']['bootBaseline']==ground for limb in pose['limbs'].values())
+    else:
+     assert not np.array_equal(rgba,idle), 'Contact/passing pose must differ from idle'
    count+=1
   poses=rig[id][direction]['poses']
   for limb in ['left','right']:
@@ -73,5 +78,5 @@ for direction in ['down','right','up','left']:
 mag=np.array(Image.open(ROOT/'src/assets/characters/magnus/down.png'))
 kev=np.array(Image.open(ROOT/'src/assets/characters/kevin/down.png'))
 assert np.count_nonzero(mag[40,:,3])>np.count_nonzero(kev[40,:,3])*1.15, 'Magnus must be clearly heavier'
-assert count==112
-print('112 production frames, all player passing poses and Magnus bald/stocky features passed.')
+assert count==160
+print('160 idle/A/B/C production frames, all directional passing poses and Magnus bald/stocky features passed.')

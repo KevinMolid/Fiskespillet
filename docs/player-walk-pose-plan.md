@@ -1,5 +1,25 @@
 # Player walk: exact pose plan (revision 13, left passing outline and swing leg)
 
+## Continuous travel between tiles
+
+Held movement now interpolates continuously through consecutive tiles. Each
+keyboard step takes 145 ms; touch takes 150 ms. Running halves those durations.
+This spreads the old 115 ms travel plus 30–35 ms wait over the full cadence,
+preserving the intended average speed while removing the stationary intervals.
+
+`WorldScene` carries frame-time overshoot into the next step, commits logical
+coordinates only at tile endpoints, and checks the existing collision/transition
+rules before starting each tile. Release finishes the active tile without
+starting another. Walking turns still wait 50 ms; running turns immediately.
+Map transitions discard residual travel, and long frame stalls cannot queue
+a burst of multiple unseen steps. Camera follow and feet-based depth remain.
+
+The A–C–B–C cycle still advances once per successful tile in all four directions.
+No sprite artwork or character scale changes. `PLAYER_WALK_SETTLE_MS` holds the
+final pose briefly after stopping; it no longer bridges gaps during held travel.
+`tools/check-continuous-movement.mjs` checks rendered velocity across boundaries,
+one texture per tile, depth, release, desktop, touch/DPR3 and Canvas rendering.
+
 ## Left C abdominal outline and rear swing leg
 
 User approved revised contacts A/B but found the left C abdominal contour weak
