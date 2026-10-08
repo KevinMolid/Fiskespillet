@@ -1,4 +1,60 @@
-# Player walk: exact pose plan (revision 11, passing C in every direction)
+# Player walk: exact pose plan (revision 13, left passing outline and swing leg)
+
+## Left C abdominal outline and rear swing leg
+
+User approved revised contacts A/B but found the left C abdominal contour weak
+and its rear leg awkward. Change only `left-walk-3.png` from revision 12.
+
+- Add a continuous 15-source-pixel dark vest rim along the exposed abdominal
+  edge and hem. Retain the underlying left artwork and neutral articulated arms.
+- Keep the near right support leg straight, hip/ankle X=21.4, sole Y=1172.
+  Move the far left heel behind that leg: hip (20.9,39.3), knee
+  (18.7657,46.4899), ankle (23.2,48.8). The previous knee X=16.3032 projected
+  too far outside the body and the lifted heel was ahead of the support foot.
+- Preserve 7.5/5 world-pixel thigh/shin lengths and lifted far sole Y=1112.
+  The far shin/heel passes behind the near leg using the existing layer order.
+- Preserve canvas, anchor, scale, neutral arm joints and A–C–B–C cadence.
+  All other production player PNGs, especially the approved A/B, stay byte exact.
+- Reproduce C only with `python tools/player_walk_rig.py --direction left --step 3`.
+  Regression checks inspect the actual outline pixels, tucked knee, trailing
+  heel and unchanged limb lengths, in addition to shared format/ground checks.
+
+## Left coverage and front/back amplitude corrections
+
+User review found missing cloth in the left poses, tilted-looking contact feet,
+and insufficient front/back arm/foot movement. This revision supersedes the
+revision-11 coverage and amplitude details below.
+
+- Keep right A/B/C and every idle pixel unchanged. Rebuild left A/B/C from
+  left artwork with its own vest outline, fixed shoulder socket, source-cluster
+  side panel and leather connection to the bag. The previous mirrored right
+  torso repair did not fit the left vest/bag and left gaps in exposed clothing.
+- Left contact soles are level from heel to toe, with no trailing-heel tilt.
+  Keep the accepted right boot palette/proportions/outline and horizontal toe
+  axis, and retain near/far planes Y=1172/1152 and C's lifted far sole Y=1112.
+  Only the left contacts disable the heel lift; right remains byte exact.
+- Down/up contacts increase sole separation from 60 to 100 source pixels
+  (3 to 5 world pixels). A and B still reverse anatomical foot and opposing arm.
+  The planted foot remains on Y=1172. This changes artwork, not tile movement.
+- Down/up shoulder/upper-arm swing grows from ±6° to ±10°; projected forearm
+  depth grows from ±1.5 to ±3 world pixels and shoulder translation from ±.5
+  to ±.75. C retains neutral joints between the enlarged opposing contacts.
+- Remove vest/strap contamination from the arm templates and restore the
+  stationary torso behind the articulated sleeves. Skin and complete hands
+  remain rigid nearest-neighbour segments; binary-alpha format stays shared.
+- Cadence remains A–C–B–C, one image per tile. Anchor (384,1172), .05 scale,
+  camera, movement speeds, collision, fishing and NPC assets stay unchanged.
+- Reproduce with `python tools/player_walk_rig.py --direction left`, then
+  `--direction down` and `--direction up`.
+- Pixel regression checks require full left shoulder/vest/strap/pelvis coverage,
+  level left contact soles, ≥5-world-pixel front/back foot separation and
+  actual arm/hand centroid alternation greater than 3 world pixels.
+
+Validation passed: pixel/anatomy tests, 112-frame asset audit, per-tile cadence
+test, typecheck, production build, and real desktop/mobile DPR3/Canvas gameplay
+checks. All four directions retain one texture per tile, idle facing, anchor
+and nearest filtering. Git confirms changes are limited to the nine left/down/up
+walk images; right, idles, fishing poses and NPC graphics remain byte identical.
 
 ## Left contacts and directional passing frames
 

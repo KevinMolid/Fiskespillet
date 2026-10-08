@@ -130,10 +130,10 @@ def pose_arm(image, direction, index, forward):
     else:
         inward=1 if index==0 else -1
         projection=1 if direction=='down' else -1
-        upper_angle=(-6 if forward else 6)*inward
+        upper_angle=(-10 if forward else 10)*inward
         fore_angle=upper_angle
-        target_shoulder=shoulder+np.array([(.5 if forward else -.5)*inward,(.5 if forward else -.5)*projection])
-        depth=(1.5 if forward else -1.5)*projection
+        target_shoulder=shoulder+np.array([(.75 if forward else -.75)*inward,(.75 if forward else -.75)*projection])
+        depth=(3 if forward else -3)*projection
     if forward is None:
         # Passing: shoulder, elbow and hand return to the neutral joint chain.
         upper_angle=fore_angle=depth=0
@@ -243,7 +243,7 @@ def side_boot(image,ankle,trailing=False,far=False):
     result.alpha_composite(boot,(round((ankle[0]-2.9)*UNIT),round((ankle[1]-1.4)*UNIT)))
     return result
 
-def pose_profile_leg(template,direction,limb,step,near,forward,hip_override=None,ankle_override=None,repair_joint=False,boot_source=None,baseline_override=None):
+def pose_profile_leg(template,direction,limb,step,near,forward,hip_override=None,ankle_override=None,repair_joint=False,boot_source=None,baseline_override=None,flat_contact=False):
     config=PROFILE_LEG[direction];source_hip,source_knee,source_ankle=config['source']
     hip=np.array(config['hips'][limb]);ankle=np.array(config['ankles'][step if step in (1,2) else 1][limb])
     if hip_override is not None:hip=np.array(hip_override,dtype=float)
@@ -261,7 +261,7 @@ def pose_profile_leg(template,direction,limb,step,near,forward,hip_override=None
     shin=slice_layer(template,y0=source_knee[1]-.6,y1=source_ankle[1]+.55)
     boot=slice_layer(template,y0=source_ankle[1]-.3)
     angle=0 if boot_source is not None else (0 if forward else 6*facing)
-    posed_boot=side_boot(boot_source,ankle,not forward,limb!=near) if boot_source is not None else segment_pose(boot,source_ankle,np.array(source_ankle)+(0,2),ankle,ankle+rotate_vector((0,2),angle))
+    posed_boot=side_boot(boot_source,ankle,not forward and not flat_contact,limb!=near) if boot_source is not None else segment_pose(boot,source_ankle,np.array(source_ankle)+(0,2),ankle,ankle+rotate_vector((0,2),angle))
     baseline=GROUND-(CONTACT_FAR_DEPTH if limb!=near else 0) if boot_source is not None else (GROUND if limb==near else GROUND-UNIT)
     if baseline_override is not None:baseline=baseline_override
     correction=baseline-posed_boot.getbbox()[3]
@@ -354,7 +354,7 @@ def registered_arm(template,source,target):
     result.alpha_composite(segment_pose(slice_layer(template,y0=wrist[1]-.55),wrist,wrist+(0,2),target_wrist,hand_tip))
     return result,{'shoulder':target_shoulder.tolist(),'elbow':target_elbow.tolist(),'wrist':target_wrist.tolist()}
 
-def right_contact(image,body,arms,template,bag,step,arm_sources=None,reflected_left=False):
+def right_contact(image,body,arms,template,bag,step,arm_sources=None,torso_override=None):
     """Right contacts share the approved chunky trouser/boot artwork.
 
     Keep the original head/identity and complete the hidden torso/pelvis before
@@ -422,6 +422,11 @@ def right_contact(image,body,arms,template,bag,step,arm_sources=None,reflected_l
         # in either contact's extended pose. Do not interpolate whole images.
         leg_targets={'left':((17,39.3),(17,51.8)),
                      'right':((17.5,40.3),(18.6,51.8))}
+        if torso_override is not None:
+            # Left passing: the raised far heel trails the support foot.
+            # With its heel ahead of the hip the old chain folded sharply
+            # outwards, leaving an exposed zigzag shin beside the near leg.
+            leg_targets['right']=((17.5,40.3),(15.2,51.8))
         arm_targets={'left':((14.45,28.2),(14.05,35.2),(15.2,40.45)),
                      'right':((21.3,28.2),(20.9,35.2),(20.8,40.6))}
     if step in (2,3):
@@ -434,15 +439,8 @@ def right_contact(image,body,arms,template,bag,step,arm_sources=None,reflected_l
         draw=ImageDraw.Draw(torso)
         draw.line([(round(x*UNIT),round(y*UNIT)) for x,y in
                    [(12.2,26.8),(11.8,31),(12.6,34)]],fill=(14,22,43,255),width=12)
-    if reflected_left:
-        # Left's vest edge is farther inward than right's. The side fill must
-        # end at its own shirt seam, not leave a stationary blue sleeve stub
-        # outside the body when the near arm swings forward.
-        torso_a=np.array(torso)
-        tr,tg,tb=torso_a[:,:,:3].astype(float).transpose(2,0,1)
-        sleeve_fill=(tb>tr*1.1)&(tb>tg*.95)
-        torso_a[(xx<14*UNIT)&(yy>=30*UNIT)&sleeve_fill]=0
-        torso=Image.fromarray(torso_a)
+    if torso_override is not None:
+        torso=torso_override
     # The mask dilation previously picked up pale vest trim and rotated it
     # with the sleeve, creating the apparent white cut-out at the shoulder.
     clean_arms=[]
@@ -454,7 +452,7 @@ def right_contact(image,body,arms,template,bag,step,arm_sources=None,reflected_l
     for limb,index in [('left',0),('right',1)]:
         hip,ankle=leg_targets[limb]
         lift_baseline=GROUND-CONTACT_FAR_DEPTH-2*UNIT if step==3 and limb=='right' else None
-        legs[limb],leg_joints=pose_profile_leg(template,'right',limb,step,'left',limb==forward,hip,ankle,True,image,lift_baseline)
+        legs[limb],leg_joints=pose_profile_leg(template,'right',limb,step,'left',limb==forward,hip,ankle,True,image,lift_baseline,torso_override is not None)
         posed_arms[limb],arm_joints=registered_arm(clean_arms[index],(arm_sources or ARM_JOINTS['right'])[index],arm_targets[limb])
         measurements[limb]={'legForward':limb==forward,'armForward':limb!=forward,'legBounds':list(legs[limb].getbbox()),'armBounds':list(posed_arms[limb].getbbox()),'legJoints':leg_joints,'armJoints':arm_joints}
         if step==3:
@@ -475,10 +473,51 @@ def left_contact(image,body,arms,template,bag,step):
     """
     width=image.width
     mirror=lambda layer: ImageOps.mirror(layer)
+    original=np.array(image);yy,xx=np.indices(original.shape[:2])
+    r,g,b=original[:,:,:3].astype(float).transpose(2,0,1)
+    visible=original[:,:,3]>0
+    torso=Image.fromarray(body)
+    # Register to the LEFT vest silhouette. The mirrored right-side torso
+    # polygon left holes between the left vest, sleeve and shoulder bag.
+    torso_region=polygon_mask(image.size,[(14.2,27.2),(22.4,27.2),(24.7,29.5),
+        (25,34),(25.7,38),(25.7,40),(14.5,40),(14.5,35),(12.8,34),(13.6,30)])
+    blue=visible&(b>r*1.15)&(b>g*1.05)&(yy>=27*UNIT)&(yy<40*UNIT)
+    vest=visible&(r>120)&(g>75)&(b<g*.85)&(r<g*1.65)&(yy>=27*UNIT)&(yy<40*UNIT)&(xx>=14*UNIT)&(xx<24*UNIT)
+    missing=torso_region&(np.array(torso)[:,:,3]==0)
+    torso=restore_cloth(torso,original,missing,vest|blue)
+    # The exposed side of the vest is tan cloth, not a detached stationary
+    # blue sleeve. Keep a blue shoulder socket behind the articulated sleeve.
+    side=polygon_mask(image.size,[(23.2,30.5),(24.8,30.5),(25.7,38),(25.7,40),(23.2,40)])
+    # Transfer intact pixel clusters instead of extending a single row donor
+    # into horizontal stripes across the newly exposed vest panel.
+    side_texture=image.crop((400,590,440,800)).resize((52,190),Image.Resampling.NEAREST)
+    side_layer=Image.new('RGBA',image.size);side_layer.alpha_composite(side_texture,(464,610))
+    torso.alpha_composite(part(side_layer,side))
+    socket=polygon_mask(image.size,[(22.2,27.2),(24.3,27.2),(24.7,30.5),(22.3,31.5)])
+    torso=restore_cloth(torso,original,socket,blue)
+    # Reconnect the strap/bag behind the near hand with actual leather. Do not
+    # copy the idle hand into the newly exposed side or leave the bag floating.
+    connector=polygon_mask(image.size,[(24,35.5),(28,36),(29,39),(28.5,42.5),
+        (25.4,42.5),(25,39)])
+    leather=(np.array(bag)[:,:,3]>0)&(r>g*1.1)&(g>b*1.05)&(r<170)
+    torso=restore_cloth(torso,original,connector,leather)
+    draw=ImageDraw.Draw(torso)
+    draw.line([(round(x*UNIT),round(y*UNIT)) for x,y in [(24.8,30.5),(25.7,35.5)]],fill=(60,39,24,255),width=12)
+    if step==3:
+        # The neutral arms expose this front/abdominal edge. Give the filled
+        # vest the same continuous dark pixel rim as the accepted contacts.
+        draw.line([(260,680),(280,700),(290,700),(290,790),(320,800)],
+            fill=(30,22,18,255),width=15)
+    torso_a=np.array(torso)
+    torso_a[(yy>=40*UNIT)&~connector]=0
+    # Discard residual idle sleeve pixels outside the registered torso. The
+    # moving sleeve is the only sleeve; all clothing coverage stays connected.
+    torso_a[(yy>=30*UNIT)&(xx>25.7*UNIT)&~connector]=0
+    torso=Image.fromarray(torso_a)
     sources=[[(width/UNIT-x,y) for x,y in ARM_JOINTS['left'][index]] for index in [1,0]]
     frame,posed=right_contact(mirror(image),np.array(mirror(Image.fromarray(body))),
         [mirror(arms[1]),mirror(arms[0])],mirror(template),mirror(bag),
-        {1:2,2:1,3:3}[step],sources,True)
+        {1:2,2:1,3:3}[step],sources,mirror(torso))
     result={}
     for side,data in posed.items():
         data=json.loads(json.dumps(data))
@@ -529,6 +568,20 @@ def rig_player(direction,steps=(1,2)):
             mask |= alpha&(xx>=30.5*UNIT)&(xx<34.5*UNIT)&(yy>=36*UNIT)&(yy<44.5*UNIT)
         arms.append(part(image,mask));body[mask]=0
     original_arms=list(arms)
+    if direction in ('down','up'):
+        # The old arm masks included strips of vest/strap along the inner
+        # forearms. These become conspicuous detached cloth when swing grows.
+        for index,arm in enumerate(arms):
+            a=np.array(arm);ar,ag,ab=a[:,:,:3].astype(float).transpose(2,0,1)
+            gold=(ar>120)&(ag>75)&(ab<ag*.9)&(yy<34*UNIT)
+            inner=(xx>(11.6 if direction=='down' else 10.8)*UNIT) if index==0 else (xx<(27.5 if direction=='down' else 27.2)*UNIT)
+            gold |= inner&(yy>=34*UNIT)&(yy<36*UNIT)&(ar>120)&(ag>75)&(ab<ag*.9)
+            a[gold]=0
+            if index==0:
+                a[(yy>=36*UNIT)&(xx>(11.6 if direction=='down' else 10.8)*UNIT)]=0
+            else:
+                a[(yy>=36*UNIT)&(xx<(27.5 if direction=='down' else 27.2)*UNIT)]=0
+            arms[index]=Image.fromarray(a)
     # Source shirt pixels at the inner shoulder are the fixed socket, drawn
     # behind the moving sleeve cap. This reconnects it to the unchanged collar.
     for index,(shoulder,_,_) in enumerate(ARM_JOINTS[direction]):
@@ -579,6 +632,17 @@ def rig_player(direction,steps=(1,2)):
         a=body.copy();a[~mask]=0
         legs.append(Image.fromarray(a))
     body[lower]=0
+    if direction in ('down','up'):
+        # Restore the fixed torso behind moving sleeves, including areas
+        # newly uncovered by the stronger shoulder/elbow swing.
+        points=([(12,27.5),(26,28),(26.5,34),(27,38),(25.5,40),(12.5,40),(11.5,36)]
+            if direction=='down' else [(12,29),(26,29),(26.5,34),(26.5,40),(12,40),(11.5,34)])
+        region=polygon_mask(image.size,points)
+        clothing=alpha&(yy>=28*UNIT)&(yy<40*UNIT)&(xx>12*UNIT)&(xx<26*UNIT)&(
+            blue|((r>120)&(g>75)&(b<g*.85)&(r<g*1.65)))
+        layer=Image.fromarray(body)
+        layer=restore_cloth(layer,original,region&(body[:,:,3]==0),clothing)
+        body=np.array(layer)
     # Duplicate hidden trouser pixels from the exposed panel at the same Y.
     # This fills the region uncovered by a swinging hand without inventing colors.
     for index in [0,1]:
@@ -607,7 +671,7 @@ def rig_player(direction,steps=(1,2)):
             if direction in ('down','up'):
                 projection=1 if direction=='down' else -1
                 leg_dx=0
-                leg_dy=0 if leg_forward==(direction=='down') else -3*UNIT
+                leg_dy=0 if leg_forward==(direction=='down') else -5*UNIT
                 if step==3:
                     support='left' if direction=='down' else 'right'
                     leg_dy=0 if limb==support else -round(1.5*UNIT)
@@ -644,7 +708,8 @@ def rig_player(direction,steps=(1,2)):
                 time.sleep(.2)
         report[str(step)]={'forwardLeg':forward_leg,'forwardArm':forward_arm,'limbs':measurements}
         if step==3:report[str(step)].update(forwardLeg=None,forwardArm=None,phase='passing',between=['1','2'])
-    return {'rig':'player-joints-v11-directional-passing' if direction!='right' else 'player-joints-v10-right-passing','idleSha256':hashlib.sha256(path.read_bytes()).hexdigest(),'poses':report}
+    version='player-joints-v13-left-passing' if direction=='left' else 'player-joints-v12-coverage-stride' if direction!='right' else 'player-joints-v10-right-passing'
+    return {'rig':version,'idleSha256':hashlib.sha256(path.read_bytes()).hexdigest(),'poses':report}
 
 if __name__=='__main__':
     import argparse

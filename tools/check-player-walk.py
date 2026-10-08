@@ -11,9 +11,10 @@ def hand_center(image, side=None):
     a=np.array(image.resize((192,296),Image.Resampling.NEAREST))
     r,g,b=a[:,:,:3].astype(float).transpose(2,0,1)
     yy,xx=np.indices(r.shape)
-    mask=(a[:,:,3]>0)&(yy>=195)&(yy<235)&(r>170)&(g>90)&(r>g*1.3)&(g>b*1.15)
-    if side=='screen-left':mask &= xx<55
-    if side=='screen-right':mask &= xx>130
+    start_y=195 if side in ('near-left','near-right') else 172
+    mask=(a[:,:,3]>0)&(yy>=start_y)&(yy<245)&(r>170)&(g>90)&(r>g*1.3)&(g>b*1.15)&(g<b*1.8)
+    if side=='screen-left':mask &= xx<75
+    if side=='screen-right':mask &= xx>120
     seen=set();components=[]
     for y,x in zip(*np.where(mask)):
         if (y,x) in seen:continue
@@ -30,6 +31,11 @@ def hand_center(image, side=None):
         # screen side rather than mistaking the far hand for the larger one.
         substantial=[c for c in components if len(c)>15]
         largest=(min if side=='near-left' else max)(substantial,key=lambda c:np.array(c)[:,0].mean())
+    elif side in ('screen-left','screen-right'):
+        # Skin highlights split the forearm/hand into multiple colour islands.
+        # Measure their combined centroid rather than whichever island happens
+        # to be largest after a stronger swing or projected foreshortening.
+        largest=[pixel for component in components if len(component)>5 for pixel in component]
     else:largest=max(components,key=len)
     return np.array(largest).mean(axis=0)
 
@@ -39,7 +45,7 @@ for direction in ['down','up','right','left']:
         projection=1 if direction=='down' else -1
         for side,arm_phase in [('screen-left',1 if direction=='down' else -1),('screen-right',-1 if direction=='down' else 1)]:
             a,b=(hand_center(pose,side) for pose in poses)
-            assert (a[1]-b[1])*projection*arm_phase>5,(direction,side,a.tolist(),b.tolist(),'hand fails to reverse depth')
+            assert (a[1]-b[1])*projection*arm_phase>15,(direction,side,a.tolist(),b.tolist(),'arm/hand swing must exceed three world pixels')
     else:
         a,b=(hand_center(pose,'near-left' if direction=='right' else 'near-right') for pose in poses)
         # Near arm is back in right/A and forward in left/A: both project left.
@@ -175,6 +181,8 @@ for step in ['1','2','3']:
     rgba=np.array(Image.open(ROOT/f'src/assets/characters/player/left-walk-{step}.png').convert('RGBA'))
     assert np.array_equal(rgba[:520],left_idle[:520]),'Left pose changed its approved head'
     pose=rig['left']['poses'][step]['limbs']
+    for x,y in [(15,29),(22,30),(24,34),(24.7,38),(25.5,40),(27,39),(22,40.5),(20,42)]:
+        assert rgba[round(y*20),round(x*20),3]==255,(step,x,y,'Missing left shoulder/vest/strap/pelvis')
     brightness={}
     for limb in ['left','right']:
         leg=pose[limb]['legJoints'];x0,y0,x1,y1=leg['bootBounds']
@@ -184,6 +192,9 @@ for step in ['1','2','3']:
         if step!='3':
             # In production pixels, the wide toe projects left of the cuff.
             assert np.where(opaque[:45])[1].mean()-np.where(opaque[-50:])[1].mean()>24
+            heel=np.where(opaque[:,160:180])[0].max()
+            toe=np.where(opaque[:,25:60])[0].max()
+            assert abs(heel-toe)<=10,'Left contact sole tilts instead of following horizontal travel'
             brightness[limb]=shoe[:,:,:3][opaque].mean()
     if step!='3':
         assert brightness['right']>brightness['left']*1.4,'Left near/far feet lack contrast'
@@ -194,6 +205,13 @@ for step in ['1','2','3']:
         assert pose['left']['legJoints']['bootBaseline']==1112
         support=pose['right']['legJoints']
         assert abs(support['hip'][0]-support['ankle'][0])<.1
+        swing=pose['left']['legJoints']
+        assert 1<swing['ankle'][0]-support['ankle'][0]<2,'Left C swing heel must trail the support foot'
+        assert 0<swing['hip'][0]-swing['knee'][0]<2.5,'Left C knee folds too far outside the body'
+        for x,y in [(290,710),(290,750),(290,785),(307,796)]:
+            assert tuple(rgba[y,x])==(30,22,18,255),'Missing continuous C abdominal outline'
+        hip,knee,ankle=(np.array(swing[joint]) for joint in ['hip','knee','ankle'])
+        assert abs(np.linalg.norm(knee-hip)-7.5)<.001 and abs(np.linalg.norm(ankle-knee)-5)<.001
         wrist=pose['right']['armJoints']['wrist'][0]
         contacts=[rig['left']['poses'][s]['limbs']['right']['armJoints']['wrist'][0] for s in ['1','2']]
         assert min(contacts)<wrist<max(contacts)
@@ -211,6 +229,10 @@ for direction,support in [('down','left'),('up','right')]:
     swing='right' if support=='left' else 'left'
     assert pose[swing]['legBounds'][3]==1142
     contacts=[Image.open(ROOT/f'src/assets/characters/player/{direction}-walk-{s}.png') for s in [1,2]]
+    for contact in contacts:
+        alpha=np.array(contact.getchannel('A'))
+        soles=[np.where(alpha[1000:1172,x0:x1]>0)[0].max()+1000 for x0,x1 in [(0,364),(404,768)]]
+        assert abs(soles[0]-soles[1])>=100,'Front/back contacts must show the increased five-world-pixel stride'
     for side in ['screen-left','screen-right']:
         ys=[hand_center(contact,side)[1] for contact in contacts]
         assert min(ys)<=hand_center(c,side)[1]<=max(ys),'Passing hand must lie between its contact positions'
