@@ -22,7 +22,8 @@ export type CharacterFormat = {
 export type StandardCharacter = {
   id: string
   sprites: CharacterSprites
-  walk?: Record<Direction, readonly [string, string]>
+  walk?: Record<Direction, readonly string[]>
+  walkPassingFrame?: Partial<Record<Direction, number>>
   poses?: Partial<Record<CharacterPose, { sprites: CharacterSprites; format: CharacterFormat; rodTip?: Record<Direction, { x: number; y: number }> }>>
   format: CharacterFormat
 }
@@ -70,7 +71,9 @@ function directionalWalk(id: string): NonNullable<StandardCharacter['walk']> {
 export const PLAYER_CHARACTER: StandardCharacter = {
   id: 'player', sprites: { down: playerDown, up: playerUp, left: playerLeft, right: playerRight },
   format: { ...pixelPlayerStandard, filter: 'nearest' },
-  walk: directionalWalk('player'),
+  walk: { ...directionalWalk('player'), right: [asset('player', 'right-walk-1', true),
+    asset('player', 'right-walk-2', true), asset('player', 'right-walk-3', true)] },
+  walkPassingFrame: { right: 3 },
   poses: { castAim: {
     sprites: { down: castAimSprite('down'), up: castAimSprite('up'), left: castAimSprite('left'), right: castAimSprite('right') },
     // Extra transparent canvas contains the rod. Body scale stays shared with idle.

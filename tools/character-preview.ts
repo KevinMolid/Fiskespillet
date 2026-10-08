@@ -5,8 +5,16 @@ const reviewCharacters = [MARITA_CHARACTER, ...STANDARD_CHARACTERS.filter(charac
 const grid = document.querySelector<HTMLDivElement>('#grid')!
 const direction = document.querySelector<HTMLSelectElement>('#direction')!
 const play = document.querySelector<HTMLButtonElement>('#play')!
+const requestedDirection = new URLSearchParams(window.location.search).get('direction')
+if (requestedDirection && ['down', 'right', 'up', 'left'].includes(requestedDirection)) direction.value = requestedDirection
 let playing = true
 let phase = 0
+function previewFrame(character: StandardCharacter) {
+  const facing = direction.value as Direction
+  const passing = character.walkPassingFrame?.[facing]
+  const index = passing === undefined ? Math.floor(phase / 2) % 2 : [0, passing - 1, 1, passing - 1][phase % 4]
+  return character.walk?.[facing][index] ?? character.sprites[facing]
+}
 function image(character: StandardCharacter, source: string) {
   const frame = document.createElement('div'); frame.className = 'frame'
   const img = document.createElement('img'); img.src = source; img.alt = names[character.id]
@@ -26,13 +34,14 @@ function draw() {
     const title = document.createElement('h2'); title.textContent = names[character.id]; card.append(title)
     const poses = document.createElement('div'); poses.className = 'poses'
     const sources = [character.sprites[facing], ...(character.walk?.[facing] ?? [])]
+    poses.style.gridTemplateColumns = `repeat(${sources.length}, 1fr)`
     sources.forEach((source, index) => {
       const column = document.createElement('div'); column.append(image(character, source))
-      const label = document.createElement('div'); label.className = 'label'; label.textContent = ['Idle', 'Steg A', 'Steg B'][index]
+      const label = document.createElement('div'); label.className = 'label'; label.textContent = ['Idle', 'Steg A', 'Steg B', 'Mellom C'][index]
       column.append(label); poses.append(column)
     })
     card.append(poses)
-    const live = image(character, sources[phase + 1] ?? sources[0]); live.classList.add('live'); live.dataset.character = character.id
+    const live = image(character, previewFrame(character)); live.classList.add('live'); live.dataset.character = character.id
     card.append(live); grid.append(card)
   }
 }
@@ -40,10 +49,10 @@ direction.addEventListener('change', draw)
 play.addEventListener('click', () => { playing = !playing; play.textContent = playing ? 'Pause' : 'Spill av' })
 setInterval(() => {
   if (!playing) return
-  phase = 1 - phase
+  phase = (phase + 1) % 4
   for (const frame of document.querySelectorAll<HTMLElement>('.live')) {
     const character = reviewCharacters.find(c => c.id === frame.dataset.character)!
-    frame.querySelector('img')!.src = character.walk?.[direction.value as Direction][phase] ?? character.sprites[direction.value as Direction]
+    frame.querySelector('img')!.src = previewFrame(character)
   }
-}, 220)
+}, 110)
 draw()

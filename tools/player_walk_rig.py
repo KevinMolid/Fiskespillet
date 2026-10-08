@@ -239,9 +239,9 @@ def side_boot(image,ankle,trailing=False,far=False):
     result.alpha_composite(boot,(round((ankle[0]-2.9)*UNIT),round((ankle[1]-1.4)*UNIT)))
     return result
 
-def pose_profile_leg(template,direction,limb,step,near,forward,hip_override=None,ankle_override=None,repair_joint=False,boot_source=None):
+def pose_profile_leg(template,direction,limb,step,near,forward,hip_override=None,ankle_override=None,repair_joint=False,boot_source=None,baseline_override=None):
     config=PROFILE_LEG[direction];source_hip,source_knee,source_ankle=config['source']
-    hip=np.array(config['hips'][limb]);ankle=np.array(config['ankles'][step][limb])
+    hip=np.array(config['hips'][limb]);ankle=np.array(config['ankles'][step if step in (1,2) else 1][limb])
     if hip_override is not None:hip=np.array(hip_override,dtype=float)
     if ankle_override is not None:ankle=np.array(ankle_override,dtype=float)
     if boot_source is not None and limb!=near:
@@ -259,6 +259,7 @@ def pose_profile_leg(template,direction,limb,step,near,forward,hip_override=None
     angle=0 if boot_source is not None else (0 if forward else 6*facing)
     posed_boot=side_boot(boot_source,ankle,not forward,limb!=near) if boot_source is not None else segment_pose(boot,source_ankle,np.array(source_ankle)+(0,2),ankle,ankle+rotate_vector((0,2),angle))
     baseline=GROUND-(CONTACT_FAR_DEPTH if limb!=near else 0) if boot_source is not None else (GROUND if limb==near else GROUND-UNIT)
+    if baseline_override is not None:baseline=baseline_override
     correction=baseline-posed_boot.getbbox()[3]
     posed_boot=Image.fromarray(shift_rigid(np.array(posed_boot),0,correction))
     # Register the shin to the boot's final ankle, after sole registration.
@@ -404,13 +405,22 @@ def right_contact(image,body,arms,template,bag,step):
     leg_targets={'left':((18,40.3),(22.4,51.8)),'right':((15.6,40.3),(10.8,51.8))}
     arm_targets={'left':((14,28.2),(10.7,34.8),(10.6,40.1)),
                  'right':((21.5,28.2),(24,34.8),(28.2,38.2))}
-    forward='left' if step==1 else 'right'
+    forward='left' if step in (1,3) else 'right'
     if step==2:
         # Pelvis rotates through the opposing contact. Swap hip/contact
         # registrations, keeping the same lengths, stride and ground line.
         leg_targets={'left':leg_targets['right'],'right':leg_targets['left']}
         arm_targets={'left':((14.9,28.2),(17.4,34.8),(21.6,38.2)),
                      'right':((21.1,28.2),(17.8,34.8),(17.7,40.1))}
+    if step==3:
+        # Passing A -> B: left support leg straight under the pelvis; right
+        # swing leg bent and lifted. Arms pass close to the hips, not frozen
+        # in either contact's extended pose. Do not interpolate whole images.
+        leg_targets={'left':((17,39.3),(17,51.8)),
+                     'right':((17.5,40.3),(18.6,51.8))}
+        arm_targets={'left':((14.45,28.2),(14.05,35.2),(15.2,40.45)),
+                     'right':((21.3,28.2),(20.9,35.2),(20.8,40.6))}
+    if step in (2,3):
         # Advancing the near sleeve exposes the back of the shoulder that A's
         # backward sleeve covers. Restore that shirt socket beneath the moving
         # arm rather than leaving an empty triangle below the collar.
@@ -430,9 +440,13 @@ def right_contact(image,body,arms,template,bag,step):
     legs={};posed_arms={};measurements={}
     for limb,index in [('left',0),('right',1)]:
         hip,ankle=leg_targets[limb]
-        legs[limb],leg_joints=pose_profile_leg(template,'right',limb,step,'left',limb==forward,hip,ankle,True,image)
+        lift_baseline=GROUND-CONTACT_FAR_DEPTH-2*UNIT if step==3 and limb=='right' else None
+        legs[limb],leg_joints=pose_profile_leg(template,'right',limb,step,'left',limb==forward,hip,ankle,True,image,lift_baseline)
         posed_arms[limb],arm_joints=registered_arm(clean_arms[index],ARM_JOINTS['right'][index],arm_targets[limb])
         measurements[limb]={'legForward':limb==forward,'armForward':limb!=forward,'legBounds':list(legs[limb].getbbox()),'armBounds':list(posed_arms[limb].getbbox()),'legJoints':leg_joints,'armJoints':arm_joints}
+        if step==3:
+            measurements[limb].update(legForward=False,armForward=False,
+                passingRole='support' if limb=='left' else 'swing')
     frame=Image.new('RGBA',image.size)
     # The near thigh must have an uninterrupted contour from hip to boot.
     # Drawing a wide pelvis patch over it hid which leg owned the front foot.
@@ -548,7 +562,7 @@ def rig_player(direction,steps=(1,2)):
     for step in steps:
         forward_leg='left' if step==1 else 'right';forward_arm='right' if step==1 else 'left'
         posed_arms={};posed_legs={};measurements={}
-        for limb in ['left','right']:
+        for limb in ([] if direction=='right' else ['left','right']):
             index=anatomy[limb];leg_forward=limb==forward_leg;arm_forward=limb==forward_arm
             leg_joints={}
             if direction in ('down','up'):
@@ -561,7 +575,9 @@ def rig_player(direction,steps=(1,2)):
             posed_arms[limb],arm_joints=pose_arm(arms[index],direction,index,arm_forward)
             measurements[limb]={'legForward':leg_forward,'armForward':arm_forward,'legBounds':list(posed_legs[limb].getbbox()),'armBounds':list(posed_arms[limb].getbbox()),'legJoints':leg_joints,'armJoints':arm_joints}
         frame=Image.new('RGBA',image.size)
-        if direction in ('right','left'):
+        if direction=='right':
+            frame,measurements=right_contact(image,body,arms,profile_template,bag,step)
+        elif direction=='left':
             far='right' if near=='left' else 'left'
             frame.alpha_composite(posed_arms[far]);frame.alpha_composite(posed_legs[far])
             frame.alpha_composite(Image.fromarray(body));frame.alpha_composite(posed_legs[near])
@@ -570,8 +586,6 @@ def rig_player(direction,steps=(1,2)):
             for leg in posed_legs.values():frame.alpha_composite(leg)
             frame.alpha_composite(Image.fromarray(body));frame.alpha_composite(bag)
             for arm in posed_arms.values():frame.alpha_composite(arm)
-        if direction=='right':
-            frame,measurements=right_contact(image,body,arms,profile_template,bag,step)
         result=np.array(frame);result[result[:,:,3]==0]=0;frame=Image.fromarray(result)
         assert np.array_equal(result[:26*UNIT],original[:26*UNIT]),(direction,'head changed')
         assert frame.getbbox()[3]==GROUND,(direction,step,'baseline')
@@ -587,14 +601,16 @@ def rig_player(direction,steps=(1,2)):
                 if attempt==19:raise
                 time.sleep(.2)
         report[str(step)]={'forwardLeg':forward_leg,'forwardArm':forward_arm,'limbs':measurements}
-    return {'rig':'player-joints-v9-right-depth' if direction=='right' else 'player-joints-v3','idleSha256':hashlib.sha256(path.read_bytes()).hexdigest(),'poses':report}
+        if step==3:report[str(step)].update(forwardLeg=None,forwardArm=None,phase='passing',between=['1','2'])
+    return {'rig':'player-joints-v10-right-passing' if direction=='right' else 'player-joints-v3','idleSha256':hashlib.sha256(path.read_bytes()).hexdigest(),'poses':report}
 
 if __name__=='__main__':
     import argparse
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--direction',choices=['down','right','up','left'])
-    parser.add_argument('--step',type=int,choices=[1,2])
+    parser.add_argument('--step',type=int,choices=[1,2,3])
     args=parser.parse_args()
+    if args.step==3 and args.direction!='right':parser.error('Passing C is registered for right only; pass --direction right --step 3')
     report_path=ROOT/'docs/character-rig-measurements.json'
     report=json.loads(report_path.read_text())
     directions=[args.direction] if args.direction else ['down','right','up','left']

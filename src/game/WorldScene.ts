@@ -1,7 +1,7 @@
 import { NPCS, type NpcDefinition } from './npcs'
 import { CHARACTER_GROUND_OFFSET_Y, NPC_CHARACTERS, PLAYER_CHARACTER, STANDARD_CHARACTERS } from './characters'
 import { createCharacterImage, preloadCharacter, setCharacterDirection } from './characterRendering'
-import { characterWalkStep, nextPlayerWalkStep, PLAYER_WALK_SETTLE_MS } from './characterAnimation'
+import { characterWalkStep, nextPlayerWalkStep, playerWalkTextureStep, PLAYER_WALK_SETTLE_MS } from './characterAnimation'
 import { playerMovementTiming } from './playerMovement'
 import { CAST_SPLASH_DURATION_MS, RETRIEVE_SHORE_DISTANCE, castFlightDuration, castTargets } from './fishing'
 import Phaser from 'phaser'
@@ -47,6 +47,8 @@ export class WorldScene extends Phaser.Scene {
   private moving = false
   private playerWalkFrame: 1 | 2 = 2
   private playerWalkUntil = 0
+  private playerWalkStarted = 0
+  private playerWalkDuration = playerMovementTiming(false).duration
   private fishing = false
   private aimingCast = false
   private castingForward = false
@@ -163,12 +165,14 @@ export class WorldScene extends Phaser.Scene {
     this.moving = true
     this.playerWalkFrame = nextPlayerWalkStep(this.playerWalkFrame)
     this.playerWalkUntil = 0
+    this.playerWalkStarted = this.time.now
+    this.playerWalkDuration = playerMovementTiming(this.utilityHeld).duration
     this.drawPlayer()
     this.tweens.add({
       targets: this.player,
       x: x * TILE_SIZE + 16,
       y: y * TILE_SIZE + 16,
-      duration: playerMovementTiming(this.utilityHeld).duration,
+      duration: this.playerWalkDuration,
       ease: 'Linear',
       onComplete: () => {
         this.moving = false
@@ -576,8 +580,11 @@ export class WorldScene extends Phaser.Scene {
     // Every direction within the character format shares origin/scale.
     if (!this.playerImage) return
     const walking = !this.uiBlocked && !this.fishing && (this.moving || this.time.now < this.playerWalkUntil)
+    const walkStep = playerWalkTextureStep(this.playerWalkFrame,
+      (this.time.now - this.playerWalkStarted) / this.playerWalkDuration,
+      PLAYER_CHARACTER.walkPassingFrame?.[this.position.facing])
     setCharacterDirection(this.playerImage, PLAYER_CHARACTER, this.position.facing,
-      walking ? this.playerWalkFrame : 0, this.castingForward ? 'castForward' : this.aimingCast ? 'castAim' : this.fishingRelaxed ? 'fishingIdle' : undefined)
+      walking ? walkStep : 0, this.castingForward ? 'castForward' : this.aimingCast ? 'castAim' : this.fishingRelaxed ? 'fishingIdle' : undefined)
   }
 }
 

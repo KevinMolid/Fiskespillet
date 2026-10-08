@@ -10,3 +10,9 @@ export const PLAYER_WALK_SETTLE_MS = 70
 export function nextPlayerWalkStep(previous: 1 | 2): 1 | 2 {
   return previous === 1 ? 2 : 1
 }
+
+// Each tile remains one footfall. A passing image fills its second half:
+// contact A -> passing C -> contact B -> passing C, without slowing movement.
+export function playerWalkTextureStep(contact: 1 | 2, progress: number, passingFrame?: number): number {
+  return passingFrame !== undefined && progress >= .5 ? passingFrame : contact
+}

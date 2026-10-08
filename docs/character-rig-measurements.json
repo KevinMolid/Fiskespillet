@@ -151,7 +151,7 @@
       }
     },
     "right": {
-      "rig": "player-joints-v9-right-depth",
+      "rig": "player-joints-v10-right-passing",
       "idleSha256": "85abc54f736da04d0b93fa68d9be9a67d1b87f658b6e345168b6d53a437b109a",
       "poses": {
         "1": {
@@ -373,6 +373,123 @@
               }
             }
           }
+        },
+        "3": {
+          "forwardLeg": null,
+          "forwardArm": null,
+          "limbs": {
+            "left": {
+              "legForward": false,
+              "armForward": false,
+              "legBounds": [
+                253,
+                800,
+                480,
+                1172
+              ],
+              "armBounds": [
+                203,
+                539,
+                383,
+                890
+              ],
+              "legJoints": {
+                "hip": [
+                  17.0,
+                  39.3
+                ],
+                "knee": [
+                  17.0,
+                  46.8
+                ],
+                "ankle": [
+                  17.0,
+                  51.8
+                ],
+                "bootAngle": 0,
+                "bootBaseline": 1172,
+                "bootBounds": [
+                  282,
+                  1008,
+                  480,
+                  1172
+                ]
+              },
+              "armJoints": {
+                "shoulder": [
+                  14.45,
+                  28.2
+                ],
+                "elbow": [
+                  14.05,
+                  35.2
+                ],
+                "wrist": [
+                  15.2,
+                  40.45
+                ]
+              },
+              "passingRole": "support"
+            },
+            "right": {
+              "legForward": false,
+              "armForward": false,
+              "legBounds": [
+                273,
+                800,
+                512,
+                1112
+              ],
+              "armBounds": [
+                340,
+                539,
+                487,
+                896
+              ],
+              "legJoints": {
+                "hip": [
+                  17.5,
+                  39.3
+                ],
+                "knee": [
+                  22.096807340836925,
+                  45.22615915000835
+                ],
+                "ankle": [
+                  18.6,
+                  48.8
+                ],
+                "bootAngle": 0,
+                "bootBaseline": 1112,
+                "bootBounds": [
+                  314,
+                  948,
+                  512,
+                  1112
+                ]
+              },
+              "armJoints": {
+                "shoulder": [
+                  21.3,
+                  28.2
+                ],
+                "elbow": [
+                  20.9,
+                  35.2
+                ],
+                "wrist": [
+                  20.8,
+                  40.6
+                ]
+              },
+              "passingRole": "swing"
+            }
+          },
+          "phase": "passing",
+          "between": [
+            "1",
+            "2"
+          ]
         }
       }
     },

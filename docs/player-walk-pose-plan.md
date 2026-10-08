@@ -1,4 +1,36 @@
-# Player walk: exact pose plan (revision 9, readable Right/A and Right/B contacts)
+# Player walk: exact pose plan (revision 10, Right passing C)
+
+## Right C between A and B
+
+Add `player/right-walk-3.png` as the shared passing frame requested by the user.
+Approved A and B are byte-identical to the published revision 9.
+
+- C is registered as A -> B: near left leg supports the pelvis, far right leg
+  bends forward and lifts while passing under the body. The near hand is between
+  A's rearward hand and B's forward hand. Head, bag, palette and outline remain
+  from the same immutable right idle/front trouser/boot sources.
+- Canvas 768 × 1184, anchor (384,1172), scale .05, nearest filtering. Support boot
+  baseline is 1172; far swing boot is 1112 (two world pixels above the far plane).
+- Left hip/ankle (17,39.3)/(17,51.8); right hip/ankle before the shared far-depth
+  projection (17.5,40.3)/(18.6,51.8). Preserve 7.5/5 thigh/shin lengths when
+  solving the lifted right ankle. Record final joints in the measurements JSON.
+- Left shoulder/elbow/wrist (14.45,28.2)/(14.05,35.2)/(15.2,40.45);
+  right shoulder/elbow/wrist (21.3,28.2)/(20.9,35.2)/(20.8,40.6).
+- `characters.ts` maps right A/B/C to walk textures 1/2/3 and declares right
+  `walkPassingFrame: 3`. The renderer loads and applies nearest filtering to
+  every registered frame rather than assuming exactly two textures.
+- Each right tile tween retains its existing duration: contact A or B during
+  the first half, C during the second. Consecutive footfalls play A-C-B-C.
+  Running uses the same fraction of its existing shorter tween. Other directions
+  and NPC cadence are unchanged. Idle still retains facing after the settle time.
+- The local character gallery shows Idle/A/B/C and the A-C-B-C loop. Its loop
+  remains 440 ms, using 110 ms per right phase instead of doubling its duration.
+
+Reproduce C only with `python tools/player_walk_rig.py --direction right --step 3`.
+Sprite/anatomy and animation timing checks, typecheck/build, and the real desktop,
+mobile DPR3 and Canvas scene checks passed, including C in single and held steps.
+The user approved publication of this revision on 2026-10-08 after local review.
+
 
 ## Visible leading foot in both contacts
 

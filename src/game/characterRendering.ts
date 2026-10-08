@@ -17,7 +17,8 @@ export function preloadCharacter(scene: Phaser.Scene, character: StandardCharact
 export function createCharacterImage(scene: Phaser.Scene, character: StandardCharacter, facing: Direction) {
   const { canvas, groundAnchor, renderScale, filter } = character.format
   for (const direction of CHARACTER_DIRECTIONS) {
-    for (const step of character.walk ? [0, 1, 2] : [0]) {
+    const steps = Array.from({ length: (character.walk?.[direction].length ?? 0) + 1 }, (_, index) => index)
+    for (const step of steps) {
       const texture = scene.textures.get(characterTextureKey(character, direction, step))
       const source = texture.getSourceImage()
       if (source.width !== canvas.width || source.height !== canvas.height) {

@@ -148,3 +148,23 @@ for step,rgba in [('1',right_a),('2',right_b)]:
         sampled[limb]=shoe[:,:,:3][shoe[:,:,3]>0].mean()
     assert sampled['left']>sampled['right']*1.3,'Foot depth is lost at runtime pixel size'
 print('Right A/B: actual near/far boot contrast survives runtime sampling; perspective and ground are stable.')
+
+# C is a passing pose, with a planted near leg and a lifted far swing leg.
+c_path=ROOT/'src/assets/characters/player/right-walk-3.png'
+if c_path.exists():
+    c=Image.open(c_path).convert('RGBA');rgba=np.array(c)
+    assert c.size==(768,1184) and c.getbbox()[3]==1172
+    assert set(np.unique(rgba[:,:,3]))=={0,255} and np.all(rgba[rgba[:,:,3]==0]==0)
+    assert np.array_equal(rgba[:520],idle[:520]),'C changes approved head'
+    passing=rig['right']['poses']['3']
+    assert passing['phase']=='passing' and passing['between']==['1','2']
+    left,right=(passing['limbs'][side]['legJoints'] for side in ['left','right'])
+    assert left['bootBaseline']==1172 and right['bootBaseline']==1112,'Swing foot is not lifted above support plane'
+    assert abs(left['hip'][0]-left['ankle'][0])<.1,'Support leg is not centered under hip'
+    assert abs(left['ankle'][0]-right['ankle'][0])<2,'Passing feet remain in a wide contact stance'
+    near_wrist=passing['limbs']['left']['armJoints']['wrist'][0]
+    assert right_pose['left']['armJoints']['wrist'][0]<near_wrist<b_pose['left']['armJoints']['wrist'][0]
+    for data in passing['limbs'].values():
+        leg=data['legJoints'];hip,knee,ankle=(np.array(leg[j]) for j in ['hip','knee','ankle'])
+        assert abs(np.linalg.norm(knee-hip)-7.5)<.001 and abs(np.linalg.norm(ankle-knee)-5)<.001
+    print('Right C: exact head/format/ground, centered support leg, lifted swing leg and centered arm passed.')

@@ -55,6 +55,12 @@ try {
       const { NPC_CHARACTERS } = await import('/src/game/characters.ts')
       return Object.values(NPC_CHARACTERS).reduce((count, character) => count + 4 * (character.walk ? 3 : 1), 0)
     }))
+    const passingTexture = await page.evaluate(() => {
+      const texture = window.__characterTest.scene.textures.get('player-right-walk-3')
+      const source = texture.getSourceImage()
+      return { width: source.width, height: source.height, filter: texture.source[0].scaleMode }
+    })
+    assert.deepEqual(passingTexture,{width:768,height:1184,filter:1},'C must use the shared canvas and nearest filtering')
     for (const r of results) {
       assert.equal(r.texture, `${r.id}-${r.direction}${r.phase ? '-walk-' + r.phase : ''}`)
       assert(r.sameObject, 'Animation must retain the same image object')
@@ -79,6 +85,7 @@ try {
     const samples = await page.evaluate(() => window.__gaitSamples)
     assert(samples.some(s => s.player === 'player-right-walk-1'))
     assert(samples.some(s => s.player === 'player-right-walk-2'))
+    assert(samples.some(s => s.player === 'player-right-walk-3'), 'Right movement must include passing C')
     assert.equal(samples.at(-1).player, 'player-right')
     assert(samples.some(s => s.oda === 'oda-right-walk-1'))
     assert(samples.some(s => s.oda === 'oda-right-walk-2'))
@@ -103,6 +110,7 @@ try {
     await page.waitForTimeout(260)
     const fromFirstStep=held.slice(held.findIndex(key=>key.includes('-walk-')))
     assert(fromFirstStep.some(key=>key==='player-right-walk-1') && fromFirstStep.some(key=>key==='player-right-walk-2'))
+    assert(fromFirstStep.some(key=>key==='player-right-walk-3'), 'Held movement must include C')
     assert(fromFirstStep.every(key=>key.includes('-walk-')), 'No idle flash during continuous walking')
     assert.equal(await page.evaluate(()=>window.__characterTest.scene.playerImage.texture.key),'player-right')
     await page.locator('.game-frame').screenshot({ path: `output/character-review/world-${mode}.png` })
