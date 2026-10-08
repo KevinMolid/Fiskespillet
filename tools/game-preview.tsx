@@ -1,4 +1,4 @@
-import { normalizeFishBookEntry, updateFishBookEntry } from '../src/game/fishBook'
+import { catchMilestone, normalizeFishBookEntry, updateFishBookEntry } from '../src/game/fishBook'
 import { NPCS } from '../src/game/npcs'
 import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -66,7 +66,7 @@ const services: GameServices = {
     const entry = updateFishBookEntry(previous ?? null, speciesId, grams, caught, locationId, now)
     fishBook = [...fishBook.filter(entry=>entry.speciesId!==speciesId),entry]
     localStorage.setItem('fiskespillet-preview-fishbook-v1', JSON.stringify(fishBook))
-    return { inventory: snapshot(), entry }
+    return { inventory: snapshot(), entry, milestone: caught ? catchMilestone(previous ?? null, grams) : null }
   },
 }
 

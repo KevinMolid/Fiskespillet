@@ -132,6 +132,35 @@ button:disabled { cursor: default; }
 .fishing-wait p, .fishing-hook small, .fishing-fight small, .fishing-choice-list span, .fishing-tip { color: var(--brand-muted); }
 .fishing-primary { background: var(--brand-gold) !important; border-color: var(--brand-gold) !important; color: #172c3b !important; }
 .fishing-reel { background: var(--brand-raised) !important; }.fishing-reel.is-reeling { background: #245168 !important; }
+.catch-dialog { display: flex; flex-direction: column; overflow: hidden; width: min(520px, calc(100% - 24px)); padding: 18px; }
+.catch-content { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: center; gap: 18px; margin: 16px 0; min-height: 0; overflow-y: auto; }
+.catch-dialog .catch-art { height: 150px; aspect-ratio: auto; max-height: none; grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+.catch-art .fish-image { min-width: 0; min-height: 0; max-width: 100%; max-height: 100%; }
+.catch-copy h3 { font-size: 21px; font-weight: 750; color: var(--brand-gold); }
+.catch-copy p { font-size: 13px; line-height: 1.5; margin-top: 8px; }
+.catch-weights { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-top: 14px; }
+.catch-weights dt { font-size: 10px; color: var(--brand-muted); }
+.catch-weights dd { font-size: 17px; font-weight: 750; }
+.catch-reward { color: var(--brand-gold); font-size: 12px; }
+.catch-dialog .fishing-heading, .catch-dialog footer { flex-shrink: 0; }
+.catch-dialog footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.catch-dialog footer button { min-height: 44px; min-width: 100px; padding: 8px 20px; }
+@media (max-width: 480px) {
+  .catch-content { grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 12px 0; }
+  .catch-dialog .catch-art { height: 100px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .catch-dialog { padding: 10px 14px; }
+  .catch-dialog .fishing-heading { padding-bottom: 5px; }
+  .catch-dialog .fishing-heading span { display: none; }
+  .catch-dialog .fishing-heading h2 { font-size: 18px; }
+  .catch-content { margin: 4px 0; gap: 12px; }
+  .catch-dialog .catch-art { height: 90px; }
+  .catch-copy h3 { font-size: 16px; line-height: 1.2; }
+  .catch-copy p { font-size: 11px; line-height: 1.3; margin-top: 4px; }
+  .catch-weights { margin-top: 6px; }
+  .catch-weights dd { font-size: 14px; line-height: 1.3; }
+}
 .account-page .text-cyan-300 { color: var(--brand-sea); }
 .account-page .bg-cyan-300 { background: var(--brand-gold); }
 .account-page input, .account-page textarea { background: #061d31; border-color: var(--brand-border); border-radius: 10px; }

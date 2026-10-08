@@ -3,7 +3,7 @@ import { db } from '../lib/firebase'
 import { FISH_REWARDS, hasRunningShoes, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemId } from './items'
 import { DIG_SPOTS, DEFAULT_APPEARANCE, FISH_BY_ID, isAppearance, isPosition, START, type Appearance, type Position } from './world'
 
-import { normalizeFishBookEntry, updateFishBookEntry, type FishBookEntry, type LegacyFishBookEntry } from './fishBook'
+import { catchMilestone, normalizeFishBookEntry, updateFishBookEntry, type FishBookEntry, type LegacyFishBookEntry } from './fishBook'
 import { fishingOptions } from './fish'
 export type { FishBookEntry } from './fishBook'
 
@@ -203,7 +203,9 @@ export async function recordEncounter(uid: string, speciesId: string, grams: num
       firstCaughtAt: previous?.firstCaughtAt ?? (caught ? serverTimestamp() : null),
       updatedAt: serverTimestamp(),
     })
-    return { inventory, entry }
+    // Transaction retries compare with the latest saved records, including
+    // catches from another tab/device. No celebration until commit succeeds.
+    return { inventory, entry, milestone: caught ? catchMilestone(previous, grams) : null }
   })
 }
 

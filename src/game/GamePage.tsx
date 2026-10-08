@@ -1,4 +1,7 @@
 import { FishBookDialog } from './FishBookDialog'
+import { CatchDialog } from './CatchDialog'
+import type { CatchMilestone } from './fishBook'
+import type { FishSpecies } from './fish'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { type User } from 'firebase/auth'
 import { createWorld, type WorldScene } from './WorldScene'
@@ -15,7 +18,7 @@ import { MARITA_SNEAKERS_GIFT_LINE } from './npcs'
 import { fishingOptions } from './fish'
 import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, interactionAhead, MAPS, type Appearance, type Position } from './world'
 
-type Result = { name: string; icon: string; grams: number; caught: boolean; coins: number }
+type Result = { species: FishSpecies; grams: number; coins: number; milestone: CatchMilestone | null }
 
 export type GameServices = Pick<typeof persistence, 'buyBait' | 'consumeBait' | 'digForWorms' | 'grantMaritaSneakers' | 'loadAppearance' | 'loadFishBook' | 'loadInventory' | 'loadPosition' | 'recordEncounter' | 'saveAppearance' | 'savePosition' | 'setEquippedBait' | 'transferItem'>
 
@@ -51,6 +54,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
   const [busy, setBusy] = useState(false)
   const [busyText, setBusyText] = useState('Du kastet ut snøret … Vent på napp!')
   const [result, setResult] = useState<Result | null>(null)
+  const catchNotice = result?.milestone && !error && !busy ? result : null
   const [showBook, setShowBook] = useState(false)
   const fishBookBack = useRef<(() => void) | null>(null)
   const closeBook = useCallback(() => setShowBook(false), [])
@@ -256,11 +260,11 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
     try {
       if (outcome.type === 'landed') {
         if (!fishingSession) throw new Error('Fisketuren ble avbrutt før fangsten kunne lagres.')
-        const { inventory: nextInventory, entry } = await recordEncounter(
+        const { inventory: nextInventory, entry, milestone } = await recordEncounter(
           user.uid, outcome.species.id, outcome.grams, true, outcome.bait, fishingSession.zoneId,
         )
         setInventory(nextInventory)
-        setResult({ name: outcome.species.name, icon: outcome.species.icon, grams: outcome.grams, caught: true, coins: FISH_REWARDS[outcome.species.id] ?? 0 })
+        setResult({ species: outcome.species, grams: outcome.grams, coins: FISH_REWARDS[outcome.species.id] ?? 0, milestone })
         setBook(current => [...current.filter(item => item.speciesId !== entry.speciesId), entry])
       } else {
         const nextInventory = await consumeBait(user.uid, outcome.bait)
@@ -293,8 +297,8 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
                 : canFish(position) && canFishNow ? 'Fisk' : null
   const caughtSpecies = book.filter(entry => entry.caughtCount > 0).length
 
-  const modal = Boolean(showMenu || showBook || showWardrobe || inventoryView || showShop || fishingSession)
-  const inputContext = fishingSession ? 'fishing' : showWardrobe ? 'wardrobe' : inventoryView ?? (showBook ? 'book' : showShop ? 'shop' : showMenu ? 'menu' : error || result || signMessage ? 'message' : 'world')
+  const modal = Boolean(showMenu || showBook || showWardrobe || inventoryView || showShop || fishingSession || catchNotice)
+  const inputContext = fishingSession ? 'fishing' : catchNotice ? 'catch' : showWardrobe ? 'wardrobe' : inventoryView ?? (showBook ? 'book' : showShop ? 'shop' : showMenu ? 'menu' : error || result || signMessage ? 'message' : 'world')
   function dismissMessage() { setError(''); setResult(null); setSignMessage(null) }
   function menuControl() {
     if (inventoryPending || savingLook || busy) return
@@ -327,12 +331,10 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
         {!position && <p role="status" className="absolute left-4 top-4 text-white">Laster kart …</p>}
         {actionLabel && <button onClick={() => scene.current?.action()} className="context-action">{actionLabel}</button>}
 
-        {(error || busy || result || signMessage) && <div role={error ? 'alert' : 'status'} className="world-message absolute inset-x-2 bottom-2 min-h-16 p-2 pb-6 text-sm font-semibold sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:pb-8 sm:text-lg">
+        {!catchNotice && (error || busy || result || signMessage) && <div role={error ? 'alert' : 'status'} className="world-message absolute inset-x-2 bottom-2 min-h-16 p-2 pb-6 text-sm font-semibold sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:pb-8 sm:text-lg">
           {error ? <p>{error}</p>
             : busy ? <p>{busyText}</p>
-              : result ? <p>{result.icon} {result.caught
-                ? `Du fanget en ${result.name}! Den veier ${formatWeight(result.grams)}. +${result.coins} mynter.`
-                : `En ${result.name} bet på, men slapp unna!`}</p>
+              : result ? <p>{result.species.icon} {`Du fanget en ${result.species.name}! Den veier ${formatWeight(result.grams)}. +${result.coins} mynter.`}</p>
                 : signMessage && <p><strong>{signMessage.title}</strong><br />{signMessage.text}</p>}
           {(error || result || signMessage) && <button onClick={() => { setError(''); setResult(null); setSignMessage(null) }} className="absolute bottom-1 right-2 text-xs font-bold sm:bottom-2 sm:right-4 sm:text-sm">Videre ▼</button>}
         </div>}
@@ -351,6 +353,8 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       {showShop && inventory && <ShopDialog inventory={inventory} pending={inventoryPending} error={inventoryError} onClose={() => setShowShop(false)} onBuy={(bait, amount) => void updateInventory(() => buyBait(user.uid, bait, amount))} />}
       {showWardrobe && <WardrobeDialog appearance={draftLook} pending={savingLook} onPreview={previewLook} onSave={() => void confirmLook()} onClose={closeWardrobe} />}
       {showBook && <FishBookDialog book={book} onClose={closeBook} registerMenuBack={registerFishBookMenuBack} />}
+      {catchNotice?.milestone && <CatchDialog fish={catchNotice.species} grams={catchNotice.grams} coins={catchNotice.coins}
+        milestone={catchNotice.milestone} onClose={dismissMessage} />}
       {fishingSession && <FishingDialog position={fishingSession.position} zoneId={fishingSession.zoneId} bait={fishingSession.bait}
         onCast={steps => scene.current?.playCast(steps) ?? Promise.resolve(false)}
         onLureProgress={(steps, progress) => scene.current?.setRetrieveProgress(steps, progress)}
@@ -363,7 +367,7 @@ export default function GamePage({ user, services = persistence }: { user: Pick<
       onMenu={input.menu}
       onUtilityStart={input.utilityStart} onUtilityEnd={input.utilityEnd} utilityHeld={input.utilityHeld}
       utilityDisabled={uiBlocked || !hasRunningShoes(inventory)}
-      actionLabel={fishingSession ? fishingActionLabel : modal ? 'Velg' : (error || result || signMessage) ? 'Videre' : actionLabel ?? ''}
+      actionLabel={fishingSession ? fishingActionLabel : catchNotice ? 'Videre' : modal ? 'Velg' : (error || result || signMessage) ? 'Videre' : actionLabel ?? ''}
       disabled={!position || !inventory || busy || inventoryPending || savingLook}
       actionDisabled={!position || busy || inventoryPending || savingLook || (!modal && !actionLabel && !error && !result && !signMessage)} />
     <p className="desktop-control-hint mt-3 text-xs text-slate-400">Enter: spillmeny · Piltaster / WASD: bevegelse · {hasRunningShoes(inventory) ? 'Hold Shift: løp' : 'Joggesko fra Marita låser opp løping'} · E / mellomrom: handling · Esc: tilbake · Gå på dører og trapper for å bytte rom.</p>

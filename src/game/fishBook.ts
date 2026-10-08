@@ -18,6 +18,19 @@ export type FishBookEntry = {
 }
 export type LegacyFishBookEntry = Omit<FishBookEntry, 'hasCaught' | 'discoveredLocationIds' | 'seenLocationIds'> & Partial<Pick<FishBookEntry, 'hasCaught' | 'discoveredLocationIds' | 'seenLocationIds'>>
 
+export type CatchMilestone =
+  | { type: 'new-species' }
+  | { type: 'largest' | 'smallest'; previousGrams: number }
+
+// Compare BEFORE updating the journal. A tie is not a new record, and a species
+// only seen (never landed) still counts as a first catch.
+export function catchMilestone(previous: LegacyFishBookEntry | null, grams: number): CatchMilestone | null {
+  if (!previous || previous.caughtCount === 0) return { type: 'new-species' }
+  if (previous.largestGrams !== null && grams > previous.largestGrams) return { type: 'largest', previousGrams: previous.largestGrams }
+  if (previous.smallestGrams !== null && grams < previous.smallestGrams) return { type: 'smallest', previousGrams: previous.smallestGrams }
+  return null
+}
+
 export function normalizeFishBookEntry(entry: LegacyFishBookEntry): FishBookEntry {
   const hasCaught = entry.caughtCount > 0
   const discoveredLocationIds = hasCaught
