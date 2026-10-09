@@ -3,8 +3,8 @@ import type { CatchMilestone } from './fishBook'
 import type { FishSpecies } from './fish'
 import { formatWeight } from './world'
 
-export function CatchDialog({ fish, grams, coins, milestone, onClose }: {
-  fish: FishSpecies; grams: number; coins: number; milestone: CatchMilestone; onClose: () => void
+export function CatchDialog({ fish, grams, milestone, onClose }: {
+  fish: FishSpecies; grams: number; milestone: CatchMilestone; onClose: () => void
 }) {
   const title = milestone.type === 'new-species' ? 'Ny fisketype!'
     : milestone.type === 'largest' ? 'Ny rekord: største fisk!' : 'Ny rekord: minste fisk!'
@@ -24,6 +24,6 @@ export function CatchDialog({ fish, grams, coins, milestone, onClose }: {
         </dl>
       </div>
     </div>
-    <footer><span className="catch-reward">+{coins} mynter</span><button className="fishing-primary" data-autofocus onClick={onClose}>Videre</button></footer>
+    <footer><span className="catch-reward">{fish.name} er lagt i sekken</span><button className="fishing-primary" data-autofocus onClick={onClose}>Videre</button></footer>
   </section>
 }

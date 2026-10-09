@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { HoldRepeater } from './navigation'
+import { ControlIcon, actionIcon } from './ControlIcon'
 import type { Direction } from './world'
 
 type Props = {
@@ -11,6 +12,8 @@ type Props = {
   onActionStart?: () => boolean
   onActionEnd?: () => void
   onMenu: () => void
+  onBack?: () => void
+  backDisabled?: boolean
   onUtilityStart?: () => void
   onUtilityEnd?: () => void
   utilityHeld?: boolean
@@ -28,6 +31,7 @@ export function MobileControls(props: Props) {
   const actionPointer = useRef<number | null>(null)
   const utilityPointer = useRef<number | null>(null)
   const [held, setHeld] = useState<Direction | null>(null)
+  const backMode = props.context !== 'world'
   function stopDirection(event?: PointerEvent<HTMLButtonElement>) {
     if (event && pointer.current !== event.pointerId) return
     pointer.current = null
@@ -43,7 +47,13 @@ export function MobileControls(props: Props) {
     latest.current.onUtilityEnd?.()
   }
   function startUtility(event: PointerEvent<HTMLButtonElement>) {
-    if (event.button !== 0 || utilityPointer.current !== null || props.disabled || props.utilityDisabled || !props.onUtilityStart) return
+    if (event.button !== 0 || props.disabled) return
+    if (backMode) {
+      event.preventDefault()
+      if (!props.backDisabled) latest.current.onBack?.()
+      return
+    }
+    if (utilityPointer.current !== null || props.utilityDisabled || !props.onUtilityStart) return
     event.preventDefault()
     utilityPointer.current = event.pointerId
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -95,16 +105,17 @@ export function MobileControls(props: Props) {
       <span className="dpad-center" aria-hidden="true" />
     </div>
     <div className="handheld-buttons">
-      <div className="handheld-key"><button className="pocket-menu" aria-label="Meny eller tilbake" disabled={props.disabled}
-        onPointerDown={e => e.preventDefault()} onClick={props.onMenu}>≡</button><span>MENY / TILBAKE</span></div>
-      <div className="handheld-key"><button className="pocket-utility" aria-label="Utility: hold for å løpe" aria-pressed={Boolean(props.utilityHeld)} data-held={Boolean(props.utilityHeld)}
-        disabled={props.disabled || props.utilityDisabled || !props.onUtilityStart}
+      <div className="handheld-key"><button className="pocket-menu" aria-label="Meny" disabled={props.disabled}
+        onPointerDown={e => e.preventDefault()} onClick={props.onMenu}><ControlIcon name="menu" /></button></div>
+      <div className="handheld-key"><button className="pocket-utility" aria-label={backMode ? 'B: tilbake' : 'Utility: hold for å løpe'} aria-pressed={backMode ? undefined : Boolean(props.utilityHeld)} data-held={!backMode && Boolean(props.utilityHeld)}
+        disabled={props.disabled || (backMode ? props.backDisabled || !props.onBack : props.utilityDisabled || !props.onUtilityStart)}
         onPointerDown={startUtility} onPointerUp={stopUtility} onPointerCancel={stopUtility} onLostPointerCapture={stopUtility}
-        onKeyDown={e => { if ([' ', 'Enter'].includes(e.key)) { e.preventDefault(); if (!e.repeat) latest.current.onUtilityStart?.() } }}
-        onKeyUp={e => { if ([' ', 'Enter'].includes(e.key)) { e.preventDefault(); latest.current.onUtilityEnd?.() } }}
-        onBlur={() => { if (utilityPointer.current === null) latest.current.onUtilityEnd?.() }}>B</button><span>HOLD FOR Å LØPE</span></div>
+        onClick={e => { if (e.detail === 0 && latest.current.context !== 'world' && !latest.current.backDisabled) latest.current.onBack?.() }}
+        onKeyDown={e => { if ([' ', 'Enter'].includes(e.key)) { if (backMode) { if (e.repeat) e.preventDefault(); return }; e.preventDefault(); if (!e.repeat) latest.current.onUtilityStart?.() } }}
+        onKeyUp={e => { if (!backMode && [' ', 'Enter'].includes(e.key)) { e.preventDefault(); latest.current.onUtilityEnd?.() } }}
+        onBlur={() => { if (utilityPointer.current === null) latest.current.onUtilityEnd?.() }}><ControlIcon name={backMode ? 'back' : 'shoes'} /></button></div>
       <div className="handheld-key"><button className="pocket-action" aria-label={props.actionLabel || 'A'} disabled={props.actionDisabled}
-        onPointerDown={startAction} onPointerUp={stopAction} onPointerCancel={stopAction} onLostPointerCapture={stopAction} onClick={props.onAction}>A</button><span>{props.actionLabel}</span></div>
+        onPointerDown={startAction} onPointerUp={stopAction} onPointerCancel={stopAction} onLostPointerCapture={stopAction} onClick={props.onAction}><ControlIcon name={actionIcon(props.actionLabel)} /></button></div>
     </div>
     <div className="speaker-grille" aria-hidden="true"><i /><i /><i /><i /><i /></div>
   </div>

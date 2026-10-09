@@ -1,6 +1,16 @@
 # Utility control and hold-to-run
 
-Mobile has a separate blue **B** utility button, labelled "Hold for å løpe".
+Mobile has a separate blue **B** utility button, showing a shoe icon.
+Inside menus, the same button shows a back arrow and returns one level;
+it works even without running shoes. The Menu button opens/closes the whole
+menu, including from a child panel. Desktop uses B/Escape for Back and Enter
+for Menu; E/Space selects. No inline back/close buttons remain in game menus.
+The controller has no captions below Menu/A/B or visible A/B letters.
+`ControlIcon.tsx` maps contextual actions to sharp SVG icons: shovel for digging,
+speech bubble for talking, glasses for reading, rod for fishing, reel for reeling,
+chest/clothes/shop for their interactions, check for selection and arrow for continue.
+Menu always shows its menu icon. Descriptive accessible names remain on all buttons;
+decorative SVGs ignore pointer input, so tapping the icon uses the whole button.
 Desktop uses **Shift** (left or right). Hold the utility control together with a
 direction to run; releasing it restores walking. Utility alone never moves.
 Short walking taps turn in place; run taps turn and step immediately.
@@ -11,7 +21,7 @@ Shared timings in `src/game/playerMovement.ts`:
 
 | Input | Walking | Running |
 |---|---:|---:|
-| Tile tween | 115 ms | 57.5 ms |
+| Tile tween (keyboard / touch) | 145 / 150 ms | 72.5 / 75 ms |
 | Keyboard repeat | 145 ms | 72.5 ms |
 | Touch repeat | 150 ms | 75 ms |
 | Initial turn delay | 50 ms | 0 ms |
@@ -35,8 +45,11 @@ the same Phaser frame loop as the keyboard, avoiding timer calls dropped during
 a movement tween. Menu navigation keeps the existing 150 ms `HoldRepeater`.
 
 Utility is cleared on key/pointer release, cancellation, capture loss, blur,
-visibility change, context changes, blocked UI and unmount. It is disabled during
-menus, messages and fishing. Old held inputs do not re-arm when a menu closes.
+visibility change, context changes, blocked UI and unmount. The running action is
+disabled during menus, messages and fishing; B uses the separate back callback
+there. Saves/pending operations lock both Back and Menu. Active committed
+fishing retains its existing cancellation restrictions. Old held inputs do
+not re-arm when a menu closes.
 The two Shift keys and pointer hold can coexist; releasing one source does not
 cancel another still-held source.
 

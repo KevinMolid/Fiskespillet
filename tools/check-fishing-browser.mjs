@@ -8,11 +8,13 @@ const browser = await chromium.launch({ headless:true, channel:'msedge' })
 const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5173'
 await mkdir('output/fishing-review',{recursive:true})
 try {
-  for(const mode of ['desktop','mobile','landscape','canvas']) {
+  for(const mode of (process.env.FISHING_TEST_MODES?.split(',') ?? ['desktop','mobile','landscape','canvas'])) {
     const mobile=mode==='mobile'||mode==='landscape'
     const context=await browser.newContext({viewport:mode==='mobile'?{width:390,height:844}:mode==='landscape'?{width:844,height:390}:{width:1280,height:900},deviceScaleFactor:mobile?3:1,isMobile:mobile,hasTouch:mobile})
     const page=await context.newPage(),errors=[]
     page.on('pageerror',e=>errors.push(e.message))
+    // Review output and source edits must not reload a paused minigame test.
+    await page.routeWebSocket(/^ws:\/\/127\.0\.0\.1:/,()=>{})
     await page.addInitScript(()=>{Math.random=()=>.1})
     await page.clock.install()
     await page.route(/\/tools\/game-preview\.tsx(?:\?.*)?$/,async route=>{

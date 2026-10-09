@@ -42,7 +42,7 @@ globalThis.__fishBookTestDb = {
   },
 }
 const bundle = await build({
-  stdin: { contents: "export * from './src/game/persistence'; export * from './src/game/fishBook'; export * from './src/game/fish'; export * from './src/game/FishBookDialog'", resolveDir: process.cwd() },
+  stdin: { contents: "export * from './src/game/persistence'; export * from './src/game/fishBook'; export * from './src/game/fish'; export * from './src/game/items'; export * from './src/game/FishBookDialog'; export * from './src/game/CatchDialog'", resolveDir: process.cwd() },
   bundle: true, write: false, platform: 'node', format: 'esm', jsx: 'automatic', loader: { '.png': 'dataurl' },
   plugins: [{ name: 'offline-firestore', setup(b) {
     b.onResolve({ filter: /^react(?:\/.*)?$/ }, args => ({ path: import.meta.resolve(args.path), external: true }))
@@ -52,7 +52,7 @@ const bundle = await build({
       : 'export const db = {}' }))
   } }],
 })
-const { FISH, FISH_BY_ID, weightRange, catchMilestone, normalizeFishBookEntry, recordEncounter, loadFishBook, loadAppearance, saveAppearance, hasExistingGame, resetGameData, FishDetails, FishBookDialog } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'))
+const { FISH, FISH_BY_ID, FISH_SELL_PRICES, fishItemId, weightRange, catchMilestone, normalizeFishBookEntry, recordEncounter, loadFishBook, loadInventory, transferItem, sellFish, buyBait, loadAppearance, saveAppearance, hasExistingGame, resetGameData, FishDetails, FishBookDialog, CatchDialog } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'))
 // Fixture only: exercise the future multi-location case without changing game habitats.
 FISH_BY_ID.laks.habitats = [...FISH_BY_ID.laks.habitats, 'innsjø']
 const inventory = () => ({ bag: { rod: 1, worm: 30 }, storage: {}, coins: 60, equippedBait: 'worm' })
@@ -77,7 +77,8 @@ assert.deepEqual(result.milestone, { type: 'new-species' }, 'Seen but never land
 assert.equal(result.entry.caughtCount, 1)
 assert.equal(result.entry.hasCaught, true)
 assert.deepEqual(result.entry.discoveredLocationIds, ['havn'])
-assert.equal(result.inventory.coins, 95)
+assert.equal(result.inventory.coins, 60, 'Catching a fish grants no coins')
+assert.equal(result.inventory.bag.fish_laks, 1, 'Caught fish goes into the bag')
 assert.deepEqual((await catchFish(2000)).milestone, { type: 'smallest', previousGrams: 5000 })
 assert.deepEqual((await catchFish(10000)).milestone, { type: 'largest', previousGrams: 5000 })
 assert.equal((await catchFish(30000, false, 'skogstjern')).milestone, null)
@@ -104,6 +105,47 @@ const before = JSON.stringify([...documents])
 await assert.rejects(recordEncounter(uid, 'kveite', 2000, true, 'worm', 'havn'))
 await assert.rejects(catchFish(-1))
 assert.equal(JSON.stringify([...documents]), before, 'failed transaction changes neither inventory nor book')
+
+assert.equal((await loadInventory(uid)).bag.fish_laks, 5, 'Caught fish stack by species; escaped fish add nothing')
+assert.equal((await loadInventory(uid)).coins, 60, 'No fishing outcome awards coins')
+const journal = JSON.stringify(await loadFishBook(uid))
+const stored = await transferItem(uid, 'fish_laks', true)
+assert.equal(stored.storage.fish_laks, 1)
+assert.equal(stored.bag.fish_laks, 4)
+let sold = await sellFish(uid, 'fish_laks', 1)
+assert.equal(sold.bag.fish_laks, 3)
+assert.equal(sold.coins, 95, 'Coins awarded at sale, using the species sell price')
+const beforeBadSales = JSON.stringify([...documents])
+for (const [id, amount] of [['fish_laks', 4], ['fish_laks', 0], ['fish_laks', -1], ['fish_laks', 1.5], ['fish_laks', 1000], ['fish_unknown', 1], ['worm', 1], ['__proto__', 1]]) {
+  await assert.rejects(sellFish(uid, id, amount))
+}
+assert.equal(JSON.stringify([...documents]), beforeBadSales, 'Invalid sales cannot change bag, coins or fish book')
+sold = await sellFish(uid, 'fish_laks', 3)
+assert.equal(sold.bag.fish_laks, undefined, 'Selling all removes the stack')
+assert.equal(sold.storage.fish_laks, 1, 'Sales never touch the chest')
+assert.equal(sold.coins, 200)
+await assert.rejects(sellFish(uid, 'fish_laks', 1), 'Cannot sell stored fish until retrieved')
+await transferItem(uid, 'fish_laks', false)
+assert.equal((await sellFish(uid, 'fish_laks', 1)).coins, 235)
+assert.equal(JSON.stringify(await loadFishBook(uid)), journal, 'Selling preserves discoveries and catch records')
+assert.equal((await buyBait(uid, 'spinner', 5)).coins, 175, 'Sale proceeds can buy bait')
+for (const fish of FISH) assert.equal(FISH_SELL_PRICES[fishItemId(fish.id)], fish.sellPrice)
+const notice = renderToStaticMarkup(createElement(CatchDialog, { fish: FISH_BY_ID.laks, grams: 3000, milestone: { type: 'new-species' }, onClose: () => {} }))
+assert(notice.includes('Laks er lagt i sekken') && !notice.includes('mynter'), 'Catch notices explain the fish item, without coin rewards')
+const full = await loadInventory(uid)
+full.bag.fish_laks = 999
+documents.set('playerInventories/' + uid, full)
+const beforeFullCatch = JSON.stringify([...documents])
+await assert.rejects(catchFish(3000))
+assert.equal(JSON.stringify([...documents]), beforeFullCatch, 'A full stack cannot partly commit bait consumption or fish records')
+full.coins = 1000000
+documents.set('playerInventories/' + uid, full)
+const beforeFullWallet = JSON.stringify([...documents])
+await assert.rejects(sellFish(uid, 'fish_laks', 1))
+assert.equal(JSON.stringify([...documents]), beforeFullWallet, 'A full wallet cannot lose fish on a rejected sale')
+delete full.bag.fish_laks
+full.coins = 175
+documents.set('playerInventories/' + uid, full)
 documents.set('playerInventories/another-player', inventory())
 assert.deepEqual(await loadFishBook('another-player'), [])
 await recordEncounter('another-player', 'laks', 3000, true, 'worm', 'skogstjern')

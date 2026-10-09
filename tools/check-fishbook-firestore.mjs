@@ -10,7 +10,7 @@ const requireTest = createRequire(resolve(process.env.FIREBASE_TEST_RUNTIME || '
 const { initializeTestEnvironment, assertFails, assertSucceeds } = await import(pathToFileURL(requireTest.resolve('@firebase/rules-unit-testing')).href)
 const firestoreUrl = pathToFileURL(requireTest.resolve('firebase/firestore')).href
 const { doc, setDoc, getDoc, Timestamp, serverTimestamp } = await import(firestoreUrl)
-const env = await initializeTestEnvironment({ projectId: 'demo-fiskespillet', firestore: { host: '127.0.0.1', port: 8188, rules: readFileSync('firestore.rules', 'utf8') } })
+const env = await initializeTestEnvironment({ projectId: 'demo-fiskespillet', firestore: { host: '127.0.0.1', port: Number(process.env.FIRESTORE_EMULATOR_PORT || 8188), rules: readFileSync('firestore.rules', 'utf8') } })
 const bundle = await build({
   stdin: { contents: "export * from './src/game/persistence'", resolveDir: process.cwd() },
   bundle: true, write: false, platform: 'node', format: 'esm', loader: { '.png': 'dataurl' },
@@ -79,7 +79,42 @@ try {
   await assertFails(service.recordEncounter('a', 'mort', 300, true, 'worm', 'skogstjern'))
   service = await login('a')
   assert.deepEqual((await service.loadFishBook('a')).find(e => e.speciesId === 'mort'), entry, 'fresh authenticated context restores persisted progress')
+  const caughtBag = await service.loadInventory('a')
+  assert.equal(caughtBag.bag.fish_mort, 3)
+  assert.equal(caughtBag.bag.fish_orret, 1)
+  assert.equal(caughtBag.coins, 60, 'No coin rewards from any catch')
+  const sales = await Promise.allSettled([service.sellFish('a', 'fish_mort', 2), service.sellFish('a', 'fish_mort', 2)])
+  assert.equal(sales.filter(sale => sale.status === 'fulfilled').length, 1, 'Two devices cannot both sell the same fish')
+  const afterSale = await service.loadInventory('a')
+  assert.equal(afterSale.bag.fish_mort, 1)
+  assert.equal(afterSale.coins, 72, 'Coins and fish commit atomically')
+  assert.equal((await service.sellFish('a', 'fish_mort', 1)).bag.fish_mort, undefined)
+  await assert.rejects(service.sellFish('a', 'fish_mort', 1))
+  assert.equal((await service.loadInventory('a')).coins, 78)
+  assert.deepEqual((await service.loadFishBook('a')).find(e => e.speciesId === 'mort'), entry, 'Sale preserves records')
+  await service.transferItem('a', 'fish_orret', true)
+  await assert.rejects(service.sellFish('a', 'fish_orret', 1), 'Stored fish cannot be sold from the bag')
+  await service.transferItem('a', 'fish_orret', false)
+  assert.equal((await service.sellFish('a', 'fish_orret', 1)).coins, 90)
+  service = await login('b')
+  await assertFails(service.sellFish('a', 'fish_mort', 1))
+  service = await login('a')
   const ownerDb = env.authenticatedContext('a').firestore()
+  const inventoryRef = doc(ownerDb, 'playerInventories/a')
+  const savedInventory = (await getDoc(inventoryRef)).data()
+  const allFish = Object.fromEntries(['makrell','sei','torsk','orret','abbor','lyr','sjoorret','gjedde','roye','sild','hvitting','rodspette','harr','sik','laks','brosme','lange','gjors','kveite','steinbit','mort'].map(id => ['fish_' + id, 1]))
+  const fullInventory = { ...savedInventory, bag: { ...savedInventory.bag }, storage: {} }
+  for (const [id, amount] of Object.entries(allFish)) {
+    fullInventory.bag[id] = amount; fullInventory.storage[id] = amount
+    await assertSucceeds(setDoc(inventoryRef, { ...fullInventory, updatedAt: serverTimestamp() }))
+  }
+  await service.recordEncounter('a', 'mort', 300, true, 'worm', 'skogstjern')
+  assert.equal((await service.loadInventory('a')).bag.fish_mort, 2, 'Catch succeeds with all species in both bag and chest')
+  await service.sellFish('a', 'fish_mort', 1)
+  const validationBase = (await getDoc(inventoryRef)).data()
+  for (const bad of [-1, 1.5, 1000, '1']) await assertFails(setDoc(inventoryRef, { ...validationBase, bag: { ...validationBase.bag, fish_mort: bad }, updatedAt: serverTimestamp() }))
+  await assertFails(setDoc(inventoryRef, { ...validationBase, bag: { ...validationBase.bag, fish_unknown: 1 }, updatedAt: serverTimestamp() }))
+  await assertFails(setDoc(inventoryRef, { ...validationBase, storage: { ...validationBase.storage, fish_mort: -1 }, updatedAt: serverTimestamp() }))
   const ref = doc(ownerDb, 'fishBooks/a/entries/mort')
   const original = (await getDoc(ref)).data()
   const unchangedCatch = { ...original, seenCount: original.seenCount + 1, updatedAt: serverTimestamp() }

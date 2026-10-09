@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, getDocs, writeBatch, runTransaction, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { FISH_REWARDS, hasRunningShoes, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemId } from './items'
+import { fishItemId, FISH_SELL_PRICES, hasRunningShoes, ITEM_BY_ID, SHOP_PRICES, type BaitId, type FishItemId, type ItemId } from './items'
 import { DIG_SPOTS, DEFAULT_APPEARANCE, FISH_BY_ID, isAppearance, isPosition, START, type Appearance, type Position } from './world'
 
 import { catchMilestone, normalizeFishBookEntry, updateFishBookEntry, type FishBookEntry, type LegacyFishBookEntry } from './fishBook'
@@ -195,7 +195,11 @@ export async function recordEncounter(uid: string, speciesId: string, grams: num
       delete inventory.bag[bait]
       inventory.equippedBait = null
     }
-    if (caught) inventory.coins += FISH_REWARDS[speciesId] ?? 0
+    if (caught) {
+      const itemId = fishItemId(speciesId)
+      if ((inventory.bag[itemId] ?? 0) >= 999) throw new Error('Sekken er full av denne fisketypen. Selg fisk i butikken først.')
+      inventory.bag[itemId] = (inventory.bag[itemId] ?? 0) + 1
+    }
     transaction.set(bagRef, { ...inventory, updatedAt: serverTimestamp() })
     const previous = snapshot.exists() ? snapshot.data() as FishBookEntry : null
     const entry = updateFishBookEntry(previous, speciesId, grams, caught, locationId, Timestamp.now())
@@ -208,6 +212,27 @@ export async function recordEncounter(uid: string, speciesId: string, grams: num
     // Transaction retries compare with the latest saved records, including
     // catches from another tab/device. No celebration until commit succeeds.
     return { inventory, entry, milestone: caught ? catchMilestone(previous, grams) : null }
+  })
+}
+
+/** Selling only removes owned fish from the bag; fish-book records remain intact. */
+export async function sellFish(uid: string, itemId: FishItemId, quantity: number): Promise<Inventory> {
+  const unitPrice = FISH_SELL_PRICES[itemId]
+  if (!Object.hasOwn(FISH_SELL_PRICES, itemId) || !Number.isInteger(quantity) || quantity < 1 || quantity > 999) throw new Error('Ugyldig fisk eller antall.')
+  const ref = inventoryRef(uid)
+  return runTransaction(database(), async transaction => {
+    const snapshot = await transaction.get(ref)
+    if (!snapshot.exists()) throw new Error('Inventaret mangler.')
+    const inventory = inventoryData(snapshot)
+    const owned = inventory.bag[itemId] ?? 0
+    if (owned < quantity) throw new Error('Du har ikke så mange av denne fisken i sekken.')
+    const proceeds = unitPrice * quantity
+    if (inventory.coins + proceeds > 1000000) throw new Error('Du har ikke plass til flere mynter.')
+    if (owned === quantity) delete inventory.bag[itemId]
+    else inventory.bag[itemId] = owned - quantity
+    inventory.coins += proceeds
+    transaction.set(ref, { ...inventory, updatedAt: serverTimestamp() })
+    return inventory
   })
 }
 

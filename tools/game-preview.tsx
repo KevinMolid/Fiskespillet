@@ -7,7 +7,7 @@ import { StartMenu } from '../src/game/StartMenu'
 import { DEFAULT_APPEARANCE, START, isAppearance, type Appearance, type Position } from '../src/game/world'
 import type { FishBookEntry, Inventory } from '../src/game/persistence'
 import { Timestamp } from 'firebase/firestore'
-import { FISH_REWARDS, hasRunningShoes, ITEM_BY_ID, SHOP_PRICES } from '../src/game/items'
+import { fishItemId, FISH_SELL_PRICES, hasRunningShoes, ITEM_BY_ID, SHOP_PRICES } from '../src/game/items'
 import '../src/style.css'
 
 // Dev-only services. Fish book fixtures persist locally, never to a real account.
@@ -56,6 +56,15 @@ const services: GameServices = {
     inventory.coins -= cost; inventory.bag[bait] = (inventory.bag[bait] ?? 0) + amount
     return snapshot()
   },
+  sellFish: async (_uid, id, amount) => {
+    if (!Object.hasOwn(FISH_SELL_PRICES, id) || !Number.isInteger(amount) || amount < 1 || (inventory.bag[id] ?? 0) < amount) throw new Error('Ugyldig fisk eller antall.')
+    const proceeds = FISH_SELL_PRICES[id] * amount
+    if (inventory.coins + proceeds > 1000000) throw new Error('Du har ikke plass til flere mynter.')
+    inventory.bag[id] = (inventory.bag[id] ?? 0) - amount
+    if (!inventory.bag[id]) delete inventory.bag[id]
+    inventory.coins += proceeds
+    return snapshot()
+  },
   digForWorms: async () => ({ inventory: snapshot(), amount: 2 }),
   consumeBait: async (_uid, bait) => {
     if (inventory.equippedBait !== bait || !(inventory.bag[bait] ?? 0)) throw new Error('Du har ikke lenger valgt agn i sekken.')
@@ -67,7 +76,10 @@ const services: GameServices = {
     if (!(inventory.bag[bait] ?? 0)) throw new Error('Tomt for agn.')
     inventory.bag[bait] = (inventory.bag[bait] ?? 0) - 1
     if (!inventory.bag[bait]) inventory.equippedBait = null
-    if (caught) inventory.coins += FISH_REWARDS[speciesId]
+    if (caught) {
+      const id = fishItemId(speciesId)
+      inventory.bag[id] = (inventory.bag[id] ?? 0) + 1
+    }
     const previous = fishBook.find(entry => entry.speciesId === speciesId)
     const now = Timestamp.now()
     const entry = updateFishBookEntry(previous ?? null, speciesId, grams, caught, locationId, now)

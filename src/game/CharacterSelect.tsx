@@ -17,7 +17,7 @@ export function CharacterSelect({ pending = false, error = '', onSelect, onBack 
   useEffect(() => { firstChoice.current?.focus() }, [])
   return <div className="character-select-backdrop">
     <section ref={dialog} role="dialog" aria-modal="true" aria-labelledby="character-select-title" className="character-select" onKeyDown={event => {
-      if (event.key === 'Escape' && onBack && !pending) { event.stopPropagation(); onBack() }
+      if (['Escape', 'b', 'B'].includes(event.key) && onBack && !pending && !event.repeat) { event.preventDefault(); event.stopPropagation(); onBack() }
       if (event.key !== 'Tab') return
       const buttons = [...(dialog.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])]
       const next = event.shiftKey ? buttons.at(-1) : buttons[0]
@@ -34,7 +34,7 @@ export function CharacterSelect({ pending = false, error = '', onSelect, onBack 
       </div>
       {error && <p className="start-error" role="alert">{error}</p>}
       <footer className="character-select-actions">
-        {onBack && <button className="start-button" onClick={onBack} disabled={pending}>Tilbake</button>}
+        {onBack && <><button className="start-button controller-shortcut" aria-label="B: tilbake" onClick={onBack} disabled={pending}>B</button><button className="start-button controller-shortcut" aria-label="Meny" onClick={onBack} disabled={pending}>≡</button></>}
         <button className="start-button start-button-primary" onClick={() => onSelect(selected)} disabled={pending}>{pending ? 'Lagrer …' : 'Start spillet'}</button>
       </footer>
     </section>

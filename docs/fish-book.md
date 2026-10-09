@@ -6,13 +6,13 @@
 - `src/game/fishBook.ts`: spillerspesifikke data, normalisering av gamle dokumenter og én ren oppdateringsfunksjon. Eksisterende navn beholdes: `caughtCount` tilsvarer totalCaught, `smallestGrams`/`largestGrams` tilsvarer minste/største fangstvekt. Vekter lagres i hele gram. `hasCaught` og `discoveredLocationIds` er nye.
 - `src/game/persistence.ts`: samme dokumentsti `fishBooks/{uid}/entries/{speciesId}`. Eksisterende transaksjon oppdaterer inventar og fiskebok samlet. Sted, art, agn og vekt valideres. To dokumentlesinger per forsøk; ingen nye listeners. Transaksjonsresultatet oppdaterer UI direkte, uten ny samlingslesing.
 - `src/game/FishBookDialog.tsx`: artsliste, detaljvisning og nøytral bildefallback. Kun navn for aldri fangede arter, også ved tidligere mislykkede napp. Ingen globale habitat-/metodedata vises. «Funnet ved» kommer bare fra spillerens lagrede steder.
-- `src/game/GameDialogs.tsx`, `GamePage.tsx`, `useGameInput.ts`, `src/style.css`: eksisterende meny, kontroller og Game Boy-stil gjenbrukes. Piltaster velger automatisk. E/Space/Enter eller A fokuserer detaljene; opp/ned ruller teksten, venstre/høyre går tilbake til artslisten. Esc og menyknappen går tilbake. Liste og detaljer kan også rulles med touch.
+- `src/game/GameDialogs.tsx`, `GamePage.tsx`, `useGameInput.ts`, `src/style.css`: eksisterende meny og kontroller gjenbrukes. Piltaster velger automatisk. E/Space eller A åpner detaljene; opp/ned ruller teksten. B/Esc går ett nivå tilbake, fra mobildetaljer til artslisten og deretter til spillmenyen. Meny/Enter lukker hele menyen direkte, også fra mobildetaljer. Det finnes ingen tilbake-/lukkeknapper i panelet. Liste og detaljer kan også rulles med touch.
 - `src/App.tsx`: spillvisningen monteres på nytt ved bytte av bruker-ID, slik at forrige spillers tilstand ikke blir stående.
 - `src/PlayersPage.tsx`: den eksisterende offentlige fiskebokoversikten viser navn på ukjente fisk og låser statistikk til vellykkede fangster. Eksisterende lesetilgang for innloggede spillere beholdes.
 - `firestore.rules`: kontrollerer fangststatus, unike gyldige sted-ID-er, rekorder og progresjon. Mislykkede forsøk kan ikke endre fangstrekorder eller oppdage steder. Bare eieren kan skrive.
 - `tools/game-preview.tsx`: lokal prøvefangst bruker samme oppdateringsfunksjon. Prøveboken lagres i nettleserens localStorage under en egen testnøkkel, aldri på en ekte konto.
 
-Sjeldenhet og vektområde merkes som spillverdier. Det er ikke biologiske maksvekter eller en rødliste. Ingen nye områder, gjenstander, XP eller samlingsbelønninger; eksisterende fangstmynter beholdes.
+Sjeldenhet og vektområde merkes som spillverdier. Det er ikke biologiske maksvekter eller en rødliste. Fangst gir nå ett fiskeitem i sekken, uten mynter. Fisken kan selges i butikken; salg endrer ikke fiskeboken eller rekordene. Se `fish-inventory.md`.
 
 ## Eksisterende data og publisering
 

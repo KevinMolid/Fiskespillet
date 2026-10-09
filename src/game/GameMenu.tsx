@@ -12,13 +12,12 @@ type Props = {
   speciesCount: number
   onBag: () => void
   onBook: () => void
-  onClose: () => void
   onExit: () => void
   pending?: boolean
   error?: string
 }
 
-export function GameMenu({ inventory, appearance, caughtSpecies, speciesCount, onBag, onBook, onClose, onExit, pending = false, error = '' }: Props) {
+export function GameMenu({ inventory, appearance, caughtSpecies, speciesCount, onBag, onBook, onExit, pending = false, error = '' }: Props) {
   const bait = inventory.equippedBait
   return <section role="dialog" aria-modal="true" aria-label="Spillmeny" className="game-menu">
     <header className="game-menu-heading"><div><span>En pause ved vannet</span><h2>Spillmeny</h2></div><GameLogo className="pause-logo" /></header>
@@ -35,10 +34,9 @@ export function GameMenu({ inventory, appearance, caughtSpecies, speciesCount, o
       <nav className="game-menu-list" aria-label="Menyvalg">
         <button data-autofocus disabled={pending} onClick={onBag}><span className="menu-symbol"><MenuIcon name="bag" /></span><span><strong>Sekk</strong><small>Utstyr, agn og funn</small></span><span aria-hidden="true">›</span></button>
         <button disabled={pending} onClick={onBook}><span className="menu-symbol"><MenuIcon name="book" /></span><span><strong>Fiskebok</strong><small>{caughtSpecies} av {speciesCount} arter fanget</small></span><span aria-hidden="true">›</span></button>
-        <button disabled={pending} onClick={onClose}><span className="menu-symbol"><MenuIcon name="arrow" /></span><span><strong>Tilbake til spillet</strong><small>Fortsett fisketuren</small></span><span aria-hidden="true">›</span></button>
         <button disabled={pending} onClick={onExit}><span className="menu-symbol"><MenuIcon name="arrow" /></span><span><strong>Gå ut av spillet</strong><small>Til startmenyen</small></span><span aria-hidden="true">›</span></button>
       </nav>
     </div>
-    {error ? <p role="alert" className="game-menu-error">{error}</p> : pending ? <p role="status" className="game-menu-hint">Lagrer spillet …</p> : <p className="game-menu-hint">↑ ↓ Velg · Enter / E Bekreft · Esc Tilbake</p>}
+    {error ? <p role="alert" className="game-menu-error">{error}</p> : pending ? <p role="status" className="game-menu-hint">Lagrer spillet …</p> : <p className="game-menu-hint">↑ ↓ Velg · E / mellomrom Bekreft · B / Esc Tilbake · Enter Meny</p>}
   </section>
 }

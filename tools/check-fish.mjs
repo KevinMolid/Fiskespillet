@@ -2,16 +2,18 @@ import { build } from 'esbuild'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 const bundle=await build({stdin:{contents:"export * from './src/game/fish'; export { ITEMS } from './src/game/items'",resolveDir:process.cwd()},bundle:true,write:false,platform:'node',format:'esm',loader:{'.png':'dataurl'}})
-const {FISH,FISH_BY_ID,FISH_REWARDS,FISHING_ZONES,BAIT_METHODS,ITEMS,fishingOptions,biteProbability,compatibleBaits,livesInZone,rollFish,weightCeiling}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'))
+const {FISH,FISH_BY_ID,FISHING_ZONES,BAIT_METHODS,ITEMS,fishingOptions,biteProbability,compatibleBaits,livesInZone,rollFish,weightCeiling}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'))
 assert.equal(FISH.length,21)
 assert.equal(new Set(FISH.map(f=>f.id)).size,21)
-assert.equal(ITEMS.length,6,'No new equipment')
+assert.equal(ITEMS.filter(item=>item.category==='equipment').length,2,'No new equipment')
+assert.equal(ITEMS.filter(item=>item.category==='fish').length,FISH.length,'Every species has a stackable fish item')
 assert.deepEqual(Object.keys(FISHING_ZONES),['havn','skogstjern'])
 const rules=readFileSync('firestore.rules','utf8')
 for(const fish of FISH){
  assert(fish.minGrams>0&&fish.maxGrams>fish.minGrams)
  assert(fish.methods.length&&fish.habitats.length)
- assert(FISH_REWARDS[fish.id]>0)
+ assert(fish.sellPrice>0)
+ assert(rules.includes("'fish_"+fish.id+"'"),'Fish item allowed in inventory rules: '+fish.id)
  assert(rules.includes("'"+fish.id+"'"),'Species allowed in fish book rules: '+fish.id)
  assert(weightCeiling(fish)<=240000)
  for(const affinity of Object.values(fish.baitAffinity)) assert(affinity>0&&affinity<=2,'positive, bounded bait affinity: '+fish.name)
@@ -53,4 +55,4 @@ for(const zone of Object.keys(FISHING_ZONES)) for(const bait of Object.keys(BAIT
   const high=rollFish(zone,bait,()=>0.999999999);assert.equal(high.grams,weightCeiling(high.species));assert.equal(high.bites,false)
  }
 }
-console.log('21 species; 96,000 rolls; habitat/method gates, bait and fishing-profile affinities, bite rolls, weights, rewards and rules OK')
+console.log('21 species; 96,000 rolls; habitat/method gates, bait and fishing-profile affinities, bite rolls, weights, sell prices and rules OK')

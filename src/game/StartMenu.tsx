@@ -24,13 +24,14 @@ export function StartMenu({ hasSave, ready, pending = false, error = '', onConti
     if (!confirmReset) return
     cancelButton.current?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
+      if (!['Escape', 'b', 'B'].includes(event.key) || pending || event.repeat) return
+      event.preventDefault()
       setConfirmReset(false)
       newGameButton.current?.focus()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [confirmReset])
+  }, [confirmReset, pending])
 
   function startNewGame() {
     if (hasSave) setConfirmReset(true)
@@ -59,7 +60,8 @@ export function StartMenu({ hasSave, ready, pending = false, error = '', onConti
         <p id="reset-description">Fangster, fiskebok, utstyr, mynter, posisjon og figurutseende slettes. Dette kan ikke angres.</p>
         {error && <p role="alert" className="start-error">{error}</p>}
         <div className="start-confirm-actions">
-          <button ref={cancelButton} className="start-button" onClick={() => setConfirmReset(false)} disabled={pending}>Avbryt</button>
+          <button ref={cancelButton} className="start-button controller-shortcut" aria-label="B: tilbake" onClick={() => setConfirmReset(false)} disabled={pending}>B</button>
+          <button className="start-button controller-shortcut" aria-label="Meny" onClick={() => setConfirmReset(false)} disabled={pending}>≡</button>
           <button className="start-button start-button-danger" onClick={() => { setConfirmReset(false); setChoosingCharacter(true) }} disabled={pending}>
             {pending ? 'Starter på nytt …' : 'Slett alt og start'}
           </button>

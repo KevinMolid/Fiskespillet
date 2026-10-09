@@ -66,9 +66,41 @@ service cloud.firestore {
         return request.auth != null && request.auth.uid == uid;
       }
 
-      function validCounts(counts) {
+      function validFishCount(amount) {
+        return amount is int && amount >= 0 && amount <= 999;
+      }
+
+      // Unchanged quantities were validated when stored. Only changed fish stacks
+      // need rechecking, keeping full inventories within the rules expression limit.
+      function validCounts(counts, previous) {
+        let changed = counts.diff(previous).affectedKeys();
         return counts is map
-          && counts.keys().hasOnly(['rod', 'shovel', 'worm', 'bread', 'corn', 'spinner', 'sneakers'])
+          && counts.keys().hasOnly(['rod', 'shovel', 'worm', 'bread', 'corn', 'spinner', 'sneakers',
+            'fish_makrell', 'fish_sei', 'fish_torsk', 'fish_orret', 'fish_abbor',
+            'fish_lyr', 'fish_sjoorret', 'fish_gjedde', 'fish_roye', 'fish_sild',
+            'fish_hvitting', 'fish_rodspette', 'fish_harr', 'fish_sik', 'fish_laks',
+            'fish_brosme', 'fish_lange', 'fish_gjors', 'fish_kveite', 'fish_steinbit', 'fish_mort'])
+          && (!changed.hasAny(['fish_makrell']) || validFishCount(counts.get('fish_makrell', 0)))
+          && (!changed.hasAny(['fish_sei']) || validFishCount(counts.get('fish_sei', 0)))
+          && (!changed.hasAny(['fish_torsk']) || validFishCount(counts.get('fish_torsk', 0)))
+          && (!changed.hasAny(['fish_orret']) || validFishCount(counts.get('fish_orret', 0)))
+          && (!changed.hasAny(['fish_abbor']) || validFishCount(counts.get('fish_abbor', 0)))
+          && (!changed.hasAny(['fish_lyr']) || validFishCount(counts.get('fish_lyr', 0)))
+          && (!changed.hasAny(['fish_sjoorret']) || validFishCount(counts.get('fish_sjoorret', 0)))
+          && (!changed.hasAny(['fish_gjedde']) || validFishCount(counts.get('fish_gjedde', 0)))
+          && (!changed.hasAny(['fish_roye']) || validFishCount(counts.get('fish_roye', 0)))
+          && (!changed.hasAny(['fish_sild']) || validFishCount(counts.get('fish_sild', 0)))
+          && (!changed.hasAny(['fish_hvitting']) || validFishCount(counts.get('fish_hvitting', 0)))
+          && (!changed.hasAny(['fish_rodspette']) || validFishCount(counts.get('fish_rodspette', 0)))
+          && (!changed.hasAny(['fish_harr']) || validFishCount(counts.get('fish_harr', 0)))
+          && (!changed.hasAny(['fish_sik']) || validFishCount(counts.get('fish_sik', 0)))
+          && (!changed.hasAny(['fish_laks']) || validFishCount(counts.get('fish_laks', 0)))
+          && (!changed.hasAny(['fish_brosme']) || validFishCount(counts.get('fish_brosme', 0)))
+          && (!changed.hasAny(['fish_lange']) || validFishCount(counts.get('fish_lange', 0)))
+          && (!changed.hasAny(['fish_gjors']) || validFishCount(counts.get('fish_gjors', 0)))
+          && (!changed.hasAny(['fish_kveite']) || validFishCount(counts.get('fish_kveite', 0)))
+          && (!changed.hasAny(['fish_steinbit']) || validFishCount(counts.get('fish_steinbit', 0)))
+          && (!changed.hasAny(['fish_mort']) || validFishCount(counts.get('fish_mort', 0)))
           && counts.get('sneakers', 0) is int
           && counts.get('sneakers', 0) >= 0
           && counts.get('sneakers', 0) <= 1
@@ -95,8 +127,8 @@ service cloud.firestore {
       function validInventory() {
         return request.resource.data.keys().hasAll(['bag', 'storage', 'equippedBait', 'coins', 'updatedAt'])
           && request.resource.data.keys().hasOnly(['bag', 'storage', 'equippedBait', 'coins', 'updatedAt'])
-          && validCounts(request.resource.data.bag)
-          && validCounts(request.resource.data.storage)
+          && validCounts(request.resource.data.bag, resource == null ? {} : resource.data.bag)
+          && validCounts(request.resource.data.storage, resource == null ? {} : resource.data.storage)
           && request.resource.data.storage.get('sneakers', 0) == 0
           && request.resource.data.coins is int
           && request.resource.data.coins >= 0
@@ -108,8 +140,8 @@ service cloud.firestore {
       }
 
       allow get: if owner();
-      allow create: if owner() && validInventory() && request.resource.data.coins == 60
-        && request.resource.data.bag.get('sneakers', 0) == 0;
+      allow create: if owner() && request.resource.data.coins == 60
+        && request.resource.data.bag.get('sneakers', 0) == 0 && validInventory();
       allow update: if owner() && validInventory()
         && request.resource.data.bag.get('sneakers', 0) >= resource.data.bag.get('sneakers', 0);
       allow delete: if owner();

@@ -41,7 +41,7 @@ export type FishingProfile = {
 export type FishSpecies = {
   id: string; name: string; icon: string; scientificName: string | null; description: string; image?: string
   minGrams: number; maxGrams: number; plus: boolean
-  rarity: Rarity; habitats: Habitat[]; methods: Method[]; reward: number
+  rarity: Rarity; habitats: Habitat[]; methods: Method[]; sellPrice: number
   /** Relative bite strength for the player's currently available bait; 1 is neutral. */
   baitAffinity: Partial<Record<BaitId, number>>
   fishingProfile: FishingProfile
@@ -157,8 +157,8 @@ const FISHING_PROFILES: Record<string, FishingProfile> = {
   steinbit: fishingProfile({ features: { rocky: 1.5, dock: 1.15 }, depths: { bottom: 1.5, midwater: .8, surface: .5 }, retrieves: { slow: 1.3 }, castLengths: { medium: 1.1, long: 1.2 } }, .52, 2600, 1.4),
   mort: fishingProfile({ features: { reeds: 1.45, open: .8 }, depths: { surface: 1.2, midwater: 1.1, bottom: .75 }, retrieves: { slow: 1.25, steady: 1.05 }, castLengths: { short: 1.35, medium: 1.05, long: .7 } }, .73, 3400, .54),
 }
-function species(id: string, name: string, minGrams: number, maxGrams: number, rarity: Rarity, methods: Method[], habitats: Habitat[], reward: number, plus = false, baitAffinity: Partial<Record<BaitId, number>> = {}): FishSpecies {
-  return { id, name, minGrams, maxGrams, rarity, methods, habitats, reward, plus, baitAffinity, fishingProfile: FISHING_PROFILES[id], icon: '🐟', ...FIELD_GUIDE[id] }
+function species(id: string, name: string, minGrams: number, maxGrams: number, rarity: Rarity, methods: Method[], habitats: Habitat[], sellPrice: number, plus = false, baitAffinity: Partial<Record<BaitId, number>> = {}): FishSpecies {
+  return { id, name, minGrams, maxGrams, rarity, methods, habitats, sellPrice, plus, baitAffinity, fishingProfile: FISHING_PROFILES[id], icon: '🐟', ...FIELD_GUIDE[id] }
 }
 export const FISH: FishSpecies[] = [
   { ...species('makrell','Makrell',100,3500,'Svært vanlig',['sluk','hekle','dorging'],sea,8,false,{spinner:1.4}), image: mackerelImage },
@@ -184,7 +184,6 @@ export const FISH: FishSpecies[] = [
   { ...species('mort','Mort',80,650,'Svært vanlig',['mark','brød','mais'],fresh,6,false,{worm:0.85,bread:1.7,corn:1.25}), image: roachImage },
 ]
 export const FISH_BY_ID = Object.fromEntries(FISH.map(fish => [fish.id,fish])) as Record<string,FishSpecies>
-export const FISH_REWARDS = Object.fromEntries(FISH.map(fish => [fish.id,fish.reward])) as Record<string,number>
 export const RARITY_WEIGHT: Record<Rarity,number> = { 'Svært vanlig': 60, 'Vanlig': 25, 'Mindre vanlig': 8, 'Sjelden/lokal': 3, 'Sjelden': 1 }
 // An item's internal legacy ID is not a method: spinner is the existing item named Sluk.
 export const BAIT_METHODS: Record<BaitId,Method[]> = { worm: ['mark','agn'], bread: ['brød'], corn: ['mais'], spinner: ['sluk'] }

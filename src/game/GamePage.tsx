@@ -13,17 +13,17 @@ import { InventoryDialog, ShopDialog, WardrobeDialog } from './GameDialogs'
 import { MobileControls } from './MobileControls'
 import { FishingDialog, type FishingFinish, type ReelControl } from './FishingDialog'
 import { useGameInput } from './useGameInput'
-import { FISH_REWARDS, hasRunningShoes, type BaitId } from './items'
+import { hasRunningShoes, type BaitId } from './items'
 import { MARITA_SNEAKERS_GIFT_LINE } from './npcs'
 import { fishingOptions } from './fish'
 import { canFish, DEFAULT_APPEARANCE, FISH, formatWeight, interactionAhead, MAPS, type Appearance, type Position } from './world'
 
-type Result = { species: FishSpecies; grams: number; coins: number; milestone: CatchMilestone | null }
+type Result = { species: FishSpecies; grams: number; milestone: CatchMilestone | null }
 
-export type GameServices = Pick<typeof persistence, 'buyBait' | 'consumeBait' | 'digForWorms' | 'grantMaritaSneakers' | 'loadAppearance' | 'loadFishBook' | 'loadInventory' | 'loadPosition' | 'recordEncounter' | 'saveAppearance' | 'savePosition' | 'setEquippedBait' | 'transferItem'>
+export type GameServices = Pick<typeof persistence, 'buyBait' | 'consumeBait' | 'digForWorms' | 'grantMaritaSneakers' | 'loadAppearance' | 'loadFishBook' | 'loadInventory' | 'loadPosition' | 'recordEncounter' | 'saveAppearance' | 'savePosition' | 'sellFish' | 'setEquippedBait' | 'transferItem'>
 
 export default function GamePage({ user, services = persistence, onExit }: { user: Pick<User, 'uid'>; services?: GameServices; onExit: () => void }) {
-  const { buyBait, consumeBait, digForWorms, grantMaritaSneakers, loadAppearance, loadFishBook, loadInventory, loadPosition, recordEncounter, saveAppearance, savePosition, setEquippedBait, transferItem } = services
+  const { buyBait, consumeBait, digForWorms, grantMaritaSneakers, loadAppearance, loadFishBook, loadInventory, loadPosition, recordEncounter, saveAppearance, savePosition, sellFish, setEquippedBait, transferItem } = services
   const canvasParent = useRef<HTMLDivElement>(null)
   const gameFrame = useRef<HTMLDivElement>(null)
   const scene = useRef<WorldScene | null>(null)
@@ -60,7 +60,7 @@ export default function GamePage({ user, services = persistence, onExit }: { use
   const [showBook, setShowBook] = useState(false)
   const fishBookBack = useRef<(() => void) | null>(null)
   const closeBook = useCallback(() => setShowBook(false), [])
-  const registerFishBookMenuBack = useCallback((handler: (() => void) | null) => { fishBookBack.current = handler }, [])
+  const registerFishBookBack = useCallback((handler: (() => void) | null) => { fishBookBack.current = handler }, [])
   const [showMenu, setShowMenu] = useState(false)
   const closeMenu = useCallback(() => {
     setShowMenu(false)
@@ -178,7 +178,7 @@ export default function GamePage({ user, services = persistence, onExit }: { use
         }
         const zone = worldPosition.current && MAPS[worldPosition.current.mapId].fishingZone
         if (!zone || !fishingOptions(zone, activeBait).length) {
-          setError('Dette agnet passer ikke til fiskene her. Prøv et annet agn. Agnet er ikke brukt.')
+          setError('Dette agnet passer ikke til fiskene her. Prøv et annet agn.')
           world.finishFishing()
           return
         }
@@ -282,18 +282,18 @@ export default function GamePage({ user, services = persistence, onExit }: { use
           user.uid, outcome.species.id, outcome.grams, true, outcome.bait, fishingSession.zoneId,
         )
         setInventory(nextInventory)
-        setResult({ species: outcome.species, grams: outcome.grams, coins: FISH_REWARDS[outcome.species.id] ?? 0, milestone })
+        setResult({ species: outcome.species, grams: outcome.grams, milestone })
         setBook(current => [...current.filter(item => item.speciesId !== entry.speciesId), entry])
       } else {
         const nextInventory = await consumeBait(user.uid, outcome.bait)
         setInventory(nextInventory)
         const text = outcome.reason === 'no-bite'
-          ? 'Ingen napp denne gangen. Agnet er brukt.'
+          ? 'Ingen napp denne gangen.'
           : outcome.reason === 'bottom-snag'
-            ? 'Kroken satte seg fast i bunnen. Kastet mislyktes, og agnet er brukt.'
+            ? 'Kroken satte seg fast i bunnen. Kastet mislyktes.'
           : outcome.reason === 'missed-hook'
-            ? 'Du reagerte litt for sent. Fisken slapp unna, og agnet er brukt.'
-            : 'Snøret røk. Fisken slapp unna, og agnet er brukt.'
+            ? 'Du reagerte litt for sent. Fisken slapp unna.'
+            : 'Snøret røk. Fisken slapp unna.'
         setSignMessage({ title: outcome.reason === 'no-bite' ? 'Ingen napp' : outcome.reason === 'bottom-snag' ? 'Kroken sitter fast' : 'Fisken slapp unna', text })
       }
     } catch (cause) {
@@ -318,7 +318,7 @@ export default function GamePage({ user, services = persistence, onExit }: { use
   const modal = Boolean(showMenu || showBook || showWardrobe || inventoryView || showShop || fishingSession || catchNotice)
   const inputContext = fishingSession ? 'fishing' : catchNotice ? 'catch' : showWardrobe ? 'wardrobe' : inventoryView ?? (showBook ? 'book' : showShop ? 'shop' : showMenu ? 'menu' : error || result || signMessage ? 'message' : 'world')
   function dismissMessage() { setError(''); setResult(null); setSignMessage(null) }
-  function menuControl() {
+  function backControl() {
     if (exiting || inventoryPending || savingLook || busy) return
     if (fishingSession) {
       if (!fishingCommitted.current) closeFishingSession()
@@ -329,12 +329,23 @@ export default function GamePage({ user, services = persistence, onExit }: { use
     else if (showShop) setShowShop(false)
     else if (error || result || signMessage) dismissMessage()
     else if (showMenu) closeMenu()
-    else if (position && inventory) { scene.current?.setUiBlocked(true); setShowMenu(true) }
+  }
+  function menuControl() {
+    if (exiting || inventoryPending || savingLook || busy || !position || !inventory) return
+    if (fishingSession) { if (!fishingCommitted.current) closeFishingSession(); return }
+    const menuOpen = showMenu || showBook || showWardrobe || Boolean(inventoryView) || showShop
+    if (showWardrobe) closeWardrobe()
+    setShowBook(false)
+    setInventoryView(null)
+    setShowShop(false)
+    dismissMessage()
+    if (menuOpen) closeMenu()
+    else { scene.current?.setUiBlocked(true); setShowMenu(true) }
   }
   const input = useGameInput({ frame: gameFrame, context: inputContext, modal, locked: exiting || busy || inventoryPending || savingLook,
     move: direction => { if (!uiBlocked) scene.current?.move(direction) },
     moveHold: direction => { if (!uiBlocked || direction === null) scene.current?.setTouchDirection(direction) },
-    action: () => { if (error || result || signMessage) dismissMessage(); else scene.current?.action() }, menu: menuControl,
+    action: () => { if (error || result || signMessage) dismissMessage(); else scene.current?.action() }, menu: menuControl, back: backControl,
     tapAction: () => fishingSession ? (reelControl.current?.tap() ?? false) : false,
     utilityAllowed: Boolean(position && hasRunningShoes(inventory) && !uiBlocked), utility: active => scene.current?.setUtilityHeld(active),
   })
@@ -352,7 +363,7 @@ export default function GamePage({ user, services = persistence, onExit }: { use
         {!catchNotice && (error || busy || result || signMessage) && <div role={error ? 'alert' : 'status'} className="world-message absolute inset-x-2 bottom-2 min-h-16 p-2 pb-6 text-sm font-semibold sm:inset-x-5 sm:bottom-5 sm:min-h-24 sm:p-4 sm:pb-8 sm:text-lg">
           {error ? <p>{error}</p>
             : busy ? <p>{busyText}</p>
-              : result ? <p>{result.species.icon} {`Du fanget en ${result.species.name}! Den veier ${formatWeight(result.grams)}. +${result.coins} mynter.`}</p>
+              : result ? <p>{result.species.icon} {`Du fanget en ${result.species.name}! Den veier ${formatWeight(result.grams)}. Fisken er lagt i sekken.`}</p>
                 : signMessage && <p><strong>{signMessage.title}</strong><br />{signMessage.text}</p>}
           {(error || result || signMessage) && <button onClick={() => { setError(''); setResult(null); setSignMessage(null) }} className="absolute bottom-1 right-2 text-xs font-bold sm:bottom-2 sm:right-4 sm:text-sm">Videre ▼</button>}
         </div>}
@@ -361,18 +372,17 @@ export default function GamePage({ user, services = persistence, onExit }: { use
       {showMenu && !inventoryView && !showBook && inventory && appearance && <GameMenu
         inventory={inventory} appearance={appearance} caughtSpecies={caughtSpecies} speciesCount={FISH.length}
         onBag={() => { setInventoryError(''); setInventoryView('bag') }}
-        onBook={() => setShowBook(true)} onClose={closeMenu}
+        onBook={() => setShowBook(true)}
         onExit={() => void exitGame()} pending={exiting} error={exitError}
       />}
 
       {inventoryView && inventory && <InventoryDialog inventory={inventory} chest={inventoryView === 'chest'} pending={inventoryPending} error={inventoryError}
-        onClose={() => setInventoryView(null)}
         onBait={bait => void updateInventory(() => setEquippedBait(user.uid, bait))}
         onTransfer={(id, toStorage) => void updateInventory(() => transferItem(user.uid, id, toStorage))} />}
-      {showShop && inventory && <ShopDialog inventory={inventory} pending={inventoryPending} error={inventoryError} onClose={() => setShowShop(false)} onBuy={(bait, amount) => void updateInventory(() => buyBait(user.uid, bait, amount))} />}
-      {showWardrobe && <WardrobeDialog appearance={draftLook} pending={savingLook} onPreview={previewLook} onSave={() => void confirmLook()} onClose={closeWardrobe} />}
-      {showBook && <FishBookDialog book={book} onClose={closeBook} registerMenuBack={registerFishBookMenuBack} />}
-      {catchNotice?.milestone && <CatchDialog fish={catchNotice.species} grams={catchNotice.grams} coins={catchNotice.coins}
+      {showShop && inventory && <ShopDialog inventory={inventory} pending={inventoryPending} error={inventoryError} onBuy={(bait, amount) => void updateInventory(() => buyBait(user.uid, bait, amount))} onSell={(fish, amount) => void updateInventory(() => sellFish(user.uid, fish, amount))} />}
+      {showWardrobe && <WardrobeDialog appearance={draftLook} pending={savingLook} onPreview={previewLook} onSave={() => void confirmLook()} />}
+      {showBook && <FishBookDialog book={book} onClose={closeBook} registerBack={registerFishBookBack} />}
+      {catchNotice?.milestone && <CatchDialog fish={catchNotice.species} grams={catchNotice.grams}
         milestone={catchNotice.milestone} onClose={dismissMessage} />}
       {fishingSession && <FishingDialog position={fishingSession.position} zoneId={fishingSession.zoneId} bait={fishingSession.bait}
         onCast={steps => scene.current?.playCast(steps) ?? Promise.resolve(false)}
@@ -383,12 +393,12 @@ export default function GamePage({ user, services = persistence, onExit }: { use
 
     <MobileControls context={inputContext} onDirection={input.direction} onAction={input.action}
       onDirectionStart={input.directionStart} onDirectionEnd={input.directionEnd}
-      onMenu={input.menu}
+      onMenu={input.menu} onBack={input.back} backDisabled={Boolean(fishingSession && fishingCommitted.current)}
       onUtilityStart={input.utilityStart} onUtilityEnd={input.utilityEnd} utilityHeld={input.utilityHeld}
       utilityDisabled={uiBlocked || !hasRunningShoes(inventory)}
       actionLabel={fishingSession ? fishingActionLabel : catchNotice ? 'Videre' : modal ? 'Velg' : (error || result || signMessage) ? 'Videre' : actionLabel ?? ''}
       disabled={!position || !inventory || exiting || busy || inventoryPending || savingLook}
       actionDisabled={!position || exiting || busy || inventoryPending || savingLook || (!modal && !actionLabel && !error && !result && !signMessage)} />
-    <p className="desktop-control-hint mt-3 text-xs text-slate-400">Enter: spillmeny · Piltaster / WASD: bevegelse · {hasRunningShoes(inventory) ? 'Hold Shift: løp' : 'Joggesko fra Marita låser opp løping'} · E / mellomrom: handling · Esc: tilbake · Gå på dører og trapper for å bytte rom.</p>
+    <p className="desktop-control-hint mt-3 text-xs text-slate-400">Enter: åpne/lukke spillmeny · B / Esc: tilbake · Piltaster / WASD: bevegelse · {hasRunningShoes(inventory) ? 'Hold Shift: løp' : 'Joggesko fra Marita låser opp løping'} · E / mellomrom: handling · Gå på dører og trapper for å bytte rom.</p>
   </div>
 }

@@ -32,12 +32,22 @@ menu and reset confirmation, pause menu, inventory/storage, fish book, shop,
 wardrobe, fishing panels, messages, account pages and mobile controls. The
 pause/start menus share the logo and a small set of line icons in `MenuIcon.tsx`.
 Buttons, callbacks, persistence, item handling and game input logic retain
-their existing behaviour. The browser title and footer use Godt Haill.
+their existing gameplay effects. Menu navigation now separates Back (B/Escape,
+one level) from Menu (Menu/Enter, open/close all levels). The main menu and child
+panels have no inline return/close buttons. B retains running in the world and
+is available as Back inside menus regardless of shoe ownership. Character
+selection and reset confirmation use compact B/Menu controls as well. The
+browser title and footer use Godt Haill.
 
 Preview: `/tools/menu-preview.html`, with optional `?view=start|pause|bag|book|shop|wardrobe`
 and `?saved=0`. It uses actual menu components with offline fixtures and never
 resets an account. The existing `/tools/game-preview.html` exercises the real
 game and input paths with its local services; `/` shows the actual auth forms.
+
+`tools/check-back-menu-browser.mjs` checks the real scene and input hook on
+desktop, mobile, narrow mobile and landscape: one-level Back, whole-menu close,
+fish detail focus and list return, pending inventory writes, wardrobe cancel,
+absence of inline back buttons and held-run cleanup.
 
 `tools/check-menu-browser.mjs` covers desktop, 390 px / DPR-3 mobile, 320 px
 phones and landscape: both logo variants/aspect ratios, revised copy and compact

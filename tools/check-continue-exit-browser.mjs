@@ -33,7 +33,7 @@ try {
     const choice=page.getByRole('dialog',{name:'Velg spillkarakter'})
     const menu=page.getByRole('dialog',{name:'Spillmeny'})
     const openMenu=async()=>{
-      if(mobile) await page.getByRole('button',{name:'Meny eller tilbake'}).click()
+      if(mobile) await page.getByRole('button',{name:'Meny',exact:true}).click()
       else { await page.locator('.game-frame').focus(); await page.keyboard.press('Enter') }
       await menu.waitFor()
     }
@@ -76,7 +76,7 @@ try {
         await page.evaluate(()=>{window.__failExit=false;window.__exitGate=new Promise(resolve=>window.__releaseExit=resolve)})
         await exit.click()
         await menu.getByRole('status').waitFor()
-        assert(await exit.isDisabled()); assert(await menu.getByRole('button',{name:/Tilbake til spillet/}).isDisabled())
+        assert(await exit.isDisabled()); assert(await menu.getByRole('button',{name:/Sekk/}).isDisabled())
         await page.evaluate(()=>{window.__releaseExit();window.__exitGate=null})
       } else await exit.click()
       await page.getByRole('button',{name:/Fortsett spill/}).waitFor()

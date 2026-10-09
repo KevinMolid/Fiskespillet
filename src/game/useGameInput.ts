@@ -12,6 +12,7 @@ type Options = {
   action: () => void
   tapAction?: () => boolean
   menu: () => void
+  back: () => void
   holdStart?: () => boolean
   holdEnd?: () => void
   utilityAllowed: boolean
@@ -121,6 +122,8 @@ export function useGameInput(options: Options) {
       const target = event.target as HTMLElement | null
       if (target?.isContentEditable || target?.closest('input, textarea, select, .app-header') || event.ctrlKey || event.metaKey || event.altKey) return
       const current = latest.current
+      // Let focused controller buttons use their own native Enter/Space action.
+      if (target?.closest('.handheld-controls') && ['Enter', ' '].includes(event.key)) return
       const inFrame = target && current.frame.current?.contains(target)
       if (!current.modal && target?.closest('button, a') && !inFrame) return
       if (event.key === 'Shift') {
@@ -131,7 +134,7 @@ export function useGameInput(options: Options) {
         }
         return
       }
-      if (!arrows[event.key] && !['Enter', 'Escape', 'e', 'E', ' ', 'Tab'].includes(event.key)) return
+      if (!arrows[event.key] && !['Enter', 'Escape', 'b', 'B', 'e', 'E', ' ', 'Tab'].includes(event.key)) return
       // Desktop walking remains in Phaser's continuous key state.
       if (arrows[event.key] && !current.modal) return
       if (event.key === 'Tab' && !current.modal) return
@@ -144,7 +147,8 @@ export function useGameInput(options: Options) {
         const controls = buttons()
         const index = controls.indexOf(selected.current!)
         select(controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length])
-      } else if (event.key === 'Escape' || (event.key === 'Enter' && !current.modal)) current.menu()
+      } else if (event.key === 'Enter') current.menu()
+      else if (['Escape', 'b', 'B'].includes(event.key)) current.back()
       else if (['e', 'E', ' '].includes(event.key) && current.holdStart?.()) return
       else action()
     }
@@ -166,5 +170,7 @@ export function useGameInput(options: Options) {
     window.addEventListener('focusin', focus)
     return () => { stopHold(); window.removeEventListener('keydown', keydown, true); window.removeEventListener('keyup', keyup, true); window.removeEventListener('blur', stopHold); document.removeEventListener('visibilitychange', stopHold); window.removeEventListener('focusin', focus) }
   }, [])
-  return { direction, directionStart, directionEnd, action, utilityStart, utilityEnd, utilityHeld, menu: () => { if (!latest.current.locked) latest.current.menu() } }
+  return { direction, directionStart, directionEnd, action, utilityStart, utilityEnd, utilityHeld,
+    back: () => { if (!latest.current.locked) latest.current.back() },
+    menu: () => { if (!latest.current.locked) latest.current.menu() } }
 }

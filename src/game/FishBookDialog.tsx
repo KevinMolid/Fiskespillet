@@ -78,7 +78,7 @@ export function FishDetails({ fish, entry }: { fish: FishSpecies; entry?: FishBo
   </div>
 }
 
-export function FishBookDialog({ book, onClose, registerMenuBack }: { book: FishBookEntry[]; onClose: () => void; registerMenuBack?: (handler: (() => void) | null) => void }) {
+export function FishBookDialog({ book, onClose, registerBack }: { book: FishBookEntry[]; onClose: () => void; registerBack?: (handler: (() => void) | null) => void }) {
   const [page, setPage] = useState(0)
   const [mobileDetail, setMobileDetail] = useState(false)
   const list = useRef<HTMLDivElement>(null)
@@ -89,7 +89,7 @@ export function FishBookDialog({ book, onClose, registerMenuBack }: { book: Fish
   const fish = FISH[page]
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      if (mobileDetail) list.current?.closest('[role="dialog"]')?.querySelector<HTMLButtonElement>('.fish-mobile-back')?.focus({ preventScroll: true })
+      if (mobileDetail) list.current?.closest('[role="dialog"]')?.querySelector<HTMLElement>('.fish-details')?.focus({ preventScroll: true })
       else list.current?.querySelector<HTMLButtonElement>(`[data-fish-id="${fish.id}"]`)?.focus({ preventScroll: true })
     })
     return () => cancelAnimationFrame(frame)
@@ -102,12 +102,11 @@ export function FishBookDialog({ book, onClose, registerMenuBack }: { book: Fish
   }
   useEffect(() => {
     const back = () => mobileDetail ? returnToList() : onClose()
-    registerMenuBack?.(back)
-    return () => registerMenuBack?.(null)
-  }, [mobileDetail, onClose, registerMenuBack])
+    registerBack?.(back)
+    return () => registerBack?.(null)
+  }, [mobileDetail, onClose, registerBack])
   return <Panel className={`fish-book-dialog${mobileDetail ? ' is-mobile-detail' : ' is-mobile-list'}`} title="Fiskeboken"
-    subtitle={`${caught} av ${FISH.length} fanget · ${seen} oppdaget · ${unknown} ukjent`}
-    closeLabel="Lukk" onClose={onClose}>
+    subtitle={`${caught} av ${FISH.length} fanget · ${seen} oppdaget · ${unknown} ukjent`}>
     <div className="fish-book-progress" aria-label={`${caught} av ${FISH.length} arter fanget`}>
       <div className="fish-progress-labels"><span>Fanget <strong>{caught}/{FISH.length}</strong></span><span>Oppdaget <strong>{seen}/{FISH.length}</strong></span></div>
       <div className="fish-progress-track" role="progressbar" aria-label="Arter fanget" aria-valuemin={0} aria-valuemax={FISH.length} aria-valuenow={caught} aria-valuetext={`${caught} av ${FISH.length} fanget`}>
@@ -116,7 +115,6 @@ export function FishBookDialog({ book, onClose, registerMenuBack }: { book: Fish
     </div>
     <div className="fish-book-layout">
       <article className="fish-details" aria-label={`${fish.name} – artsdetaljer`} tabIndex={0} data-nav-scroll>
-        {mobileDetail && <button className="fish-mobile-back" type="button" onClick={returnToList}>← Fiskeboken</button>}
         <FishDetails fish={fish} entry={entries.get(fish.id)} />
       </article>
       <div ref={list} className="fish-list" role="listbox" aria-label="Artsliste" data-nav-list>
@@ -138,8 +136,8 @@ export function FishBookDialog({ book, onClose, registerMenuBack }: { book: Fish
       </div>
     </div>
     <footer className="fish-book-footer">
-      <span className="fish-controls-desktop">↑ ↓ Bla · E / Mellomrom Åpne · Esc Tilbake</span>
-      <span className="fish-controls-mobile">{mobileDetail ? 'A Fiskeboken · Meny Tilbake' : '↑ ↓ Bla · A Åpne · Meny Tilbake'}</span>
+      <span className="fish-controls-desktop">↑ ↓ Bla · E / Mellomrom Åpne · B / Esc Tilbake · Enter Meny</span>
+      <span className="fish-controls-mobile">{mobileDetail ? 'B Artsliste · Meny Lukk' : '↑ ↓ Bla · A Åpne · B Tilbake · Meny Lukk'}</span>
       <span>{page + 1} / {FISH.length}</span>
     </footer>
   </Panel>

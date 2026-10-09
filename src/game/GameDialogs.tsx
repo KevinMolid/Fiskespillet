@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { FisherPortrait } from './FisherPortrait'
-import { CATEGORIES, ITEMS, ITEM_BY_ID, SHOP_PRICES, type BaitId, type ItemCategory, type ItemId } from './items'
+import { CATEGORIES, ITEMS, ITEM_BY_ID, FISH_SELL_PRICES, SHOP_PRICES, type BaitId, type FishItemId, type ItemCategory, type ItemId } from './items'
 import type { Inventory } from './persistence'
 import { HAIR_COLORS, SHIRT_COLORS, SKIN_COLORS, type Appearance } from './world'
 
-export function Panel({ title, subtitle, onClose, disabled, closeLabel = 'Tilbake', children, className = '' }: { title: string; subtitle?: string; onClose: () => void; disabled?: boolean; closeLabel?: string; children: ReactNode; className?: string }) {
+export function Panel({ title, subtitle, children, className = '' }: { title: string; subtitle?: string; children: ReactNode; className?: string }) {
   return <section role="dialog" aria-label={title} aria-modal="true" className={`pocket-dialog ${className}`}>
-    <header className="dialog-heading"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button disabled={disabled} onClick={onClose}>{closeLabel}</button></header>
+    <header className="dialog-heading"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div></header>
     {children}
   </section>
 }
@@ -19,8 +19,8 @@ function Pager({ page, count, onChange }: { page: number; count: number; onChang
   </nav>
 }
 
-export function InventoryDialog({ inventory, chest, pending, error, onClose, onBait, onTransfer }: {
-  inventory: Inventory; chest: boolean; pending: boolean; error: string; onClose: () => void
+export function InventoryDialog({ inventory, chest, pending, error, onBait, onTransfer }: {
+  inventory: Inventory; chest: boolean; pending: boolean; error: string
   onBait: (id: BaitId | null) => void; onTransfer: (id: ItemId, toStorage: boolean) => void
 }) {
   const [category, setCategory] = useState<ItemCategory>('equipment')
@@ -29,7 +29,7 @@ export function InventoryDialog({ inventory, chest, pending, error, onClose, onB
   const entries = ITEMS.filter(item => item.category === category && (inventory[location][item.id] ?? 0) > 0)
   const count = Math.max(1, Math.ceil(entries.length / 2))
   const safePage = Math.min(page, count - 1)
-  return <Panel title={chest ? 'Oppbevaringskiste' : 'Sekken'} subtitle={`${inventory.coins} mynter`} onClose={onClose} disabled={pending}>
+  return <Panel title={chest ? 'Oppbevaringskiste' : 'Sekken'} subtitle={`${inventory.coins} mynter`}>
     <div className="inventory-filters">
       {chest && <div className="dialog-tabs" role="tablist" aria-label="Oppbevaring">
         <button role="tab" aria-selected={location === 'bag'} onClick={() => { setLocation('bag'); setPage(0) }}>Sekk</button>
@@ -54,23 +54,41 @@ export function InventoryDialog({ inventory, chest, pending, error, onClose, onB
   </Panel>
 }
 
-export function ShopDialog({ inventory, pending, error, onClose, onBuy }: { inventory: Inventory; pending: boolean; error: string; onClose: () => void; onBuy: (bait: BaitId, amount: number) => void }) {
+export function ShopDialog({ inventory, pending, error, onBuy, onSell }: { inventory: Inventory; pending: boolean; error: string; onBuy: (bait: BaitId, amount: number) => void; onSell: (fish: FishItemId, amount: number) => void }) {
+  const [mode, setMode] = useState<'buy' | 'sell'>('buy')
   const [page, setPage] = useState(0)
   const baits = Object.keys(SHOP_PRICES) as BaitId[]
-  return <Panel title="Agnbutikken" subtitle={`${inventory.coins} mynter · Velg agn i sekken etter kjøpet`} onClose={onClose} disabled={pending}>
+  const fish = ITEMS.filter(item => item.category === 'fish' && (inventory.bag[item.id] ?? 0) > 0)
+  const count = Math.max(1, Math.ceil((mode === 'buy' ? baits.length : fish.length) / 2))
+  const safePage = Math.min(page, count - 1)
+  return <Panel title="Agnbutikken" subtitle={`${inventory.coins} mynter`}>
+    <div className="dialog-tabs" role="tablist" aria-label="Handel">
+      <button role="tab" aria-selected={mode === 'buy'} disabled={pending} onClick={() => { setMode('buy'); setPage(0) }}>Kjøp agn</button>
+      <button role="tab" aria-selected={mode === 'sell'} disabled={pending} onClick={() => { setMode('sell'); setPage(0) }}>Selg fisk</button>
+    </div>
     {error && <p role="alert" className="dialog-error">{error}</p>}
     <div className="dialog-items">
-      {baits.slice(page * 2, page * 2 + 2).map(bait => <article className="inventory-item" key={bait}>
+      {mode === 'buy' ? baits.slice(safePage * 2, safePage * 2 + 2).map(bait => <article className="inventory-item" key={bait}>
         <div><h3>{ITEM_BY_ID[bait].icon} {ITEM_BY_ID[bait].name}</h3><p>{ITEM_BY_ID[bait].description}</p><strong>{SHOP_PRICES[bait]} mynter / stk.</strong></div>
         <div className="item-actions">{[1, 5].map(n => <button key={n} disabled={pending || inventory.coins < SHOP_PRICES[bait] * n} onClick={() => onBuy(bait, n)}>Kjøp {n}</button>)}</div>
-      </article>)}
+      </article>) : !fish.length ? <p className="dialog-empty">Ingen fisk i sekken. Fang fisk eller hent dem fra kisten før du selger.</p>
+        : fish.slice(safePage * 2, safePage * 2 + 2).map(item => {
+          const id = item.id as FishItemId, owned = inventory.bag[id] ?? 0, price = FISH_SELL_PRICES[id]
+          return <article className="inventory-item" key={id}>
+            <div><h3>{item.icon} {item.name} <span>×{owned}</span></h3><strong>{price} mynter / stk.</strong></div>
+            <div className="item-actions">
+              <button disabled={pending || inventory.coins + price > 1000000} onClick={() => onSell(id, 1)}>Selg 1</button>
+              {owned > 1 && <button disabled={pending || inventory.coins + price * owned > 1000000} onClick={() => onSell(id, owned)}>Selg alle ({owned})</button>}
+            </div>
+          </article>
+        })}
     </div>
-    <footer className="dialog-footer"><span>Fang fisk for å tjene mynter</span><Pager page={page} count={Math.ceil(baits.length / 2)} onChange={setPage} /></footer>
+    <footer className="dialog-footer"><span>{mode === 'buy' ? 'Velg agn i sekken etter kjøpet' : 'Selg fangsten for å tjene mynter'}</span><Pager page={safePage} count={count} onChange={setPage} /></footer>
   </Panel>
 }
 
-export function WardrobeDialog({ appearance, pending, onPreview, onSave, onClose }: { appearance: Appearance; pending: boolean; onPreview: (a: Appearance) => void; onSave: () => void; onClose: () => void }) {
-  return <Panel title="Garderoben" onClose={onClose} disabled={pending}>
+export function WardrobeDialog({ appearance, pending, onPreview, onSave }: { appearance: Appearance; pending: boolean; onPreview: (a: Appearance) => void; onSave: () => void }) {
+  return <Panel title="Garderoben">
     <div className="wardrobe-content">
       <div className="wardrobe-preview"><FisherPortrait appearance={appearance} /><FisherPortrait appearance={appearance} direction="right" /><FisherPortrait appearance={appearance} direction="up" /></div>
       <div className="wardrobe-colors">
@@ -79,6 +97,6 @@ export function WardrobeDialog({ appearance, pending, onPreview, onSave, onClose
         </fieldset>)}
       </div>
     </div>
-    <footer className="dialog-footer wardrobe-footer"><button disabled={pending} onClick={onClose}>Avbryt</button><button disabled={pending} onClick={onSave}>{pending ? 'Lagrer …' : 'Lagre utseende'}</button></footer>
+    <footer className="dialog-footer wardrobe-footer"><span>B / Esc: tilbake</span><button disabled={pending} onClick={onSave}>{pending ? 'Lagrer …' : 'Lagre utseende'}</button></footer>
   </Panel>
 }
